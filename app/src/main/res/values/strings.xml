@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Task Planner</string>
+    <string name="tasks">Tasks</string>
+    <string name="no_tasks">There are no tasks</string>
+    <string name="calendar">Calendar</string>
+    <string name="profile">Profile</string>
+    <string name="more">More</string>
+    <string name="all_tasks">All Tasks</string>
+    <string name="not_completed">Not completed</string>
+    <string name="completed">Completed</string>
+    <string name="expired">Expired</string>
+    <string name="add_task">Add Task</string>
+    <string name="due">Due: %1$s</string>
+    <string name="high_priority">High Priority</string>
+    <string name="medium_priority">Medium Priority</string>
+    <string name="low_priority">Low Priority</string>
+</resources>
