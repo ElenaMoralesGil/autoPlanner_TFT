@@ -5,10 +5,10 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import presentation.ui.screens.tasks.TasksScreen
 import presentation.ui.screens.calendar.CalendarScreen
-import presentation.ui.screens.profile.ProfileScreen
 import presentation.ui.screens.more.MoreScreen
+import presentation.ui.screens.profile.ProfileScreen
+import presentation.ui.screens.tasks.TasksScreen
 
 @Composable
 fun MainNavigation(
@@ -17,12 +17,20 @@ fun MainNavigation(
 ) {
     NavHost(
         navController = navController,
-        startDestination = "tasks",
+        startDestination = Screen.Tasks.route,
         modifier = modifier
     ) {
-        composable("tasks") { TasksScreen() }
-        composable("calendar") { CalendarScreen() }
-        composable("profile") { ProfileScreen() }
-        composable("more") { MoreScreen() }
+        composable(Screen.Tasks.route) {
+            TasksScreen(navController = navController)
+        }
+        composable(Screen.Calendar.route) {
+            CalendarScreen()
+        }
+        composable(Screen.Profile.route) {
+            ProfileScreen()
+        }
+        composable(Screen.More.route) {
+            MoreScreen()
+        }
     }
 }

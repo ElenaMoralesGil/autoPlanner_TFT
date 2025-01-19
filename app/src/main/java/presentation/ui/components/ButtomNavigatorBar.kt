@@ -1,27 +1,27 @@
 package presentation.ui.components
 
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.elena.autoplanner.R
+import presentation.navigation.Screen
 
 @Composable
-fun BottomNavigationBar(navController: NavHostController, currentRoute: String?) {
-    // Lista de elementos con iconos de tipo `drawable`
+fun BottomNavigationBar(navController: NavHostController) {
     val items = listOf(
-        BottomNavItem("More", R.drawable.baseline_dehaze_24, "more"),
-        BottomNavItem("Tasks", R.drawable.baseline_checklist_24, "tasks"),
-        BottomNavItem("Calendar", R.drawable.baseline_calendar_today_24, "calendar"),
-        BottomNavItem("Profile", R.drawable.baseline_person_24, "profile")
+        BottomNavItem("More", R.drawable.baseline_dehaze_24, Screen.More.route),
+        BottomNavItem("Tasks", R.drawable.baseline_checklist_24, Screen.Tasks.route),
+        BottomNavItem("Calendar", R.drawable.baseline_calendar_today_24, Screen.Calendar.route),
+        BottomNavItem("Profile", R.drawable.baseline_person_24, Screen.Profile.route)
     )
 
     NavigationBar {
+        val navBackStackEntry = navController.currentBackStackEntryAsState()
+        val currentRoute = navBackStackEntry.value?.destination?.route
+
         items.forEach { item ->
             NavigationBarItem(
                 icon = {
@@ -42,8 +42,8 @@ fun BottomNavigationBar(navController: NavHostController, currentRoute: String?)
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Color(0xFFFF9800), // Color Naranja cuando está seleccionada
-                    unselectedIconColor = Color.Gray // Color Gris cuando no está seleccionada
+                    selectedIconColor = Color(0xFFFF9800),
+                    unselectedIconColor = Color.Gray
                 )
             )
         }

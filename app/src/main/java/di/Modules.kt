@@ -1,30 +1,75 @@
+// Modules.kt
+
+import android.util.Log
 import org.koin.dsl.module
 import domain.repository.TaskRepository
 import domain.usecases.GetTasksUseCase
 import data.repository.TaskRepositoryImpl
-import data.local.TaskDao
+
+import com.elena.autoplanner.data.local.dao.TaskDao
+import com.elena.autoplanner.data.local.dao.ReminderDao
+import com.elena.autoplanner.data.local.dao.RepeatConfigDao
+import com.elena.autoplanner.data.local.dao.SubtaskDao
+
 import data.local.TaskDatabase
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import presentation.viewmodel.TaskViewModel
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
+import domain.usecases.AddTaskUseCase
+
 
 val appModule = module {
+
+    val roomCallback = object : RoomDatabase.Callback() {
+        override fun onCreate(db: SupportSQLiteDatabase) {
+            super.onCreate(db)
+            Log.d("RoomCallback", "=== onCreate() called. The database has been created ===")
+        }
+
+        override fun onOpen(db: SupportSQLiteDatabase) {
+            super.onOpen(db)
+            Log.d("RoomCallback", "=== onOpen() called. The database is open and ready ===")
+        }
+    }
+
     single {
         Room.databaseBuilder(
             androidContext(),
             TaskDatabase::class.java,
             "task_database"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .addCallback(roomCallback)
+            .build()
     }
+
+    // Inyectar DAOs individuales
     single<TaskDao> { get<TaskDatabase>().taskDao() }
-    single<TaskRepository> { TaskRepositoryImpl(get()) }
+    single<ReminderDao> { get<TaskDatabase>().reminderDao() }
+    single<RepeatConfigDao> { get<TaskDatabase>().repeatConfigDao() }
+    single<SubtaskDao> { get<TaskDatabase>().subtaskDao() }
+
+    // Repositorio
+    single<TaskRepository> {
+        TaskRepositoryImpl(
+            taskDao = get(),
+            reminderDao = get(),
+            repeatConfigDao = get(),
+            subtaskDao = get()
+        )
+    }
 }
 
+// Módulo de casos de uso
 val useCaseModule = module {
     single { GetTasksUseCase(get()) }
+    single { AddTaskUseCase(get()) }
 }
 
+// Módulo de ViewModels
 val viewModelModule = module {
-    viewModel { TaskViewModel(get()) }
+    viewModel { TaskViewModel(get(), get()) }
 }

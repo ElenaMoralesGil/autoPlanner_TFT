@@ -1,43 +1,56 @@
 package presentation.ui.screens.tasks
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import org.koin.androidx.compose.koinViewModel
+import presentation.navigation.Screen
 import presentation.states.TaskState
 import presentation.viewmodel.TaskViewModel
 import com.elena.autoplanner.R
-import presentation.ui.theme.AppTheme
+import com.elena.autoplanner.domain.models.Reminder
+import com.elena.autoplanner.domain.models.RepeatConfig
+import com.elena.autoplanner.presentation.intents.TaskIntent
+import domain.models.Priority
+import domain.models.Subtask
+import java.time.LocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
-    viewModel: TaskViewModel = koinViewModel(),
-    modifier: Modifier = Modifier
+    navController: NavHostController,
+    viewModel: TaskViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    var showAddTaskSheet by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        viewModel.triggerEvent(TaskIntent.LoadTasks)
+    }
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(id = R.string.all_tasks), fontSize = 20.sp) },
+                title = { Text(text = stringResource(id = R.string.all_tasks), fontSize = 20.sp) },
                 actions = {
-                    IconButton(onClick = { /* Future auto-planner action */ }) {
+                    IconButton(onClick = { /* menú futuro */ }) {
                         Icon(Icons.Default.MoreVert, contentDescription = null)
                     }
                 }
@@ -45,13 +58,17 @@ fun TasksScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* Add task action */ },
-                containerColor = Color(0xFFFF9800)
+                onClick = { showAddTaskSheet = true },
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.add_task))
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(id = R.string.add_task)
+                )
             }
         }
     ) { innerPadding ->
+        // Contenido principal (lista de tareas)
         Column(
             modifier = Modifier
                 .padding(innerPadding)
@@ -62,57 +79,75 @@ fun TasksScreen(
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
             } else {
-                state.error?.let {
+                state.error?.let { errorMsg ->
                     Box(modifier = Modifier.fillMaxSize()) {
                         Text(
-                            text = it,
+                            text = errorMsg,
                             color = Color.Red,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
-                } ?: run {
-                    TaskListSection(state)
-                }
+                } ?: TaskListSection(state)
             }
+        }
+
+        // Ventana emergente al pulsar FAB
+        if (showAddTaskSheet) {
+            AddTaskSheet(
+                onClose = { showAddTaskSheet = false },
+                onAccept = { newTaskData ->
+                    viewModel.triggerEvent(
+                        TaskIntent.AddTask(
+                            name = newTaskData.name,
+                            priority = newTaskData.priority,
+                            startDate = newTaskData.startDate,
+                            endDate = newTaskData.endDate,
+                            durationInMinutes = newTaskData.durationInMin,
+                            reminders = newTaskData.reminders,
+                            repeatConfig = newTaskData.repeatConfig,
+                            subtasks = newTaskData.subtasks
+                        )
+                    )
+                    showAddTaskSheet = false
+                }
+            )
         }
     }
 }
 
+
 @Composable
 fun TaskListSection(state: TaskState) {
-    if (state.notCompletedTasks.isEmpty() &&
+    if (
+        state.notCompletedTasks.isEmpty() &&
         state.completedTasks.isEmpty() &&
         state.expiredTasks.isEmpty()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Text(
-                text = stringResource(id = R.string.no_tasks),
+                text = "No tasks", // O usar un stringResource
                 modifier = Modifier.align(Alignment.Center)
             )
         }
     } else {
-        LazyColumn {
+        LazyColumn(modifier = Modifier.fillMaxWidth()) {
             item {
                 TaskSection(
-                    title = stringResource(id = R.string.not_completed),
+                    title = "Not Completed",
                     tasks = state.notCompletedTasks
                 )
             }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
             item {
                 TaskSection(
-                    title = stringResource(id = R.string.completed),
+                    title = "Completed",
                     tasks = state.completedTasks
                 )
             }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
             item {
                 TaskSection(
-                    title = stringResource(id = R.string.expired),
+                    title = "Expired",
                     tasks = state.expiredTasks
                 )
             }
@@ -121,76 +156,166 @@ fun TaskListSection(state: TaskState) {
 }
 
 @Composable
-fun TaskSection(title: String, tasks: List<domain.models.Task>, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.fillMaxWidth()) {
+fun TaskSection(title: String, tasks: List<domain.models.Task>) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(text = title, fontSize = 18.sp)
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
-            items(tasks) { task ->
-                TaskItemComposable(task)
-                Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        tasks.forEach { task ->
+            TaskItemComposable(task)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddTaskSheet(
+    onClose: () -> Unit,
+    onAccept: (NewTaskData) -> Unit
+) {
+    var taskName by remember { mutableStateOf("") }
+    var priority by remember { mutableStateOf(Priority.NONE) }
+    var startDate by remember { mutableStateOf<LocalDateTime?>(null) }
+    var endDate by remember { mutableStateOf<LocalDateTime?>(null) }
+    var durationInMin by remember { mutableStateOf<Int?>(null) }
+    var reminders by remember { mutableStateOf(emptyList<Reminder>()) }
+    var repeatConfig by remember { mutableStateOf<RepeatConfig?>(null) }
+    var subtasks by remember { mutableStateOf(emptyList<Subtask>()) }
+
+
+
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        modifier = Modifier
+            // 56.dp para no tapar la bottom bar
+            .padding(bottom = 105.dp)
+            .imePadding()
+    ) {
+        // Botones de cerrar/aceptar en la parte superior
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close"
+                )
+            }
+            IconButton(
+                onClick = {
+                    val newTask = NewTaskData(
+                        name = taskName,
+                        priority = priority,
+                        startDate = startDate,
+                        endDate = endDate,
+                        durationInMin = durationInMin,
+                        reminders = reminders,
+                        repeatConfig = repeatConfig,
+                        subtasks = subtasks
+                    )
+                    onAccept(newTask)
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Accept"
+                )
+            }
+        }
+
+        // Contenido: TextField, íconos, etc.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            OutlinedTextField(
+                value = taskName,
+                onValueChange = { taskName = it },
+                placeholder = { Text("Add new task here") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                IconButton(onClick = { /* repetición */ }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_calendar),
+                        contentDescription = "Repeat"
+                    )
+                }
+                IconButton(onClick = { /* prioridad */ }) {
+                    Icon(
+                        painter = painterResource(R.drawable.priority),
+                        contentDescription = "Priority"
+                    )
+                }
+                IconButton(onClick = { /* listas/recordatorios */ }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_lists),
+                        contentDescription = "Reminder"
+                    )
+                }
+                IconButton(onClick = { /* subtasks */ }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_subtasks),
+                        contentDescription = "Subtask"
+                    )
+                }
             }
         }
     }
 }
+
 
 @Composable
 fun TaskItemComposable(task: domain.models.Task) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(4.dp),
+            .padding(horizontal = 8.dp),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
                 checked = task.isCompleted,
-                onCheckedChange = { /* Handle task completion */ }
+                onCheckedChange = {
+                    // Aquí podría dispararse un Intent para marcar la tarea como completada.
+                }
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Text(
-                text = task.name,
-                fontSize = 16.sp,
-                modifier = Modifier.weight(1f)
-            )
-
-            task.deadline?.let {
-                Text(
-                    text = stringResource(id = R.string.due, it.toString()),
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = task.name, fontSize = 16.sp)
+                task.endDate?.let {
+                    Text(
+                        text = "Ends: $it",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
             }
         }
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun TasksScreenPreview() {
-    val sampleTasks = listOf(
-        domain.models.Task(
-            id = 1,
-            name = "Sample Task",
-            deadline = java.time.LocalDateTime.now().plusDays(2),
-            isCompleted = false,
-            isExpired = false
-        )
-    )
-    val sampleState = TaskState(
-        notCompletedTasks = sampleTasks,
-        completedTasks = emptyList(),
-        expiredTasks = emptyList()
-    )
-
-    AppTheme {
-        TaskListSection(sampleState)
-    }
-}
+data class NewTaskData(
+    val name: String,
+    val priority: Priority = Priority.NONE,
+    val startDate: LocalDateTime? = null,
+    val endDate: LocalDateTime? = null,
+    val durationInMin: Int? = null,
+    val reminders: List<Reminder> = emptyList(),
+    val repeatConfig: RepeatConfig? = null,
+    val subtasks: List<Subtask> = emptyList()
+)
