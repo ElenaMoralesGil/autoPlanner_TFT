@@ -1,5 +1,10 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -34,7 +39,7 @@ fun StartEndDateAlertDialog(
     onReady: (TimePlanning?) -> Unit
 ) {
     var selectedDateTime by remember { mutableStateOf(existing?.dateTime ?: LocalDateTime.now()) }
-    var dayPeriod by remember { mutableStateOf(existing?.dayPeriod ?: DayPeriod.MORNING) }
+    var dayPeriod by remember { mutableStateOf(DayPeriod.NONE) }
 
     val selectedDate = selectedDateTime.toLocalDate()
     val selectedTime = selectedDateTime.toLocalTime()
@@ -76,29 +81,54 @@ fun StartEndDateAlertDialog(
                         iconLabel = "Morning",
                         range = "6AM-12PM",
                         isSelected = (dayPeriod == DayPeriod.MORNING)
-                    ) { dayPeriod = DayPeriod.MORNING }
+                    ) {
+                        dayPeriod =
+                            if (dayPeriod == DayPeriod.MORNING) DayPeriod.NONE else DayPeriod.MORNING
+                        if (dayPeriod != DayPeriod.NONE) {
+                            selectedDateTime = LocalDateTime.of(selectedDate, LocalTime.of(6, 0))
+                        }
+                    }
 
                     DayPeriodOption(
                         iconRes = R.drawable.evening,
                         iconLabel = "Evening",
                         range = "12PM-6PM",
                         isSelected = (dayPeriod == DayPeriod.EVENING)
-                    ) { dayPeriod = DayPeriod.EVENING }
+                    ) {
+                        dayPeriod =
+                            if (dayPeriod == DayPeriod.EVENING) DayPeriod.NONE else DayPeriod.EVENING
+                        if (dayPeriod != DayPeriod.NONE) {
+                            selectedDateTime = LocalDateTime.of(selectedDate, LocalTime.of(12, 0))
+                        }
+                    }
 
                     DayPeriodOption(
                         iconRes = R.drawable.night,
                         iconLabel = "Night",
                         range = "6PM-12AM",
                         isSelected = (dayPeriod == DayPeriod.NIGHT)
-                    ) { dayPeriod = DayPeriod.NIGHT }
+                    ) {
+                        dayPeriod =
+                            if (dayPeriod == DayPeriod.NIGHT) DayPeriod.NONE else DayPeriod.NIGHT
+                        if (dayPeriod != DayPeriod.NONE) {
+                            selectedDateTime = LocalDateTime.of(selectedDate, LocalTime.of(18, 0))
+                        }
+                    }
 
                     DayPeriodOption(
                         iconRes = R.drawable.all_day,
                         iconLabel = "All day",
                         range = "",
                         isSelected = (dayPeriod == DayPeriod.ALLDAY)
-                    ) { dayPeriod = DayPeriod.ALLDAY }
+                    ) {
+                        dayPeriod =
+                            if (dayPeriod == DayPeriod.ALLDAY) DayPeriod.NONE else DayPeriod.ALLDAY
+                        if (dayPeriod != DayPeriod.NONE) {
+                            selectedDateTime = LocalDateTime.of(selectedDate, LocalTime.of(0, 0))
+                        }
+                    }
                 }
+
 
                 Spacer(Modifier.height(16.dp))
 
@@ -126,7 +156,10 @@ fun StartEndDateAlertDialog(
                                 displayMonth = newMonth
                             }
                         }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Month")
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Previous Month"
+                            )
                         }
 
                         IconButton(onClick = {
@@ -138,7 +171,10 @@ fun StartEndDateAlertDialog(
                                 displayMonth = newMonth
                             }
                         }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Month")
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Next Month"
+                            )
                         }
                     }
                 }
@@ -160,45 +196,63 @@ fun StartEndDateAlertDialog(
                 val timeLabel by remember {
                     derivedStateOf {
                         if (dayPeriod == DayPeriod.ALLDAY) "None"
-                        else "${selectedDateTime.toLocalTime().hour}:${selectedDateTime.toLocalTime().minute.toString().padStart(2, '0')}"
+                        else "${selectedDateTime.toLocalTime().hour}:${
+                            selectedDateTime.toLocalTime().minute.toString().padStart(2, '0')
+                        }"
                     }
                 }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 5.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                AnimatedVisibility(
+                    visible = (dayPeriod == DayPeriod.NONE), // Picker visible solo si no hay un período seleccionado
+                    enter = fadeIn() + expandVertically(), // Animaciones de entrada
+                    exit = fadeOut() + shrinkVertically()  // Animaciones de salida
                 ) {
-                    Text(
-                        text = "Time",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Box(
-                        modifier = Modifier,
-                        contentAlignment = Alignment.Center
-                    ) {
-                        TextButton(onClick = { showHourPicker = true }) {
+                    Column {
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 5.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = timeLabel,
+                                text = "Time",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Box(
+                                modifier = Modifier,
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val timeLabel by remember {
+                                    derivedStateOf {
+                                        when (dayPeriod) {
+                                            DayPeriod.NONE -> "None"
+                                            else -> "${selectedDateTime.toLocalTime().hour}:${selectedDateTime.toLocalTime().minute.toString().padStart(2, '0')}"
+                                        }
+                                    }
+                                }
+                                TextButton(onClick = { showHourPicker = true }) {
+                                    Text(
+                                        text = timeLabel,
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                        if (showHourPicker) {
+                            HourMinutePickerDialog(
+                                initialTime = selectedDateTime.toLocalTime(),
+                                onDismiss = { showHourPicker = false },
+                                onConfirm = { chosenTime ->
+                                    selectedDateTime = LocalDateTime.of(selectedDate, chosenTime)
+                                    showHourPicker = false
+                                }
                             )
                         }
                     }
-                }
-                if (showHourPicker) {
-                    HourMinutePickerDialog(
-                        initialTime = selectedTime,
-                        onDismiss = { showHourPicker = false },
-                        onConfirm = { chosenTime ->
-                            selectedDateTime = LocalDateTime.of(selectedDate, chosenTime)
-                            showHourPicker = false
-                        }
-                    )
                 }
             }
         },

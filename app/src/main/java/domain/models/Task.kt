@@ -32,7 +32,7 @@ data class TimePlanning(
 
 /** For partial day periods like your icons. */
 enum class DayPeriod {
-    MORNING, EVENING, NIGHT, ALLDAY
+    MORNING, EVENING, NIGHT, ALLDAY, NONE
 }
 
 /** Duration plan could hold total minutes or separate hours/min. */
