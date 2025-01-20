@@ -3,9 +3,13 @@ package com.elena.autoplanner.presentation.ui.screens.tasks
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.*
@@ -101,7 +105,7 @@ fun StartEndDateAlertDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
+                        .padding(bottom = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -110,7 +114,7 @@ fun StartEndDateAlertDialog(
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         ),
-                        modifier = Modifier.weight(1f) // Empuja las flechas hacia la derecha
+                        modifier = Modifier.weight(1f),
                     )
                     Row {
                         IconButton(onClick = {
@@ -122,7 +126,7 @@ fun StartEndDateAlertDialog(
                                 displayMonth = newMonth
                             }
                         }) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "Previous Month")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Month")
                         }
 
                         IconButton(onClick = {
@@ -134,7 +138,7 @@ fun StartEndDateAlertDialog(
                                 displayMonth = newMonth
                             }
                         }) {
-                            Icon(Icons.Filled.ArrowForward, contentDescription = "Next Month")
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Month")
                         }
                     }
                 }
@@ -153,25 +157,45 @@ fun StartEndDateAlertDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Hour")
-                    val timeLabel = if (dayPeriod == DayPeriod.ALLDAY) "None"
-                    else "${selectedTime.hour}:${selectedTime.minute.toString().padStart(2, '0')}"
-                    TextButton(onClick = { showHourPicker = true }) {
-                        Text(timeLabel)
+                val timeLabel by remember {
+                    derivedStateOf {
+                        if (dayPeriod == DayPeriod.ALLDAY) "None"
+                        else "${selectedDateTime.toLocalTime().hour}:${selectedDateTime.toLocalTime().minute.toString().padStart(2, '0')}"
                     }
                 }
 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 5.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Time",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Box(
+                        modifier = Modifier,
+                        contentAlignment = Alignment.Center
+                    ) {
+                        TextButton(onClick = { showHourPicker = true }) {
+                            Text(
+                                text = timeLabel,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
                 if (showHourPicker) {
                     HourMinutePickerDialog(
                         initialTime = selectedTime,
                         onDismiss = { showHourPicker = false },
                         onConfirm = { chosenTime ->
-                            val newDate = selectedDateTime.toLocalDate()
-                            selectedDateTime = LocalDateTime.of(newDate, chosenTime)
+                            selectedDateTime = LocalDateTime.of(selectedDate, chosenTime)
                             showHourPicker = false
                         }
                     )
@@ -197,9 +221,9 @@ fun DayCell(
 
     Box(
         modifier = Modifier
-            .size(40.dp) // Ajustar tamaño de las celdas
+            .size(40.dp)
             .padding(4.dp)
-            .clip(RoundedCornerShape(50)) // Celdas redondeadas
+            .clip(RoundedCornerShape(20)) // Celdas redondeadas
             .background(bgColor)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
@@ -349,39 +373,45 @@ fun monthYearLabel(month: Int, year: Int): String {
     return "$monthName $year"
 }
 
-/**
- * Sub-dialog for picking hour and minute
- */
 @Composable
 fun HourMinutePickerDialog(
     initialTime: LocalTime,
     onDismiss: () -> Unit,
     onConfirm: (LocalTime) -> Unit
 ) {
-    var hour by remember { mutableStateOf(initialTime.hour) }
-    var minute by remember { mutableStateOf(initialTime.minute) }
+    var selectedHour by remember { mutableStateOf(initialTime.hour) }
+    var selectedMinute by remember { mutableStateOf(initialTime.minute) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Pick Hour & Minute") },
+        title = null,
         text = {
-            Column {
-                Text("Hour: $hour")
-                Row {
-                    TextButton(onClick = { if (hour > 0) hour-- }) { Text("-") }
-                    TextButton(onClick = { if (hour < 23) hour++ }) { Text("+") }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text("Minute: $minute")
-                Row {
-                    TextButton(onClick = { if (minute > 0) minute-- }) { Text("-") }
-                    TextButton(onClick = { if (minute < 59) minute++ }) { Text("+") }
-                }
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Selector de Horas
+                TimePickerColumn(
+                    range = 0..23,
+                    selectedValue = selectedHour,
+                    onValueChange = { selectedHour = it },
+                    label = "Hour"
+                )
+
+                // Selector de Minutos
+                TimePickerColumn(
+                    range = 0..59,
+                    selectedValue = selectedMinute,
+                    onValueChange = { selectedMinute = it },
+                    label = "Minute"
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                onConfirm(LocalTime.of(hour, minute))
+                onConfirm(LocalTime.of(selectedHour, selectedMinute))
             }) {
                 Text("Ready")
             }
@@ -390,6 +420,62 @@ fun HourMinutePickerDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = RoundedCornerShape(16.dp)
     )
+}
+
+@Composable
+fun TimePickerColumn(
+    range: IntRange,
+    selectedValue: Int,
+    onValueChange: (Int) -> Unit,
+    label: String
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Título (Hour o Minute)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Lista de opciones desplazables
+        Box(
+            modifier = Modifier
+                .height(120.dp) // Altura fija
+                .width(80.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            LazyColumn(
+                contentPadding = PaddingValues(vertical = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(range.toList()) { value ->
+                    val isSelected = (value == selectedValue)
+                    Text(
+                        text = value.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onValueChange(value) }
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                else Color.Transparent,
+                                shape = RoundedCornerShape(50)
+                            )
+                            .padding(vertical = 8.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
 }
