@@ -5,10 +5,10 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen
 import presentation.ui.screens.calendar.CalendarScreen
 import presentation.ui.screens.more.MoreScreen
 import presentation.ui.screens.profile.ProfileScreen
-import presentation.ui.screens.tasks.TasksScreen
 
 @Composable
 fun MainNavigation(
