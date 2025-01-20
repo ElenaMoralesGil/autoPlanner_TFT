@@ -5,7 +5,6 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.elena.autoplanner.data.local.entities.TaskEntity
-import domain.models.Subtask
 
 @Entity(
     tableName = "subtasks",
@@ -22,7 +21,6 @@ import domain.models.Subtask
 data class SubtaskEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val parentTaskId: Int,
-
     val name: String,
     val isCompleted: Boolean,
     val estimatedDurationInMinutes: Int?

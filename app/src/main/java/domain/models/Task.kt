@@ -1,26 +1,41 @@
 package domain.models
 
-import com.elena.autoplanner.domain.models.Reminder
-import com.elena.autoplanner.domain.models.RepeatConfig
+import com.elena.autoplanner.domain.models.ReminderPlan
+import com.elena.autoplanner.domain.models.RepeatPlan
 import java.time.LocalDateTime
 
 data class Task(
     val id: Int = 0,
-    val name: String,
+    val name: String = "",
     val isCompleted: Boolean = false,
     val isExpired: Boolean = false,
     val priority: Priority = Priority.NONE,
 
-    val startDate: LocalDateTime? = null,
-    val endDate: LocalDateTime? = null,
-    val durationInMinutes: Int? = null,
+    // New advanced fields:
+    val startDateConf: TimePlanning? = null,
+    val endDateConf: TimePlanning? = null,
+    val durationConf: DurationPlan? = null,
+    val reminderPlan: ReminderPlan? = null,
+    val repeatPlan: RepeatPlan? = null,
 
-    // Relacionado 1–N o 1–1
-    val reminders: List<Reminder> = emptyList(),
-    val repeatConfig: RepeatConfig? = null,
     val subtasks: List<Subtask> = emptyList()
 )
 
 enum class Priority {
     HIGH, MEDIUM, LOW, NONE
 }
+/** Example domain class for start/end date + time-of-day fields, etc. */
+data class TimePlanning(
+    val dateTime: LocalDateTime?,
+    val dayPeriod: DayPeriod? = null // e.g. MORNING, EVENING, etc.
+)
+
+/** For partial day periods like your icons. */
+enum class DayPeriod {
+    MORNING, EVENING, NIGHT, ALLDAY
+}
+
+/** Duration plan could hold total minutes or separate hours/min. */
+data class DurationPlan(
+    val totalMinutes: Int?
+)

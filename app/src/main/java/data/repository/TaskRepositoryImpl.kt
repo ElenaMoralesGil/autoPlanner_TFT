@@ -1,10 +1,6 @@
 package data.repository
 
-import com.elena.autoplanner.data.local.dao.TaskDao
-import com.elena.autoplanner.data.local.dao.ReminderDao
-import com.elena.autoplanner.data.local.dao.RepeatConfigDao
-import com.elena.autoplanner.data.local.dao.SubtaskDao
-
+import com.elena.autoplanner.data.local.dao.*
 import data.mappers.*
 import domain.models.Task
 import domain.repository.TaskRepository
@@ -15,7 +11,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 
 class TaskRepositoryImpl(
     private val taskDao: TaskDao,
@@ -37,6 +32,7 @@ class TaskRepositoryImpl(
                         val subtasksFlow = subtaskDao.getSubtasksForTask(entity.id)
 
                         combine(remindersFlow, repeatFlow, subtasksFlow) { reminderList, repeatList, subtaskList ->
+                            // Convert from Entities to Domain
                             entity.toDomain(
                                 reminders = reminderList,
                                 repeatConfigs = repeatList,
@@ -44,51 +40,53 @@ class TaskRepositoryImpl(
                             )
                         }
                     }
-                    combine(listOfFlows) { arrayOfTasks -> arrayOfTasks.toList() }
+                    combine(listOfFlows) { arrayOfTasks ->
+                        arrayOfTasks.toList()
+                    }
                 }
             }
             .flowOn(Dispatchers.IO)
     }
 
     override suspend fun saveTask(task: Task) {
-        // Lógica de insertar o actualizar
         val isNew = (task.id == 0)
+
         if (isNew) {
-            // Insertamos la TaskEntity
+            // Insert the main TaskEntity
             val newTaskId = taskDao.insertTask(task.toTaskEntity()).toInt()
 
-            // Insertar recordatorios
-            task.reminders.forEach { r ->
-                reminderDao.insertReminder(r.toEntity(newTaskId))
+            // Insert the single reminder if present
+            task.reminderPlan?.let { reminderPlan ->
+                reminderDao.insertReminder(reminderPlan.toEntity(newTaskId))
             }
-            // Insertar repetición
-            task.repeatConfig?.let { rc ->
-                repeatConfigDao.insertRepeatConfig(rc.toEntity(newTaskId))
+            // Insert the single repeat config if present
+            task.repeatPlan?.let { rep ->
+                repeatConfigDao.insertRepeatConfig(rep.toEntity(newTaskId))
             }
-            // Insertar subtareas
-            task.subtasks.forEach { s ->
-                subtaskDao.insertSubtask(s.toEntity(newTaskId))
+            // Insert subtasks
+            task.subtasks.forEach { st ->
+                subtaskDao.insertSubtask(st.toEntity(newTaskId))
             }
         } else {
-            // Actualizar TaskEntity
+            // Update the main TaskEntity
             taskDao.updateTask(task.toTaskEntity())
 
-            // Borrar e insertar recordatorios
+            // Delete old reminder(s), insert new if present
             reminderDao.deleteRemindersForTask(task.id)
-            task.reminders.forEach { r ->
-                reminderDao.insertReminder(r.toEntity(task.id))
+            task.reminderPlan?.let {
+                reminderDao.insertReminder(it.toEntity(task.id))
             }
 
-            // Borrar e insertar repetición
+            // Delete old repeat config, insert new if present
             repeatConfigDao.deleteRepeatConfigsForTask(task.id)
-            task.repeatConfig?.let { rc ->
-                repeatConfigDao.insertRepeatConfig(rc.toEntity(task.id))
+            task.repeatPlan?.let {
+                repeatConfigDao.insertRepeatConfig(it.toEntity(task.id))
             }
 
-            // Borrar e insertar subtareas
+            // Delete old subtasks, insert new
             subtaskDao.deleteSubtasksForTask(task.id)
-            task.subtasks.forEach { s ->
-                subtaskDao.insertSubtask(s.toEntity(task.id))
+            task.subtasks.forEach {
+                subtaskDao.insertSubtask(it.toEntity(task.id))
             }
         }
     }
@@ -98,7 +96,8 @@ class TaskRepositoryImpl(
     }
 
     override suspend fun deleteTask(task: Task) {
-        // onDelete = CASCADE se encarga de recordatorios, subtareas, etc.
+        // Because of onDelete = CASCADE in your DB,
+        // reminders/repeat/subtasks get removed automatically
         taskDao.deleteTask(task.toTaskEntity())
     }
 }

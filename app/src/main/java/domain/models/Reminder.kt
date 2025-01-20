@@ -2,9 +2,11 @@ package com.elena.autoplanner.domain.models
 
 import java.time.LocalDateTime
 
-data class Reminder(
-    val id: Int = 0,
-    val type: String, // "Offset", "ExactTime"
+
+enum class ReminderMode { NONE, PRESET_OFFSET, EXACT, CUSTOM }
+
+data class ReminderPlan(
+    val mode: ReminderMode,
     val offsetMinutes: Int? = null,
     val exactDateTime: LocalDateTime? = null
 )

@@ -19,7 +19,7 @@ import data.local.entities.*
         RepeatConfigEntity::class,
         SubtaskEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(

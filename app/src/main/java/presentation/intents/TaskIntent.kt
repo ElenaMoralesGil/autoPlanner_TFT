@@ -1,30 +1,34 @@
 package com.elena.autoplanner.presentation.intents
 
-import com.elena.autoplanner.domain.models.Reminder
-import com.elena.autoplanner.domain.models.RepeatConfig
-import domain.models.Subtask
 import domain.models.Priority
-import java.time.LocalDateTime
+import domain.models.Subtask
+import domain.models.TimePlanning
+import domain.models.DurationPlan
+import com.elena.autoplanner.domain.models.ReminderPlan
+import com.elena.autoplanner.domain.models.RepeatPlan
 
-/**
- * Acciones que la UI puede disparar relacionadas con las Tareas.
- */
 sealed class TaskIntent : BaseIntent() {
 
     object LoadTasks : TaskIntent()
 
     /**
-     * Crea una nueva Tarea con la información capturada en la pantalla AddTask.
+     * Creates a new Task using the new domain model approach.
+     * We now have 'TimePlanning' for start & end,
+     * a 'DurationPlan' for total minutes,
+     * a 'ReminderPlan' for reminders,
+     * and a 'RepeatPlan' for repeats.
      */
     data class AddTask(
         val name: String,
-        val priority: Priority,
-        val startDate: LocalDateTime?,
-        val endDate: LocalDateTime?,
-        val durationInMinutes: Int?,
-        val reminders: List<Reminder> = emptyList(),
-        val repeatConfig: RepeatConfig?,
-        val subtasks: List<Subtask>
-    ) : TaskIntent()
+        val priority: Priority = Priority.NONE,
 
+        val startDateConf: TimePlanning? = null,
+        val endDateConf: TimePlanning? = null,
+        val durationConf: DurationPlan? = null,
+
+        val reminderPlan: ReminderPlan? = null,
+        val repeatPlan: RepeatPlan? = null,
+
+        val subtasks: List<Subtask> = emptyList()
+    ) : TaskIntent()
 }

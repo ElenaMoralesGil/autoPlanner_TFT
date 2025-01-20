@@ -5,7 +5,6 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.elena.autoplanner.data.local.entities.TaskEntity
-import com.elena.autoplanner.domain.models.Reminder
 import java.time.LocalDateTime
 
 @Entity(
@@ -23,7 +22,9 @@ import java.time.LocalDateTime
 data class ReminderEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val taskId: Int,
-    val type: String,
-    val offsetMinutes: Int?,
-    val exactDateTime: LocalDateTime?
+
+    // e.g. "NONE", "PRESET_OFFSET", "CUSTOM", "EXACT"
+    val mode: String,
+    val offsetMinutes: Int? = null,
+    val exactDateTime: LocalDateTime? = null
 )

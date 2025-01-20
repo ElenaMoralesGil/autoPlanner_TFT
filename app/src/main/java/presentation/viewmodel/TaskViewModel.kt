@@ -76,11 +76,11 @@ class TaskViewModel(
                 val newTask = Task(
                     name = intent.name,
                     priority = intent.priority,
-                    startDate = intent.startDate,
-                    endDate = intent.endDate,
-                    durationInMinutes = intent.durationInMinutes,
-                    reminders = intent.reminders,
-                    repeatConfig = intent.repeatConfig,
+                    startDateConf = intent.startDateConf,
+                    endDateConf = intent.endDateConf,
+                    durationConf = intent.durationConf,
+                    reminderPlan = intent.reminderPlan,
+                    repeatPlan = intent.repeatPlan,
                     subtasks = intent.subtasks
                 )
 
