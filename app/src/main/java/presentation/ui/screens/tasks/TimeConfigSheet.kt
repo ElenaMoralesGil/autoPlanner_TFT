@@ -92,6 +92,7 @@ fun TimeConfigSheet(
             StartEndDateAlertDialog(
                 label = "Start date",
                 existing = localStart,
+                highlightDate = null, // No hay fecha para resaltar al elegir la fecha de inicio
                 onDismiss = { openDialog = null },
                 onReady = { newVal ->
                     localStart = newVal
@@ -103,6 +104,7 @@ fun TimeConfigSheet(
             StartEndDateAlertDialog(
                 label = "End date",
                 existing = localEnd,
+                highlightDate = localStart?.dateTime?.toLocalDate(), // Resalta la fecha de inicio
                 onDismiss = { openDialog = null },
                 onReady = { newVal ->
                     localEnd = newVal

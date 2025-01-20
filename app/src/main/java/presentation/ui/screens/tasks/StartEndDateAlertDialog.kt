@@ -35,6 +35,7 @@ import java.time.*
 fun StartEndDateAlertDialog(
     label: String,
     existing: TimePlanning?,
+    highlightDate: LocalDate?,
     onDismiss: () -> Unit,
     onReady: (TimePlanning?) -> Unit
 ) {
@@ -185,7 +186,8 @@ fun StartEndDateAlertDialog(
                     displayYear = displayYear,
                     displayMonth = displayMonth,
                     selectedDay = selectedDate.dayOfMonth,
-                    todayDay = if (today.year == displayYear && today.monthValue == displayMonth) today.dayOfMonth else null
+                    todayDay = if (today.year == displayYear && today.monthValue == displayMonth) today.dayOfMonth else null,
+                    highlightDate = highlightDate
                 ) { day ->
                     val newLocalDate = LocalDate.of(displayYear, displayMonth, day)
                     selectedDateTime = LocalDateTime.of(newLocalDate, selectedTime)
@@ -265,10 +267,12 @@ fun DayCell(
     day: Int,
     isToday: Boolean,
     isSelected: Boolean,
+    isHighlighted: Boolean,
     onClick: () -> Unit
 ) {
     val bgColor = when {
         isSelected -> MaterialTheme.colorScheme.primary
+        isHighlighted -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
         isToday -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
         else -> Color.Transparent
     }
@@ -319,6 +323,7 @@ fun CalendarGrid(
     displayYear: Int,
     displayMonth: Int,
     selectedDay: Int,
+    highlightDate: LocalDate?,
     todayDay: Int?,
     onDayClick: (Int) -> Unit
 ) {
@@ -347,11 +352,13 @@ fun CalendarGrid(
                 // Día válido del mes
                 val isToday = (day == todayDay)
                 val isSelected = (day == selectedDay)
+                val isHighlighted = highlightDate != null && highlightDate == LocalDate.of(displayYear, displayMonth, day)
 
                 DayCell(
                     day = day,
                     isToday = isToday,
                     isSelected = isSelected,
+                    isHighlighted = isHighlighted,
                     onClick = { onDayClick(day) }
                 )
             } else {
