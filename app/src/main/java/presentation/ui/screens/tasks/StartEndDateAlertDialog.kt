@@ -5,12 +5,15 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -22,14 +25,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.R
+import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 import domain.models.DayPeriod
 import domain.models.TimePlanning
 import java.time.*
+import kotlin.math.roundToInt
 
 @Composable
 fun StartEndDateAlertDialog(
@@ -51,27 +57,18 @@ fun StartEndDateAlertDialog(
     var showHourPicker by remember { mutableStateOf(false) }
     val today = LocalDate.now()
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val finalPlanning = TimePlanning(
-                        dateTime = selectedDateTime,
-                        dayPeriod = dayPeriod
-                    )
-                    onReady(finalPlanning)
-                }
-            ) {
-                Text("Ready")
-            }
+    GeneralAlertDialog(
+        // Título (puede ser solo texto o un Row/Box)
+        title = {
+            // Podrías usar el label que recibes como parámetro
+            Text(
+                text = label,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         },
-        dismissButton = {
-            TextButton(onClick = { onReady(null) }) {
-                Text("None")
-            }
-        },
-        text = {
+
+        content = {
             Column(Modifier.padding(5.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -85,9 +82,7 @@ fun StartEndDateAlertDialog(
                     ) {
                         dayPeriod =
                             if (dayPeriod == DayPeriod.MORNING) DayPeriod.NONE else DayPeriod.MORNING
-                        if (dayPeriod != DayPeriod.NONE) {
-                            selectedDateTime = LocalDateTime.of(selectedDate, LocalTime.of(6, 0))
-                        }
+
                     }
 
                     DayPeriodOption(
@@ -98,9 +93,7 @@ fun StartEndDateAlertDialog(
                     ) {
                         dayPeriod =
                             if (dayPeriod == DayPeriod.EVENING) DayPeriod.NONE else DayPeriod.EVENING
-                        if (dayPeriod != DayPeriod.NONE) {
-                            selectedDateTime = LocalDateTime.of(selectedDate, LocalTime.of(12, 0))
-                        }
+
                     }
 
                     DayPeriodOption(
@@ -111,9 +104,6 @@ fun StartEndDateAlertDialog(
                     ) {
                         dayPeriod =
                             if (dayPeriod == DayPeriod.NIGHT) DayPeriod.NONE else DayPeriod.NIGHT
-                        if (dayPeriod != DayPeriod.NONE) {
-                            selectedDateTime = LocalDateTime.of(selectedDate, LocalTime.of(18, 0))
-                        }
                     }
 
                     DayPeriodOption(
@@ -124,9 +114,7 @@ fun StartEndDateAlertDialog(
                     ) {
                         dayPeriod =
                             if (dayPeriod == DayPeriod.ALLDAY) DayPeriod.NONE else DayPeriod.ALLDAY
-                        if (dayPeriod != DayPeriod.NONE) {
-                            selectedDateTime = LocalDateTime.of(selectedDate, LocalTime.of(0, 0))
-                        }
+
                     }
                 }
 
@@ -195,14 +183,7 @@ fun StartEndDateAlertDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                val timeLabel by remember {
-                    derivedStateOf {
-                        if (dayPeriod == DayPeriod.ALLDAY) "None"
-                        else "${selectedDateTime.toLocalTime().hour}:${
-                            selectedDateTime.toLocalTime().minute.toString().padStart(2, '0')
-                        }"
-                    }
-                }
+
                 AnimatedVisibility(
                     visible = (dayPeriod == DayPeriod.NONE), // Picker visible solo si no hay un período seleccionado
                     enter = fadeIn() + expandVertically(), // Animaciones de entrada
@@ -229,12 +210,12 @@ fun StartEndDateAlertDialog(
                             ) {
                                 val timeLabel by remember {
                                     derivedStateOf {
-                                        when (dayPeriod) {
-                                            DayPeriod.NONE -> "None"
-                                            else -> "${selectedDateTime.toLocalTime().hour}:${selectedDateTime.toLocalTime().minute.toString().padStart(2, '0')}"
-                                        }
+                                        val hour = selectedDateTime.toLocalTime().hour.toString().padStart(2, '0')
+                                        val minute = selectedDateTime.toLocalTime().minute.toString().padStart(2, '0')
+                                        "$hour:$minute"
                                     }
                                 }
+
                                 TextButton(onClick = { showHourPicker = true }) {
                                     Text(
                                         text = timeLabel,
@@ -258,7 +239,19 @@ fun StartEndDateAlertDialog(
                 }
             }
         },
-        title = null
+        // 3) Al cerrar el diálogo sin pulsar "Ready" ni "None"
+        onDismiss = onDismiss,
+
+        // 4) Botón principal (Ready)
+        onConfirm = {
+            val finalPlanning = TimePlanning(dateTime = selectedDateTime, dayPeriod = dayPeriod)
+            onReady(finalPlanning)
+        },
+
+        // 5) Botón secundario (None)
+        onNeutral = {
+            onReady(null)
+        }
     )
 }
 
@@ -453,19 +446,19 @@ fun HourMinutePickerDialog(
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                // Selector de Horas
+                // Selector de Horas (0..23)
                 TimePickerColumn(
                     range = 0..23,
                     selectedValue = selectedHour,
-                    onValueChange = { selectedHour = it },
+                    onValueChange = { newHour -> selectedHour = newHour },
                     label = "Hour"
                 )
 
-                // Selector de Minutos
+                // Selector de Minutos (0..59)
                 TimePickerColumn(
                     range = 0..59,
                     selectedValue = selectedMinute,
-                    onValueChange = { selectedMinute = it },
+                    onValueChange = { newMinute -> selectedMinute = newMinute },
                     label = "Minute"
                 )
             }
@@ -486,6 +479,9 @@ fun HourMinutePickerDialog(
     )
 }
 
+
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TimePickerColumn(
     range: IntRange,
@@ -493,50 +489,94 @@ fun TimePickerColumn(
     onValueChange: (Int) -> Unit,
     label: String
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Título (Hour o Minute)
+    val itemHeight = 40.dp
+
+    // 1. Convertir la altura en píxeles dentro del contexto composable:
+    val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
+
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedValue)
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
-
         Spacer(Modifier.height(8.dp))
 
-        // Lista de opciones desplazables
         Box(
             modifier = Modifier
-                .height(120.dp) // Altura fija
+                .height(itemHeight * 5)  // 5 ítems visibles, por ejemplo
                 .width(80.dp),
             contentAlignment = Alignment.Center
         ) {
             LazyColumn(
-                contentPadding = PaddingValues(vertical = 32.dp),
+                state = listState,
+                flingBehavior = flingBehavior,
+                contentPadding = PaddingValues(vertical = itemHeight * 2),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(range.toList()) { value ->
+                items(range.count()) { index ->
+                    val value = range.first + index
                     val isSelected = (value == selectedValue)
-                    Text(
-                        text = value.toString().padStart(2, '0'),
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        ),
+
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onValueChange(value) }
-                            .background(
-                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                else Color.Transparent,
-                                shape = RoundedCornerShape(50)
-                            )
-                            .padding(vertical = 8.dp),
-                        textAlign = TextAlign.Center
-                    )
+                            .height(itemHeight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = value.toString().padStart(2, '0'),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
+
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(0.8f)
+                    .height(itemHeight)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+            )
+        }
+    }
+
+    // 2. Dentro del LaunchedEffect no se llama a LocalDensity,
+    //    sino que se usa 'itemHeightPx' calculado arriba.
+    LaunchedEffect(listState, itemHeightPx) {
+        snapshotFlow {
+            val firstVisibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+            val offsetFirstItem = firstVisibleItem?.offset ?: 0
+
+            // Aquí reutilizamos 'itemHeightPx', en vez de volver a invocar LocalDensity.current:
+            val offsetItems = offsetFirstItem / itemHeightPx
+
+            // El item “centrado” aproximado (suma de index y padding en ítems).
+            // Ajustamos +2 por el contentPadding vertical = 2 * itemHeight
+            Pair(listState.firstVisibleItemIndex, offsetItems)
+        }.collect { (firstIndex, offsetItems) ->
+            val centerIndex = (firstIndex + offsetItems + 2f).roundToInt()
+            val boundedIndex = centerIndex.coerceIn(0, range.count() - 1)
+            val newValue = range.first + boundedIndex
+
+            if (newValue != selectedValue) {
+                onValueChange(newValue)
             }
         }
     }
 }
+
+
