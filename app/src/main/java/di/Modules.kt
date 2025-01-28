@@ -1,24 +1,24 @@
-// Modules.kt
+package com.elena.autoplanner.di
 
 import android.util.Log
 import org.koin.dsl.module
-import domain.repository.TaskRepository
-import domain.usecases.GetTasksUseCase
-import data.repository.TaskRepositoryImpl
+import com.elena.autoplanner.domain.repository.TaskRepository
+import com.elena.autoplanner.domain.usecases.GetTasksUseCase
+import com.elena.autoplanner.data.repository.TaskRepositoryImpl
 
 import com.elena.autoplanner.data.local.dao.TaskDao
 import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 
-import data.local.TaskDatabase
+import com.elena.autoplanner.data.local.TaskDatabase
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
-import presentation.viewmodel.TaskViewModel
+import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import domain.usecases.AddTaskUseCase
+import com.elena.autoplanner.domain.usecases.AddTaskUseCase
 
 
 val appModule = module {

@@ -9,10 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import domain.models.Priority
-import domain.models.Subtask
-import domain.models.TimePlanning
-import domain.models.DurationPlan
+import com.elena.autoplanner.domain.models.Priority
+import com.elena.autoplanner.domain.models.Subtask
+import com.elena.autoplanner.domain.models.TimePlanning
+import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
 import androidx.compose.foundation.layout.Spacer

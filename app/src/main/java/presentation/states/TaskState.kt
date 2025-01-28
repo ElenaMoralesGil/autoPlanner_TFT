@@ -1,6 +1,6 @@
-package presentation.states
+package com.elena.autoplanner.presentation.states
 
-import domain.models.Task
+import com.elena.autoplanner.domain.models.Task
 
 /**
  * Estado único para la pantalla(s) de Tareas en MVI.

@@ -1,4 +1,4 @@
-package presentation.navigation
+package com.elena.autoplanner.presentation.navigation
 
 sealed class Screen(val route: String) {
     object Tasks : Screen("tasks")

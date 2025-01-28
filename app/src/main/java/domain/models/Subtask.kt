@@ -1,4 +1,4 @@
-package domain.models
+package com.elena.autoplanner.domain.models
 
 data class Subtask(
     val id: Int = 0,

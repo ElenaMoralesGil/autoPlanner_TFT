@@ -14,15 +14,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import org.koin.androidx.compose.koinViewModel
-import presentation.states.TaskState
-import presentation.viewmodel.TaskViewModel
-import domain.models.Task
-import domain.models.TimePlanning
-import domain.models.DurationPlan
-import com.elena.autoplanner.domain.models.ReminderPlan
-import com.elena.autoplanner.domain.models.RepeatPlan
+import com.elena.autoplanner.presentation.states.TaskState
+import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
+import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.intents.TaskIntent
 
+/**TODO:
+ * HACER QUE NO SE PUEDAN TAREAS EN EL PASADO
+ * HACER QUE NO SE PUEDAN TAREAS CON DURACIONES NEGATIVAS
+ * HACER QUE NO SE PUEDAN TAREAS CON DURACIONES DE 0 MINUTOS
+ * cambiar la interfaz que muestra las tareas
+ * 
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
@@ -78,7 +81,6 @@ fun TasksScreen(
             }
         }
 
-        // Show the "Add Task" bottom sheet if needed
         if (showAddTaskSheet) {
             AddTaskSheet(
                 onClose = { showAddTaskSheet = false },

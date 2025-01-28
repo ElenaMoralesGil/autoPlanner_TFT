@@ -2,4 +2,8 @@
 <resources>
 
     <style name="Theme.AutoPlanner" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="MyNumberPickerTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:textColorPrimary">#444444</item>
+        <item name="android:textColorSecondary">#777777</item>
+    </style>
 </resources>

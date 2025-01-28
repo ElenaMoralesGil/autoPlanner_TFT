@@ -1,16 +1,13 @@
-package data.local
+package com.elena.autoplanner.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
-import com.elena.autoplanner.data.local.entities.TaskEntity
-import data.local.entities.*
+import com.elena.autoplanner.data.local.entities.*
 
 @Database(
     entities = [
@@ -19,12 +16,14 @@ import data.local.entities.*
         RepeatConfigEntity::class,
         SubtaskEntity::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(
     Converters::class,
-    ListOfIntConverter::class
+    ListOfIntConverter::class,
+    DayOfWeekSetConverter::class,
+    IntervalUnitConverter::class
 )
 abstract class TaskDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao

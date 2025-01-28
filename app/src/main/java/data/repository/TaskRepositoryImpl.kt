@@ -1,9 +1,9 @@
-package data.repository
+package com.elena.autoplanner.data.repository
 
 import com.elena.autoplanner.data.local.dao.*
-import data.mappers.*
-import domain.models.Task
-import domain.repository.TaskRepository
+import com.elena.autoplanner.data.mappers.*
+import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.repository.TaskRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+
+
 
 class TaskRepositoryImpl(
     private val taskDao: TaskDao,
@@ -20,33 +22,28 @@ class TaskRepositoryImpl(
 ) : TaskRepository {
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun getTasks(): Flow<List<Task>> {
-        return taskDao.getAllTasks()
-            .flatMapLatest { taskEntities ->
-                if (taskEntities.isEmpty()) {
-                    flowOf(emptyList())
-                } else {
-                    val listOfFlows = taskEntities.map { entity ->
-                        val remindersFlow = reminderDao.getRemindersForTask(entity.id)
-                        val repeatFlow = repeatConfigDao.getRepeatConfigsForTask(entity.id)
-                        val subtasksFlow = subtaskDao.getSubtasksForTask(entity.id)
-
-                        combine(remindersFlow, repeatFlow, subtasksFlow) { reminderList, repeatList, subtaskList ->
-                            // Convert from Entities to Domain
-                            entity.toDomain(
-                                reminders = reminderList,
-                                repeatConfigs = repeatList,
-                                subtasks = subtaskList
-                            )
+    override fun getTasks(): Flow<List<Task>> = taskDao.getAllTasks()
+        .flatMapLatest { tasks ->
+            if (tasks.isEmpty()) {
+                flowOf(emptyList())
+            } else {
+                combine(
+                    tasks.map { task ->
+                        combine(
+                            reminderDao.getRemindersForTask(task.id),
+                            repeatConfigDao.getRepeatConfigsForTask(task.id),
+                            subtaskDao.getSubtasksForTask(task.id)
+                        ) { reminders, repeats, subtasks ->
+                            task.toDomain(reminders, repeats, subtasks)
                         }
                     }
-                    combine(listOfFlows) { arrayOfTasks ->
-                        arrayOfTasks.toList()
-                    }
+                ) { arrayOfTasks ->
+                    arrayOfTasks.toList()
                 }
             }
-            .flowOn(Dispatchers.IO)
-    }
+        }
+        .flowOn(Dispatchers.IO)
+
 
     override suspend fun saveTask(task: Task) {
         val isNew = (task.id == 0)

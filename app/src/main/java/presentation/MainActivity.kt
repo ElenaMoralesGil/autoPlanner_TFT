@@ -8,9 +8,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import presentation.ui.components.BottomNavigationBar
-import presentation.navigation.MainNavigation
-import presentation.ui.theme.AppTheme
+import com.elena.autoplanner.presentation.ui.components.BottomNavigationBar
+import com.elena.autoplanner.presentation.navigation.MainNavigation
+import com.elena.autoplanner.presentation.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

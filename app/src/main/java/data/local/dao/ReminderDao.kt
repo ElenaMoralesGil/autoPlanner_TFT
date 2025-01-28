@@ -1,7 +1,7 @@
 package com.elena.autoplanner.data.local.dao
 
 import androidx.room.*
-import data.local.entities.ReminderEntity
+import com.elena.autoplanner.data.local.entities.ReminderEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao

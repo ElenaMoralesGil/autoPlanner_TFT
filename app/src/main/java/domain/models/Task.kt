@@ -1,7 +1,5 @@
-package domain.models
+package com.elena.autoplanner.domain.models
 
-import com.elena.autoplanner.domain.models.ReminderPlan
-import com.elena.autoplanner.domain.models.RepeatPlan
 import java.time.LocalDateTime
 
 data class Task(

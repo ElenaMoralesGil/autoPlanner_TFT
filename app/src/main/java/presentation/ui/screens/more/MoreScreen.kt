@@ -1,4 +1,4 @@
-package presentation.ui.screens.more
+package com.elena.autoplanner.presentation.ui.screens.more
 
 fun MoreScreen() {
 }

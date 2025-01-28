@@ -1,7 +1,7 @@
 package com.elena.autoplanner.data.local.dao
 
 import androidx.room.*
-import data.local.entities.RepeatConfigEntity
+import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao

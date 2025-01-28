@@ -1,7 +1,7 @@
-package domain.usecases
+package com.elena.autoplanner.domain.usecases
 
-import domain.models.Task
-import domain.repository.TaskRepository
+import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.repository.TaskRepository
 
 class AddTaskUseCase(
     private val repository: TaskRepository

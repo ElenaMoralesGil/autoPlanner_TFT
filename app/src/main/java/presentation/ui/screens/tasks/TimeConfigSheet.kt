@@ -10,8 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import domain.models.TimePlanning
-import domain.models.DurationPlan
+import com.elena.autoplanner.domain.models.TimePlanning
+import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
 
@@ -92,7 +92,7 @@ fun TimeConfigSheet(
             StartEndDateAlertDialog(
                 label = "Start date",
                 existing = localStart,
-                highlightDate = null, // No hay fecha para resaltar al elegir la fecha de inicio
+                highlightDate = null,
                 onDismiss = { openDialog = null },
                 onReady = { newVal ->
                     localStart = newVal
@@ -104,7 +104,7 @@ fun TimeConfigSheet(
             StartEndDateAlertDialog(
                 label = "End date",
                 existing = localEnd,
-                highlightDate = localStart?.dateTime?.toLocalDate(), // Resalta la fecha de inicio
+                highlightDate = localStart?.dateTime?.toLocalDate(),
                 onDismiss = { openDialog = null },
                 onReady = { newVal ->
                     localEnd = newVal

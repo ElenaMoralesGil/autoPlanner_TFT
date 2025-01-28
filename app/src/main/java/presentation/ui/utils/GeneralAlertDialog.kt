@@ -23,7 +23,8 @@ fun GeneralAlertDialog(
     content: @Composable () -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
-    onNeutral: (() -> Unit)? = null,  // Opción de botón extra (por ej. "None")
+    onNeutral: (() -> Unit)? = null,
+
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -36,7 +37,7 @@ fun GeneralAlertDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 5.dp)
             ) {
                 content()
             }
@@ -69,6 +70,6 @@ fun GeneralAlertDialog(
                 }
             }
         },
-        shape = RoundedCornerShape(16.dp)  // Ajusta el redondeo
+        shape = RoundedCornerShape(5.dp)
     )
 }

@@ -1,21 +1,40 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Divider
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.elena.autoplanner.domain.models.DayOfWeek
 import com.elena.autoplanner.domain.models.FrequencyType
+import com.elena.autoplanner.domain.models.IntervalUnit
 import com.elena.autoplanner.domain.models.RepeatPlan
+import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
+import com.elena.autoplanner.presentation.ui.utils.NumberPicker
+import com.elena.autoplanner.presentation.ui.utils.AnimatedSection
+import com.elena.autoplanner.presentation.ui.utils.SelectionGrid
+
 
 @Composable
 fun RepeatAlertDialog(
@@ -28,63 +47,54 @@ fun RepeatAlertDialog(
         mutableStateOf(existing ?: RepeatPlan(frequencyType = FrequencyType.NONE))
     }
 
-    if (!showPersonalized) {
-        // Basic "quick picks" (None, daily, weekly, monthly, etc.)
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text("Repeat") },
-            text = {
-                Column {
-                    // "None" option
-                    RowItem(
-                        label = "None",
-                        selected = localRepeat.frequencyType == FrequencyType.NONE
-                    ) {
-                        localRepeat = localRepeat.copy(frequencyType = FrequencyType.NONE)
-                    }
-                    DividerLine()
+    GeneralAlertDialog(
+        title = { Text("Repeat") },
+        content = {
+            SelectionGrid(
+                items = listOf(
+                    "Daily" to (localRepeat.frequencyType == FrequencyType.DAILY),
+                    "Weekly" to (localRepeat.frequencyType == FrequencyType.WEEKLY),
+                    "Monthly" to (localRepeat.frequencyType == FrequencyType.MONTHLY),
+                    "Yearly" to (localRepeat.frequencyType == FrequencyType.YEARLY)
+                ),
+                onSelect = { index ->
+                    val types = listOf(FrequencyType.DAILY, FrequencyType.WEEKLY, FrequencyType.MONTHLY, FrequencyType.YEARLY)
+                    localRepeat = RepeatPlan(frequencyType = types[index])
+                },
+                onPersonalized = { showPersonalized = true }
+            )
 
-                    // Some quick frequencies:
-                    val picks = listOf(
-                        FrequencyType.DAILY to "Daily",
-                        FrequencyType.WEEKLY to "Weekly",
-                        FrequencyType.MONTHLY to "Monthly",
-                        FrequencyType.YEARLY to "Yearly",
-                        FrequencyType.WEEKDAYS to "Weekdays",
-                        FrequencyType.WEEKENDS to "Weekends"
-                    )
-                    picks.forEach { (type, label) ->
-                        RowItem(
-                            label = label,
-                            selected = (localRepeat.frequencyType == type)
-                        ) {
-                            localRepeat = localRepeat.copy(frequencyType = type)
+            AnimatedSection(visible = localRepeat.frequencyType == FrequencyType.WEEKLY) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(8.dp)) {
+                    Text("On which days?", style = MaterialTheme.typography.bodyLarge)
+                    DaysOfWeekSelector(
+                        selectedDays = localRepeat.selectedDays.map { it.ordinal }.toSet(),
+                        onDaySelected = { index ->
+                            val day = DayOfWeek.entries[index]
+                            localRepeat = localRepeat.copy(
+                                selectedDays = if (localRepeat.selectedDays.contains(day)) {
+                                    localRepeat.selectedDays - day
+                                } else {
+                                    localRepeat.selectedDays + day
+                                }
+                            )
                         }
-                        DividerLine()
-                    }
-
-                    // Personalized
-                    RowItem(
-                        label = "Personalized",
-                        selected = localRepeat.frequencyType == FrequencyType.CUSTOM
-                    ) {
-                        showPersonalized = true
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { onReady(localRepeat) }) {
-                    Text("Ready")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onReady(null) }) {
-                    Text("None")
+                    )
                 }
             }
-        )
-    } else {
-        // Show an advanced "personalized" sub-dialog:
+        },
+        onDismiss = onDismiss,
+        onConfirm = {
+            onReady(localRepeat.takeIf { it.frequencyType != FrequencyType.NONE })
+        },
+        onNeutral = {
+            localRepeat = RepeatPlan(frequencyType = FrequencyType.NONE)
+            onReady(null)
+            onDismiss()
+        }
+    )
+
+    if (showPersonalized) {
         RepeatPersonalizedAlertDialog(
             existing = localRepeat,
             onDismiss = { showPersonalized = false },
@@ -96,66 +106,267 @@ fun RepeatAlertDialog(
     }
 }
 
-/**
- * Example of a "personalized" sub-dialog if the user picks CUSTOM frequency.
- * You can expand it with day-of-month, week-of-month, etc.
- */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RepeatPersonalizedAlertDialog(
+private fun DaysOfWeekSelector(
+    selectedDays: Set<Int>,
+    onDaySelected: (Int) -> Unit
+) {
+    val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        days.forEachIndexed { index, day ->
+            DayChip(
+                label = day,
+                selected = selectedDays.contains(index),
+                onClick = { onDaySelected(index) }
+            )
+        }
+    }
+}
+@Composable
+private fun RepeatPersonalizedAlertDialog(
     existing: RepeatPlan,
     onDismiss: () -> Unit,
     onReady: (RepeatPlan) -> Unit
 ) {
-    var interval by remember { mutableStateOf(existing.interval ?: 1) }
+    var interval by remember { mutableIntStateOf(existing.interval ?: 1) }
+    var intervalUnit by remember { mutableStateOf(existing.intervalUnit ?: IntervalUnit.WEEK) }
+    var selectedDays by remember { mutableStateOf(existing.selectedDays) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Personalized Repeat") },
-        text = {
-            Column {
-                Text("Interval: $interval")
-                // E.g. basic +/- or a slider
-                RowItem(label = "Interval++", selected = false) { interval++ }
-                RowItem(label = "Interval--", selected = false) {
-                    if (interval > 1) interval--
-                }
-                // expand for daysOfWeek, etc.
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onReady(existing.copy(
-                        frequencyType = FrequencyType.CUSTOM,
-                        interval = interval
-                    ))
-                }
+    GeneralAlertDialog(
+        title = { Text("Custom Repeat") },
+        content = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(vertical = 8.dp)
             ) {
-                Text("Ready")
+                IntervalSelector(
+                    interval = interval,
+                    unit = intervalUnit,
+                    onIntervalChange = { interval = it },
+                    onUnitChange = { intervalUnit = it }
+                )
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Back")
-            }
+        onDismiss = onDismiss,
+        onConfirm = {
+            onReady(
+                existing.copy(
+                    frequencyType = FrequencyType.CUSTOM,
+                    interval = if (selectedDays.isEmpty()) interval else null,
+                    intervalUnit = if (selectedDays.isEmpty()) intervalUnit else null,
+                    selectedDays = selectedDays
+                )
+            )
         }
     )
 }
 
-/** Simple row item with a label and a "selectable" behavior. */
 @Composable
-fun RowItem(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(Modifier.clickable { onClick() }) {
-        if (selected) {
-            Text("✓ ", modifier = Modifier.width(20.dp))
-        } else {
-            Spacer(Modifier.width(20.dp))
-        }
-        Text(label)
+private fun IntervalSelector(
+    interval: Int,
+    unit: IntervalUnit,
+    onIntervalChange: (Int) -> Unit,
+    onUnitChange: (IntervalUnit) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("Every", style = MaterialTheme.typography.bodyMedium)
+
+        NumberPicker(
+            value = interval,
+            range = 1..30,
+            onValueChange = onIntervalChange,
+            modifier = Modifier.weight(1f)
+        )
+
+        SegmentedControlColumn(
+            options = IntervalUnit.entries.map {
+                it.name.lowercase().replaceFirstChar { ch -> ch.titlecase() }
+            },
+            selectedIndex = unit.ordinal,
+            onSelectionChanged = { idx ->
+                onUnitChange(IntervalUnit.entries[idx])
+            },
+            modifier = Modifier.weight(1.5f)
+        )
     }
 }
 
+
+
 @Composable
-fun DividerLine() {
-    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+fun FrequencySelectionGrid(
+    selectedPlan: RepeatPlan,
+    onSelect: (RepeatPlan) -> Unit,
+    onPersonalized: () -> Unit
+) {
+    val frequencies = listOf(
+        FrequencyType.DAILY to "Daily",
+        FrequencyType.WEEKLY to "Weekly",
+        FrequencyType.MONTHLY to "Monthly",
+        FrequencyType.YEARLY to "Yearly"
+    )
+
+    Column(
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        frequencies.chunked(1).forEach { rowItems ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                rowItems.forEach { (type, label) ->
+                    FrequencyChip(
+                        label = label,
+                        selected = selectedPlan.frequencyType == type,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onSelect(RepeatPlan(frequencyType = type)) }
+                    )
+                }
+            }
+        }
+
+
+        FrequencyChip(
+            label = "Custom...",
+            selected = selectedPlan.frequencyType == FrequencyType.CUSTOM,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onPersonalized,
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null
+                )
+            }
+        )
+    }
 }
+
+
+
+@Composable
+private fun FrequencyChip(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.secondary,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSecondary),
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .fillMaxWidth()
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (selected) MaterialTheme.colorScheme.onSecondary
+                else MaterialTheme.colorScheme.onSurface
+            )
+            trailingIcon?.invoke()
+        }
+    }
+}
+
+/**
+ * Botón estilo "chip" para representar un día de la semana.
+ */
+@Composable
+private fun DayChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            color = if (selected) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+
+@Composable
+fun SegmentedControlColumn(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelectionChanged: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Contenedor principal
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(8.dp),
+        modifier = modifier
+    ) {
+        Column {
+            options.forEachIndexed { index, option ->
+                val isSelected = index == selectedIndex
+
+                // Esquinas redondeadas según posición
+                val shapeItem = when (index) {
+                    0 -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+                    options.lastIndex -> RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
+                    else -> RoundedCornerShape(0.dp)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            shape = shapeItem
+                        )
+                        .clickable { onSelectionChanged(index) }
+                ) {
+                    Text(
+                        text = option,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .align(Alignment.Center)
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+
+
+

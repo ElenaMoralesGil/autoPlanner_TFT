@@ -12,14 +12,11 @@ import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -32,8 +29,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.R
 import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
-import domain.models.DayPeriod
-import domain.models.TimePlanning
+import com.elena.autoplanner.domain.models.DayPeriod
+import com.elena.autoplanner.domain.models.TimePlanning
 import java.time.*
 import kotlin.math.roundToInt
 
@@ -58,9 +55,8 @@ fun StartEndDateAlertDialog(
     val today = LocalDate.now()
 
     GeneralAlertDialog(
-        // Título (puede ser solo texto o un Row/Box)
+
         title = {
-            // Podrías usar el label que recibes como parámetro
             Text(
                 text = label,
                 style = MaterialTheme.typography.headlineSmall,
@@ -560,15 +556,12 @@ fun TimePickerColumn(
         snapshotFlow {
             val firstVisibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
             val offsetFirstItem = firstVisibleItem?.offset ?: 0
-
-            // Aquí reutilizamos 'itemHeightPx', en vez de volver a invocar LocalDensity.current:
             val offsetItems = offsetFirstItem / itemHeightPx
 
-            // El item “centrado” aproximado (suma de index y padding en ítems).
-            // Ajustamos +2 por el contentPadding vertical = 2 * itemHeight
             Pair(listState.firstVisibleItemIndex, offsetItems)
         }.collect { (firstIndex, offsetItems) ->
-            val centerIndex = (firstIndex + offsetItems + 2f).roundToInt()
+            // Ajuste a 2.5 para que el 3er ítem (índice 2 de 0..4) sea el verdadero centro
+            val centerIndex = (firstIndex + offsetItems + 2.5f).roundToInt()
             val boundedIndex = centerIndex.coerceIn(0, range.count() - 1)
             val newValue = range.first + boundedIndex
 
@@ -577,6 +570,5 @@ fun TimePickerColumn(
             }
         }
     }
+
 }
-
-

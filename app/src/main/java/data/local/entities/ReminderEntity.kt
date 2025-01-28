@@ -1,10 +1,9 @@
-package data.local.entities
+package com.elena.autoplanner.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.elena.autoplanner.data.local.entities.TaskEntity
 import java.time.LocalDateTime
 
 @Entity(
@@ -27,4 +26,11 @@ data class ReminderEntity(
     val mode: String,
     val offsetMinutes: Int? = null,
     val exactDateTime: LocalDateTime? = null
-)
+){
+    init{
+        require(offsetMinutes == null || offsetMinutes >= 0) {
+            "Offset cannot be negative"
+        }
+
+    }
+}

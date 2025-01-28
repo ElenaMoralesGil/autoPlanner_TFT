@@ -1,4 +1,4 @@
-package presentation.navigation
+package com.elena.autoplanner.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -6,9 +6,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen
-import presentation.ui.screens.calendar.CalendarScreen
-import presentation.ui.screens.more.MoreScreen
-import presentation.ui.screens.profile.ProfileScreen
+import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarScreen
+import com.elena.autoplanner.presentation.ui.screens.more.MoreScreen
+import com.elena.autoplanner.presentation.ui.screens.profile.ProfileScreen
 
 @Composable
 fun MainNavigation(

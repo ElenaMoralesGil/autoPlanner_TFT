@@ -1,10 +1,11 @@
-package data.local.entities
+package com.elena.autoplanner.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.elena.autoplanner.data.local.entities.TaskEntity
+import com.elena.autoplanner.domain.models.DayOfWeek
+import com.elena.autoplanner.domain.models.IntervalUnit
 
 @Entity(
     tableName = "repeat_configs",
@@ -22,11 +23,8 @@ data class RepeatConfigEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val taskId: Int,
 
-    // e.g. "NONE", "DAILY", "WEEKLY", "CUSTOM", etc.
     val frequencyType: String,
     val interval: Int? = null,
-    val selectedWeekdays: List<Int>? = null,
-    val dayOfMonth: Int? = null,
-    val weekOfMonth: Int? = null,
-    val monthOfYear: Int? = null
+    val intervalUnit: IntervalUnit? = null,
+    val selectedDays: Set<DayOfWeek> = emptySet()
 )

@@ -1,16 +1,16 @@
-package presentation.viewmodel
+package com.elena.autoplanner.presentation.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.presentation.intents.TaskIntent
 import com.elena.autoplanner.presentation.utils.BaseViewModel
-import domain.usecases.AddTaskUseCase
-import domain.usecases.GetTasksUseCase
+import com.elena.autoplanner.domain.usecases.AddTaskUseCase
+import com.elena.autoplanner.domain.usecases.GetTasksUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import presentation.states.TaskState
-import domain.models.Task
+import com.elena.autoplanner.presentation.states.TaskState
+import com.elena.autoplanner.domain.models.Task
 
 class TaskViewModel(
     private val getTasksUseCase: GetTasksUseCase,
@@ -20,7 +20,6 @@ class TaskViewModel(
     // StateFlow para la parte específica de Tareas
     private val _state = MutableStateFlow(TaskState())
     val state: StateFlow<TaskState> = _state
-
 
 
     override fun onTriggerEvent(intent: TaskIntent) {

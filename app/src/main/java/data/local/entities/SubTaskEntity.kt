@@ -1,10 +1,10 @@
-package data.local.entities
+package com.elena.autoplanner.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.elena.autoplanner.data.local.entities.TaskEntity
+
 
 @Entity(
     tableName = "subtasks",

@@ -1,4 +1,4 @@
-package presentation.ui.screens.calendar
+package com.elena.autoplanner.presentation.ui.screens.calendar
 
 fun CalendarScreen(){
 

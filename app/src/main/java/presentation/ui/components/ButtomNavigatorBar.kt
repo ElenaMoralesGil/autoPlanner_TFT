@@ -1,4 +1,4 @@
-package presentation.ui.components
+package com.elena.autoplanner.presentation.ui.components
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -7,7 +7,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.elena.autoplanner.R
-import presentation.navigation.Screen
+import com.elena.autoplanner.presentation.navigation.Screen
 
 @Composable
 fun BottomNavigationBar(navController: NavHostController) {

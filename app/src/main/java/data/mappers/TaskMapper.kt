@@ -1,15 +1,13 @@
-package data.mappers
+package com.elena.autoplanner.data.mappers
 
 import com.elena.autoplanner.data.local.entities.TaskEntity
 import com.elena.autoplanner.domain.models.FrequencyType
 import com.elena.autoplanner.domain.models.ReminderMode
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
-import data.local.entities.ReminderEntity
-import data.local.entities.RepeatConfigEntity
-import data.local.entities.SubtaskEntity
-import domain.models.*
-import java.time.LocalDateTime
+import com.elena.autoplanner.data.local.entities.*
+import com.elena.autoplanner.domain.models.*
+
 
 /* ------------------- Entities -> Domain ------------------- */
 
@@ -94,10 +92,8 @@ fun RepeatConfigEntity.toDomain(): RepeatPlan {
     return RepeatPlan(
         frequencyType = freqEnum,
         interval = interval,
-        selectedWeekdays = selectedWeekdays,
-        dayOfMonth = dayOfMonth,
-        weekOfMonth = weekOfMonth,
-        monthOfYear = monthOfYear
+        intervalUnit = intervalUnit,
+        selectedDays = selectedDays
     )
 }
 
@@ -154,10 +150,8 @@ fun RepeatPlan.toEntity(taskId: Int): RepeatConfigEntity {
         taskId = taskId,
         frequencyType = frequencyType.name,
         interval = interval,
-        selectedWeekdays = selectedWeekdays,
-        dayOfMonth = dayOfMonth,
-        weekOfMonth = weekOfMonth,
-        monthOfYear = monthOfYear
+        intervalUnit = intervalUnit,
+        selectedDays = selectedDays
     )
 }
 

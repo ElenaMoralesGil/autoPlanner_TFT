@@ -1,21 +1,22 @@
 package com.elena.autoplanner.domain.models
 
 
+
+
 enum class FrequencyType {
     NONE,
     DAILY,
     WEEKLY,
     MONTHLY,
     YEARLY,
-    WEEKDAYS,
-    WEEKENDS,
     CUSTOM
 }
+
 data class RepeatPlan(
-    val frequencyType: FrequencyType,
+    val frequencyType: FrequencyType = FrequencyType.NONE,
     val interval: Int? = null,
-    val selectedWeekdays: List<Int>? = null,
-    val dayOfMonth: Int? = null,
-    val weekOfMonth: Int? = null,
-    val monthOfYear: Int? = null
+    val intervalUnit: IntervalUnit? = null, // Add this enum
+    val selectedDays: Set<DayOfWeek> = emptySet() // Add proper DayOfWeek enum
 )
+enum class IntervalUnit { DAY, WEEK, MONTH }
+enum class DayOfWeek { MON, TUE, WED, THU, FRI,   SAT, SUN }
