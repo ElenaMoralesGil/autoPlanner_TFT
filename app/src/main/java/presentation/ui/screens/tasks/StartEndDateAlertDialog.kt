@@ -43,7 +43,7 @@ fun StartEndDateAlertDialog(
     onReady: (TimePlanning?) -> Unit
 ) {
     var selectedDateTime by remember { mutableStateOf(existing?.dateTime ?: LocalDateTime.now()) }
-    var dayPeriod by remember { mutableStateOf(DayPeriod.NONE) }
+    var dayPeriod by remember { mutableStateOf(existing?.dayPeriod ?: DayPeriod.NONE) }
 
     val selectedDate = selectedDateTime.toLocalDate()
     val selectedTime = selectedDateTime.toLocalTime()
@@ -550,8 +550,6 @@ fun TimePickerColumn(
         }
     }
 
-    // 2. Dentro del LaunchedEffect no se llama a LocalDensity,
-    //    sino que se usa 'itemHeightPx' calculado arriba.
     LaunchedEffect(listState, itemHeightPx) {
         snapshotFlow {
             val firstVisibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()

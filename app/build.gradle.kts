@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.firebase.perf.ktx)
     ksp(libs.androidx.room.compiler) // Room annotation processor for KSP
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

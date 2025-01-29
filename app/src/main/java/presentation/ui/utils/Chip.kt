@@ -25,8 +25,8 @@ fun Chip(
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.secondary,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         modifier = modifier.clickable(onClick = onClick)
     ) {
@@ -40,7 +40,7 @@ fun Chip(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (selected) MaterialTheme.colorScheme.primary
+                color = if (selected) MaterialTheme.colorScheme.background
                 else MaterialTheme.colorScheme.onSurface
             )
             trailingIcon?.invoke()

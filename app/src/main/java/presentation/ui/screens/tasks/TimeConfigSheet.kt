@@ -12,8 +12,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.models.DurationPlan
+import com.elena.autoplanner.domain.models.FrequencyType
+import com.elena.autoplanner.domain.models.ReminderMode
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatDateTimeWithPeriod
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatDurationForDisplay
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatReminderForDisplay
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatRepeatForDisplay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,25 +71,28 @@ fun TimeConfigSheet(
 
         // The 5 items
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            TimeConfigItem("Start date", localStart?.dateTime?.toString() ?: "None") {
-                openDialog = TimeDialogType.StartDate
-            }
+            TimeConfigItem("Start date",
+                formatDateTimeWithPeriod(localStart)
+            ) { openDialog = TimeDialogType.StartDate }
             HorizontalDivider()
-            TimeConfigItem("End date", localEnd?.dateTime?.toString() ?: "None") {
-                openDialog = TimeDialogType.EndDate
-            }
+            TimeConfigItem("End date",
+                formatDateTimeWithPeriod(localEnd)
+            ) { openDialog = TimeDialogType.EndDate }
             HorizontalDivider()
-            TimeConfigItem("Duration", localDuration?.totalMinutes?.toString() ?: "None") {
-                openDialog = TimeDialogType.Duration
-            }
+            TimeConfigItem("Duration",
+                formatDurationForDisplay(localDuration)
+            ) { openDialog = TimeDialogType.Duration }
+
             HorizontalDivider()
-            TimeConfigItem("Reminder", localReminder?.mode?.name ?: "None") {
-                openDialog = TimeDialogType.Reminder
-            }
+            TimeConfigItem("Reminder",
+                formatReminderForDisplay(localReminder)
+            ) { openDialog = TimeDialogType.Reminder }
+
             HorizontalDivider()
-            TimeConfigItem("Repeat", localRepeat?.frequencyType?.name ?: "None") {
-                openDialog = TimeDialogType.Repeat
-            }
+            TimeConfigItem("Repeat",
+                formatRepeatForDisplay(localRepeat)
+            ) { openDialog = TimeDialogType.Repeat }
+
         }
     }
 

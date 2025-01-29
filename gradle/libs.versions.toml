@@ -17,6 +17,7 @@ navigationCompose = "2.8.3"
 roomCommon = "2.6.1"
 roomCompiler = "2.6.1"
 roomKtx = "2.6.1"
+firebasePerfKtx = "21.0.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -43,6 +44,7 @@ ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+firebase-perf-ktx = { group = "com.google.firebase", name = "firebase-perf-ktx", version.ref = "firebasePerfKtx" }
 [plugins]
 ksp = { id = "com.google.devtools.ksp", version = "1.9.0-1.0.13" }
 android-application = { id = "com.android.application", version.ref = "agp" }

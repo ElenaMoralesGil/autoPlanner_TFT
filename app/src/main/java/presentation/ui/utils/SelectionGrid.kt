@@ -18,7 +18,8 @@ import androidx.compose.ui.unit.dp
 fun SelectionGrid(
     items: List<Pair<String, Boolean>>,
     onSelect: (Int) -> Unit,
-    onPersonalized: (() -> Unit)? = null
+    onPersonalized: (() -> Unit)? = null,
+    isPersonalizedSelected: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -34,11 +35,10 @@ fun SelectionGrid(
             )
         }
 
-
         onPersonalized?.let {
             Chip(
                 label = "Custom...",
-                selected = false,
+                selected = isPersonalizedSelected,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = it,
                 trailingIcon = {

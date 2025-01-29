@@ -61,7 +61,8 @@ fun RepeatAlertDialog(
                     val types = listOf(FrequencyType.DAILY, FrequencyType.WEEKLY, FrequencyType.MONTHLY, FrequencyType.YEARLY)
                     localRepeat = RepeatPlan(frequencyType = types[index])
                 },
-                onPersonalized = { showPersonalized = true }
+                onPersonalized = { showPersonalized = true },
+                isPersonalizedSelected = localRepeat.frequencyType == FrequencyType.CUSTOM
             )
 
             AnimatedSection(visible = localRepeat.frequencyType == FrequencyType.WEEKLY) {

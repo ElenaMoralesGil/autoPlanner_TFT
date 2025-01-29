@@ -40,17 +40,19 @@ fun ReminderAlertDialog(
             SelectionGrid(
                 items = listOf(
                     "On time" to (localRem.mode == ReminderMode.PRESET_OFFSET && localRem.offsetMinutes == 0),
-                    "5 min early" to (localRem.mode == ReminderMode.PRESET_OFFSET && localRem.offsetMinutes == 5),
-                    "30 min early" to (localRem.mode == ReminderMode.PRESET_OFFSET && localRem.offsetMinutes == 30),
-                    "1 day early" to (localRem.mode == ReminderMode.PRESET_OFFSET && localRem.offsetMinutes == 1440),
-                    "1 week early" to (localRem.mode == ReminderMode.PRESET_OFFSET && localRem.offsetMinutes == 10080)
+                    "5 min before" to (localRem.mode == ReminderMode.PRESET_OFFSET && localRem.offsetMinutes == 5),
+                    "30 min before" to (localRem.mode == ReminderMode.PRESET_OFFSET && localRem.offsetMinutes == 30),
+                    "1 day before" to (localRem.mode == ReminderMode.PRESET_OFFSET && localRem.offsetMinutes == 1440),
+                    "1 week before" to (localRem.mode == ReminderMode.PRESET_OFFSET && localRem.offsetMinutes == 10080)
                 ),
                 onSelect = { index ->
                     val offsets = listOf(0, 5, 30, 1440, 10080)
                     localRem = ReminderPlan(mode = ReminderMode.PRESET_OFFSET, offsetMinutes = offsets[index])
                 },
-                onPersonalized = { showPersonalized = true }
+                onPersonalized = { showPersonalized = true },
+                isPersonalizedSelected = localRem.mode == ReminderMode.CUSTOM
             )
+
         },
         onDismiss = onDismiss,
         onConfirm = {
@@ -175,8 +177,10 @@ fun ReminderPersonalizedAlertDialog(
         onConfirm = {
             val finalPlan = existing.copy(
                 mode = ReminderMode.CUSTOM,
-                offsetMinutes = 0,
-                exactDateTime = null
+                customDayOffset = if (selectedTab == 0) selectedDayIndex else null,
+                customWeekOffset = if (selectedTab == 1) selectedWeekIndex + 1 else null,
+                customHour = selectedHour,
+                customMinute = selectedMinute
             )
             onReady(finalPlan)
         },
