@@ -12,11 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.models.DurationPlan
-import com.elena.autoplanner.domain.models.FrequencyType
-import com.elena.autoplanner.domain.models.ReminderMode
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
-import com.elena.autoplanner.presentation.utils.DateTimeFormatters
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatDateTimeWithPeriod
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatDurationForDisplay
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatReminderForDisplay

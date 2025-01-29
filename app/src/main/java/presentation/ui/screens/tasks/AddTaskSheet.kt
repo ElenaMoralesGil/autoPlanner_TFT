@@ -17,18 +17,16 @@ import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import com.elena.autoplanner.R
-import com.elena.autoplanner.domain.models.FrequencyType
-import com.elena.autoplanner.domain.models.ReminderMode
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters
-import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatDuration
-import com.google.firebase.perf.util.Timer
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatDurationForDisplay
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatReminderForDisplay
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatRepeatForDisplay
+import com.elena.autoplanner.presentation.utils.NewTaskData
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -141,16 +139,7 @@ private fun hasAnyConfig(
             reminder != null || repeat != null || priority != Priority.NONE
 }
 
-data class NewTaskData(
-    val name: String,
-    val priority: Priority = Priority.NONE,
-    val startDateConf: TimePlanning? = null,
-    val endDateConf: TimePlanning? = null,
-    val durationConf: DurationPlan? = null,
-    val reminderPlan: ReminderPlan? = null,
-    val repeatPlan: RepeatPlan? = null,
-    val subtasks: List<Subtask> = emptyList()
-)
+
 @Composable
 private fun ActionButton(
     icon: Painter,
@@ -273,27 +262,28 @@ fun TaskConfigDisplay(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            startDate?.dateTime?.let {
+            startDate?.let {
                 ConfigItemWithPainter(
                     painter = painterResource(R.drawable.ic_calendar),
                     label = "Starts",
-                    value = DateTimeFormatters.formatDateTime(it)
+                    value = DateTimeFormatters.formatDateTimeWithPeriod(it)
                 )
             }
 
-            endDate?.dateTime?.let {
+
+            endDate?.let {
                 ConfigItemWithPainter(
                     painter = painterResource(R.drawable.ic_calendar),
                     label = "Ends",
-                    value = DateTimeFormatters.formatDateTime(it)
+                    value = DateTimeFormatters.formatDateTimeWithPeriod(it)
                 )
             }
 
-            duration?.totalMinutes?.let {
+            duration?.let {
                 ConfigItemWithPainter(
                     painter = painterResource(R.drawable.ic_duration),
                     label = "Duration",
-                    value = formatDuration(it)
+                    value = formatDurationForDisplay(it)
                 )
             }
 
@@ -301,7 +291,7 @@ fun TaskConfigDisplay(
                 ConfigItemWithPainter(
                     painter = painterResource(R.drawable.ic_reminder),
                     label = "Reminder",
-                    value = formatReminderValue(it)
+                    value = formatReminderForDisplay(it)
                 )
             }
 
@@ -309,7 +299,7 @@ fun TaskConfigDisplay(
                 ConfigItemWithPainter(
                     painter = painterResource(R.drawable.ic_repeat),
                     label = "Repeat",
-                    value = formatRepeatValue(it)
+                    value = formatRepeatForDisplay(it)
                 )
             }
 
@@ -363,38 +353,49 @@ private fun ConfigItemWithPainter(
 }
 
 
-private fun formatReminderValue(reminder: ReminderPlan): String {
-    return when (reminder.mode) {
-        ReminderMode.NONE -> "None"
-        ReminderMode.PRESET_OFFSET -> reminder.offsetMinutes?.let { "${it}min before" } ?: "At start"
-        ReminderMode.EXACT -> reminder.exactDateTime?.let { DateTimeFormatters.formatDateTime(it) } ?: "Not set"
-        ReminderMode.CUSTOM -> reminder.exactDateTime?.let { DateTimeFormatters.formatDateTime(it) } ?: "Custom"
-    }
-}
-
-private fun formatRepeatValue(repeat: RepeatPlan): String {
-    return when (repeat.frequencyType) {
-        FrequencyType.NONE -> "None"
-        FrequencyType.DAILY -> "Daily"
-        FrequencyType.WEEKLY -> {
-            if (repeat.selectedDays.isEmpty()) "Weekly"
-            else "Weekly on ${repeat.selectedDays.joinToString(", ") { it.name.lowercase().capitalize() }}"
-        }
-        FrequencyType.MONTHLY -> "Monthly"
-        FrequencyType.YEARLY -> "Yearly"
-        FrequencyType.CUSTOM -> repeat.interval?.let { interval ->
-            repeat.intervalUnit?.let { unit ->
-                "Every $interval ${unit.toString().lowercase()}${if (interval > 1) "s" else ""}"
-            }
-        } ?: "Custom"
-    }
-}
-
 private fun getPriorityColor(priority: Priority): Color {
     return when (priority) {
         Priority.HIGH -> Color(0xFFE57373)    // Light Red
         Priority.MEDIUM -> Color(0xFFFFB74D)  // Light Orange
         Priority.LOW -> Color(0xFF81C784)     // Light Green
         Priority.NONE -> Color.Unspecified
+    }
+}
+@Composable
+fun PriorityIndicator(priority: Priority) {
+    val (color, icon) = when (priority) {
+        Priority.HIGH -> Pair(Color(0xFFE57373), painterResource(R.drawable.priority))
+        Priority.MEDIUM -> Pair(Color(0xFFFFB74D) , painterResource(R.drawable.priority))
+        Priority.LOW -> Pair(Color(0xFF81C784), painterResource(R.drawable.priority))
+        Priority.NONE -> Pair(Color.Transparent, null)
+    }
+
+    icon?.let {
+        Icon(
+            painter = it,
+            contentDescription = "Priority",
+            tint = color,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+@Composable
+fun SubtaskProgress(subtasks: List<Subtask>) {
+    val completedCount = subtasks.count { it.isCompleted }
+    val progress = subtasks.size.toFloat() / completedCount
+
+    Column {
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp),
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = "$completedCount/${subtasks.size} completed",
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(top = 4.dp)
+        )
     }
 }

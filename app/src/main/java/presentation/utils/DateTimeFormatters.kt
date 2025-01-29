@@ -24,15 +24,7 @@ object DateTimeFormatters {
         return dateTime.format(formatter)
     }
 
-    fun formatDuration(minutes: Int): String {
-        val hours = minutes / 60
-        val mins = minutes % 60
-        return when {
-            hours > 0 && mins > 0 -> "${hours}h ${mins}m"
-            hours > 0 -> "${hours}h"
-            else -> "${mins}m"
-        }
-    }
+
 
     fun formatDateTimeWithPeriod(timePlanning: TimePlanning?): String {
         return timePlanning?.let {

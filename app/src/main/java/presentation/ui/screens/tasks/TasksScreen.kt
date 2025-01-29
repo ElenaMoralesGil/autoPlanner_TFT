@@ -1,39 +1,41 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
+import com.elena.autoplanner.R
 import org.koin.androidx.compose.koinViewModel
-import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.presentation.intents.TaskFilter
 import com.elena.autoplanner.presentation.intents.TaskIntent
+import com.elena.autoplanner.presentation.ui.utils.ErrorMessage
+import com.elena.autoplanner.presentation.ui.utils.FilterDropdown
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters
+import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
 
-/**TODO:
- * HACER QUE NO SE PUEDAN TAREAS EN EL PASADO
- * HACER QUE NO SE PUEDAN TAREAS CON DURACIONES NEGATIVAS
- * HACER QUE NO SE PUEDAN TAREAS CON DURACIONES DE 0 MINUTOS
- * cambiar la interfaz que muestra las tareas
- * 
- */
+
+// TasksScreen.kt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
-    navController: NavHostController,
     viewModel: TaskViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     var showAddTaskSheet by remember { mutableStateOf(false) }
+    var selectedTaskToEdit by remember { mutableStateOf<Task?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.triggerEvent(TaskIntent.LoadTasks)
@@ -41,14 +43,25 @@ fun TasksScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("All tasks", fontSize = 20.sp) },
-                actions = {
-                    IconButton(onClick = { /* future menu */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "menu")
+            Column {
+                TopAppBar(
+                    title = { Text("Tasks", fontSize = 20.sp) },
+                    actions = {
+                        FilterDropdown(
+                            currentFilter = state.currentFilter,
+                            onFilterSelected = { filter ->
+                                viewModel.triggerEvent(TaskIntent.UpdateFilter(filter))
+                            }
+                        )
                     }
-                }
-            )
+                )
+                FilterChipsRow(
+                    currentFilter = state.currentFilter,
+                    onFilterSelected = { filter ->
+                        viewModel.triggerEvent(TaskIntent.UpdateFilter(filter))
+                    }
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -59,128 +72,220 @@ fun TasksScreen(
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-        ) {
-            if (state.isLoading) {
-                Box(Modifier.fillMaxSize()) {
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
-                }
-            } else {
-                state.error?.let { err ->
-                    Box(Modifier.fillMaxSize()) {
-                        Text(
-                            text = err,
-                            color = Color.Red,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when {
+                state.isLoading -> LoadingIndicator()
+                state.error != null -> ErrorMessage(error = state.error!!)
+                else -> TaskList(
+                    tasks = state.filteredTasks,
+                    onTaskChecked = { task, checked ->
+                        viewModel.triggerEvent(TaskIntent.ToggleTaskCompletion(task, checked))
+                    },
+                    onTaskClicked = { task ->
+                        selectedTaskToEdit = task
                     }
-                } ?: TaskListSection(state)
+                )
             }
         }
+    }
 
-        if (showAddTaskSheet) {
-            AddTaskSheet(
-                onClose = { showAddTaskSheet = false },
-                onAccept = { newTaskData ->
-                    // Convert the "newTaskData" to the AddTask intent
-                    viewModel.triggerEvent(
-                        TaskIntent.AddTask(
-                            name = newTaskData.name,
-                            priority = newTaskData.priority,
-                            startDateConf = newTaskData.startDateConf,
-                            endDateConf = newTaskData.endDateConf,
-                            durationConf = newTaskData.durationConf,
-                            reminderPlan = newTaskData.reminderPlan,
-                            repeatPlan = newTaskData.repeatPlan,
-                            subtasks = newTaskData.subtasks
-                        )
-                    )
-                    showAddTaskSheet = false
-                }
+    selectedTaskToEdit?.let { task ->
+        EditTaskDialog(
+            task = task,
+            onDismiss = { selectedTaskToEdit = null },
+            onDelete = {
+                viewModel.triggerEvent(TaskIntent.DeleteTask(task))
+                selectedTaskToEdit = null
+            },
+            onSave = { updatedTask ->
+                viewModel.triggerEvent(TaskIntent.UpdateTask(updatedTask))
+                selectedTaskToEdit = null
+            }
+        )
+    }
+
+    if (showAddTaskSheet) {
+        AddTaskSheet(
+            onClose = { showAddTaskSheet = false },
+            onAccept = { newTaskData ->
+                viewModel.triggerEvent(TaskIntent.CreateTask(newTaskData))
+                showAddTaskSheet = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun FilterChipsRow(
+    currentFilter: TaskFilter,
+    onFilterSelected: (TaskFilter) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TaskFilter.entries.forEach { filter ->
+            FilterChip(
+                selected = currentFilter == filter,
+                onClick = { onFilterSelected(filter) },
+                label = { Text(filter.displayName) },
+                leadingIcon = if (currentFilter == filter) {
+                    { Icon(Icons.Default.Check, contentDescription = null) }
+                } else null
+            )
+        }
+    }
+}
+@Composable
+fun DetailItem(icon: Painter, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painter = icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text = text, style = MaterialTheme.typography.bodySmall)
+    }
+}
+@Composable
+private fun TaskList(
+    tasks: List<Task>,
+    onTaskChecked: (Task, Boolean) -> Unit,
+    onTaskClicked: (Task) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        items(
+            items = tasks,
+            key = { it.id }
+        ) { task ->
+            TaskCard(
+                task = task,
+                onCheckedChange = { checked -> onTaskChecked(task, checked) },
+                onClick = { onTaskClicked(task) }
             )
         }
     }
 }
 
 @Composable
-fun TaskListSection(state: TaskState) {
-    if (
-        state.notCompletedTasks.isEmpty() &&
-        state.completedTasks.isEmpty() &&
-        state.expiredTasks.isEmpty()
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            Text("No tasks", Modifier.align(Alignment.Center))
-        }
-    } else {
-        LazyColumn(Modifier.fillMaxWidth()) {
-            item {
-                TaskSection("Not Completed", state.notCompletedTasks)
-            }
-            item {
-                Spacer(Modifier.height(16.dp))
-                TaskSection("Completed", state.completedTasks)
-            }
-            item {
-                Spacer(Modifier.height(16.dp))
-                TaskSection("Expired", state.expiredTasks)
-            }
-        }
-    }
-}
-
-@Composable
-fun TaskSection(title: String, tasks: List<Task>) {
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Text(title, fontSize = 18.sp)
-        Spacer(Modifier.height(8.dp))
-        tasks.forEach { task ->
-            TaskItemComposable(task)
-            Spacer(Modifier.height(8.dp))
-        }
-    }
-}
-
-@Composable
-fun TaskItemComposable(task: Task) {
+private fun TaskCard(
+    task: Task,
+    onCheckedChange: (Boolean) -> Unit,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Checkbox(
-                checked = task.isCompleted,
-                onCheckedChange = {
-                    // Possibly dispatch an Intent to mark complete
-                }
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Checkbox(
+                    checked = task.isCompleted,
+                    onCheckedChange = onCheckedChange,
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = MaterialTheme.colorScheme.primary
+                    )
+                )
 
-            Spacer(Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    TaskTitle(task)
+                    TaskDetails(task)
+                }
 
-            Column(Modifier.weight(1f)) {
-                Text(task.name, fontSize = 16.sp)
-                task.startDateConf?.dateTime?.let {
-                    Text("Start: $it", fontSize = 12.sp, color = Color.Gray)
-                }
-                task.endDateConf?.dateTime?.let {
-                    Text("End: $it", fontSize = 12.sp, color = Color.Gray)
-                }
-                task.durationConf?.totalMinutes?.let {
-                    val hours = it / 60
-                    val mins = it % 60
-                    val label = if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
-                    Text("Duration: $label", fontSize = 12.sp, color = Color.Gray)
-                }
+                TaskStatusIndicators(task)
+            }
+
+            if (task.subtasks.isNotEmpty()) {
+                SubtaskProgress(subtasks = task.subtasks)
             }
         }
     }
-    Spacer(Modifier.height(4.dp))
 }
+
+@Composable
+private fun TaskTitle(task: Task) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = task.name,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 2,
+            modifier = Modifier.weight(1f)
+        )
+        PriorityIndicator(priority = task.priority)
+    }
+}
+
+@Composable
+private fun TaskDetails(task: Task) {
+    val formatter = DateTimeFormatters
+
+    Column {
+        task.startDateConf?.let {
+            DetailItem(
+                icon = painterResource(R.drawable.ic_calendar),
+                text = formatter.formatDateTimeWithPeriod(it)
+            )
+        }
+
+        task.endDateConf?.let {
+            DetailItem(
+                icon = painterResource(R.drawable.ic_calendar),
+                text = formatter.formatDateTimeWithPeriod(it)
+            )
+        }
+
+        task.durationConf?.let {
+            DetailItem(
+                icon = painterResource(R.drawable.ic_duration),
+                text = formatter.formatDurationForDisplay(it)
+            )
+        }
+    }
+}
+
+@Composable
+private fun TaskStatusIndicators(task: Task) {
+    Column {
+        if (task.isExpired && !task.isCompleted) {
+            Icon(
+                painter = painterResource(R.drawable.ic_warning),
+                contentDescription = "Expired",
+                tint = MaterialTheme.colorScheme.error
+            )
+        }
+        if (task.repeatPlan != null) {
+            Icon(
+                painter = painterResource(R.drawable.ic_repeat),
+                contentDescription = "Repeating",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+
+
+
+
+

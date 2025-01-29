@@ -6,29 +6,21 @@ import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
+import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.presentation.utils.NewTaskData
 
 sealed class TaskIntent : BaseIntent() {
-
     object LoadTasks : TaskIntent()
+    data class CreateTask(val newTaskData: NewTaskData) : TaskIntent()
+    data class UpdateTask(val task: Task) : TaskIntent()
+    data class DeleteTask(val task: Task) : TaskIntent()
+    data class ToggleTaskCompletion(val task: Task, val checked: Boolean) : TaskIntent()
+    data class UpdateFilter(val filter: TaskFilter) : TaskIntent()
+}
 
-    /**
-     * Creates a new Task using the new domain model approach.
-     * We now have 'TimePlanning' for start & end,
-     * a 'DurationPlan' for total minutes,
-     * a 'ReminderPlan' for reminders,
-     * and a 'RepeatPlan' for repeats.
-     */
-    data class AddTask(
-        val name: String,
-        val priority: Priority = Priority.NONE,
-
-        val startDateConf: TimePlanning? = null,
-        val endDateConf: TimePlanning? = null,
-        val durationConf: DurationPlan? = null,
-
-        val reminderPlan: ReminderPlan? = null,
-        val repeatPlan: RepeatPlan? = null,
-
-        val subtasks: List<Subtask> = emptyList()
-    ) : TaskIntent()
+enum class TaskFilter(val displayName: String) {
+    TODAY("Today"),
+    WEEK("Week"),
+    MONTH("Month"),
+    ALL("All")
 }

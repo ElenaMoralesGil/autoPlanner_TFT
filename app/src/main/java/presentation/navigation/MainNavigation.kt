@@ -21,7 +21,7 @@ fun MainNavigation(
         modifier = modifier
     ) {
         composable(Screen.Tasks.route) {
-            TasksScreen(navController = navController)
+            TasksScreen()
         }
         composable(Screen.Calendar.route) {
             CalendarScreen()

@@ -3,7 +3,10 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
 }
-
+configurations.all {
+    exclude(group = "xmlpull", module = "xmlpull")
+    exclude(group = "xpp3", module = "xpp3_min")
+}
 android {
     namespace = "com.elena.autoplanner"
     compileSdk = 35
@@ -58,7 +61,6 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.ui)
     implementation(libs.gson)
     implementation(libs.ui.graphics)
@@ -71,12 +73,15 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.firebase.perf.ktx)
-    ksp(libs.androidx.room.compiler) // Room annotation processor for KSP
+    implementation(libs.xpp3)
+    implementation(libs.androidx.navigation.safe.args.generator)
+    implementation(libs.androidx.material3.android)
+    ksp(libs.androidx.room.compiler)
+
     testImplementation(libs.junit)
+    testImplementation(libs.ui.test.junit4)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.ui.test.junit4)
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
