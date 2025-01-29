@@ -9,8 +9,19 @@ import com.elena.autoplanner.presentation.intents.TaskFilter
 data class TaskState(
     val allTasks: List<Task> = emptyList(),
     val filteredTasks: List<Task> = emptyList(),
-    val currentFilter: TaskFilter = TaskFilter.TODAY,
+    val selectedStatus: TaskStatus = TaskStatus.ALL,
+    val selectedTimeFrame: TimeFrame = TimeFrame.ALL,
     val isLoading: Boolean = false,
-    val error: String? = null,
-    val taskCreatedSuccessfully: Boolean = false
+    val error: String? = null
 )
+enum class TaskStatus(val displayName: String) {
+    ALL("All"),
+    COMPLETED("Completed"),
+    UNCOMPLETED("Uncompleted")
+}
+enum class TimeFrame(val displayName: String) {
+    TODAY("Today"),
+    ALL("All Time"),
+    WEEK("This Week"),
+    MONTH("This Month")
+}

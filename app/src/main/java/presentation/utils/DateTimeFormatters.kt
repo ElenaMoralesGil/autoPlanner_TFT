@@ -24,6 +24,20 @@ object DateTimeFormatters {
         return dateTime.format(formatter)
     }
 
+    // In DateTimeFormatters.kt
+    fun formatDateShort(dateTime: TimePlanning): String {
+        return dateTime.dateTime?.format(dateFormatter) ?: ""
+    }
+
+    fun formatDurationShort(duration: DurationPlan?): String {
+        return duration?.totalMinutes?.let { mins ->
+            when {
+                mins >= 1440 -> "${mins/1440}d"
+                mins >= 60 -> "${mins/60}h ${mins%60}m"
+                else -> "${mins}m"
+            }
+        } ?: ""
+    }
 
 
     fun formatDateTimeWithPeriod(timePlanning: TimePlanning?): String {
