@@ -1,23 +1,12 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
-import androidx.compose.animation.animateColor
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.updateTransition
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -27,246 +16,297 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.Priority
-import org.koin.androidx.compose.koinViewModel
-import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.presentation.intents.TaskFilter
 import com.elena.autoplanner.presentation.intents.TaskIntent
+import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
 import com.elena.autoplanner.presentation.ui.utils.ErrorMessage
-import com.elena.autoplanner.presentation.ui.utils.FilterDropdown
-import com.elena.autoplanner.presentation.utils.DateTimeFormatters
 import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
+import com.elena.autoplanner.presentation.utils.DateTimeFormatters
+import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
+import org.koin.androidx.compose.koinViewModel
 
-/** TODO:
- * add indicator in taskCard when task has subtasks
- */
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
-fun TasksScreen(
-    viewModel: TaskViewModel = koinViewModel()
-) {
+fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
+    // El estado global del ViewModel (lista de tareas, filtros, etc.)
     val state by viewModel.state.collectAsState()
-    var showAddTaskSheet by remember { mutableStateOf(false) }
-    var selectedTaskToEdit by remember { mutableStateOf<Task?>(null) }
-    val filterStatusText = remember(state.selectedStatus, state.selectedTimeFrame) {
-        buildString {
-            if (state.selectedTimeFrame != TimeFrame.ALL) {
-                append(state.selectedTimeFrame.displayName)
-            }
-            if (state.selectedStatus != TaskStatus.ALL) {
-                append(" • ${state.selectedStatus.displayName}")
-            }
-        }.ifEmpty { "All Tasks" }
-    }
+
+    // Controladores de hoja
+    var showAddEditSheet by remember { mutableStateOf(false) }
+    var selectedTaskId by remember { mutableStateOf<Int?>(null) }
+    val detailSubtaskListState = rememberLazyListState()
+    // Esta variable conservará la tarea concreta que se va a editar
+    var taskToEdit by remember { mutableStateOf<Task?>(null) }
+
+    // Al iniciar la pantalla, cargamos las tareas
     LaunchedEffect(Unit) {
-        viewModel.triggerEvent(TaskIntent.LoadTasks)
+        viewModel.sendIntent(TaskIntent.LoadTasks)
     }
 
+    // Estructura principal de la pantalla (TopBar, FAB, contenido, etc.)
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 16.dp)
-                    ) {
-                        Column {
-                            Text(
-                                "Tasks",
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = filterStatusText,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                actions = {
-                    // Status Filter Icon
-                    var showStatusMenu by remember { mutableStateOf(false) }
-                    Box {
-                        IconButton(onClick = { showStatusMenu = true }) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_filter),
-                                contentDescription = "Status filter",
-                                tint = if (state.selectedStatus != TaskStatus.ALL)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showStatusMenu,
-                            onDismissRequest = { showStatusMenu = false }
-                        ) {
-                            TaskStatus.entries.forEach { status ->
-                                DropdownMenuItem(
-                                    text = { Text(status.displayName) },
-                                    onClick = {
-                                        viewModel.triggerEvent(TaskIntent.UpdateStatusFilter(status))
-                                        showStatusMenu = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            painter = painterResource(
-                                                when (status) {
-                                                    TaskStatus.COMPLETED -> R.drawable.ic_completed
-                                                    TaskStatus.UNCOMPLETED -> R.drawable.ic_uncompleted
-                                                    else -> R.drawable.ic_lists
-                                                }
-                                            ),
-                                            contentDescription = null
-                                        )
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Time Filter Icon
-                    var showTimeMenu by remember { mutableStateOf(false) }
-                    Box {
-                        IconButton(onClick = { showTimeMenu = true }) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_calendar),
-                                contentDescription = "Time filter",
-                                tint = if (state.selectedTimeFrame != TimeFrame.ALL)
-                                    MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showTimeMenu,
-                            onDismissRequest = { showTimeMenu = false }
-                        ) {
-                            TimeFrame.entries.forEach { timeFrame ->
-                                DropdownMenuItem(
-                                    text = { Text(timeFrame.displayName) },
-                                    onClick = {
-                                        viewModel.triggerEvent(TaskIntent.UpdateTimeFrameFilter(timeFrame))
-                                        showTimeMenu = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            painter = painterResource(
-                                                when (timeFrame) {
-                                                    TimeFrame.TODAY -> R.drawable.ic_lists
-                                                    TimeFrame.WEEK -> R.drawable.ic_lists
-                                                    TimeFrame.MONTH -> R.drawable.ic_lists
-                                                    else -> R.drawable.ic_calendar
-                                                }
-                                            ),
-                                            contentDescription = null
-                                        )
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            )
+            state?.let {
+                TasksAppBar(
+                    state = it,
+                    onStatusSelected = { status -> viewModel.sendIntent(TaskIntent.UpdateStatusFilter(status)) },
+                    onTimeFrameSelected = { tf -> viewModel.sendIntent(TaskIntent.UpdateTimeFrameFilter(tf)) }
+                )
+            }
         },
         floatingActionButton = {
-            val interactionSource = remember { MutableInteractionSource() }
-            val animatedElevation by animateDpAsState(
-                targetValue = if (interactionSource.collectIsPressedAsState().value) 4.dp else 8.dp,
-                label = "fabElevation"
-            )
-
-            FloatingActionButton(
-                onClick = { showAddTaskSheet = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                interactionSource = interactionSource,
-                modifier = Modifier
-                    .shadow(
-                        elevation = animatedElevation,
-                        shape = RoundedCornerShape(16.dp),
-                        spotColor = MaterialTheme.colorScheme.primary
-                    )
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Add Task",
-                    modifier = Modifier.size(32.dp)
-                )
+            AddTaskFAB {
+                // Modo crear tarea (sin ninguna seleccionada)
+                taskToEdit = null // Asegura que no habrá datos previos
+                showAddEditSheet = true
             }
-        }
-    ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            when {
-                state.isLoading -> LoadingIndicator()
-                state.error != null -> ErrorMessage(state.error!!)
-                state.filteredTasks.isEmpty() -> EmptyState(onAddTask = { showAddTaskSheet = true })
-                else -> TaskCardList(
-                    tasks = state.filteredTasks,
+        },
+        content = { innerPadding ->
+            state?.let { currentState ->
+                ContentContainer(
+                    state = currentState,
+                    innerPadding = innerPadding,
                     onTaskChecked = { task, checked ->
-                        viewModel.triggerEvent(TaskIntent.ToggleTaskCompletion(task, checked))
+                        viewModel.sendIntent(TaskIntent.ToggleTaskCompletion(task, checked))
                     },
-                    viewModel = viewModel,
-                    selectedTaskToEdit = selectedTaskToEdit,
-                    onTaskSelected = { task -> selectedTaskToEdit = task }
+                    onTaskSelected = { task ->
+                        // Al hacer clic en una tarjeta de la lista, se abre la hoja de detalle
+                        selectedTaskId = task.id
+                    },
+                    onAddTask = {
+                        // También se puede acceder aquí, si se quisiera
+                        taskToEdit = null
+                        showAddEditSheet = true
+                    }
                 )
             }
         }
-    }
+    )
 
-    selectedTaskToEdit?.let { task ->
+    selectedTaskId?.let { taskId ->
         TaskDetailSheet(
-            task = task,
-            onDismiss = { selectedTaskToEdit = null },
-            onDelete = {
-                viewModel.triggerEvent(TaskIntent.DeleteTask(task))
-                selectedTaskToEdit = null
+            taskId = taskId,
+            onDismiss = {
+                selectedTaskId = null
+                        },
+            viewModel = viewModel,
+            onSubtaskDeleted = { subtask ->
+                viewModel.sendIntent(TaskIntent.DeleteSubtask(taskId, subtask.id))
             },
-            onEdit = { /* Handle edit navigation */ },
             onSubtaskAdded = { subtaskName ->
-                viewModel.triggerEvent(TaskIntent.AddSubtask(task, subtaskName))
+                viewModel.sendIntent(TaskIntent.AddSubtask(taskId, subtaskName))
             },
-            onSubtaskToggled = { subtask, checked ->
-                viewModel.triggerEvent(TaskIntent.ToggleSubtask(task, subtask, checked))
+            onDelete = {
+                // Se elimina la tarea y se cierra la hoja de detalle
+                viewModel.sendIntent(TaskIntent.DeleteTask(taskId))
+                selectedTaskId = null
+            },
+            onSubtaskToggled = { subtaskId, isCompleted ->
+                viewModel.sendIntent(TaskIntent.ToggleSubtask(taskId, subtaskId, isCompleted))
+            },
+            onEdit = {
+                // 1) Localizar la tarea que se está mostrando
+                val foundTask = state?.tasks?.find { it.id == taskId }
+                // 2) Guardarla para editarla en la otra hoja
+                taskToEdit = foundTask
+                // 3) Cerrar la hoja de detalle
+                selectedTaskId = null
+                // 4) Abrir la hoja de edición
+                showAddEditSheet = true
             }
         )
     }
 
-    if (showAddTaskSheet) {
-        AddTaskSheet(
-            onClose = { showAddTaskSheet = false },
-            onAccept = { newTaskData ->
-                viewModel.triggerEvent(TaskIntent.CreateTask(newTaskData))
-                showAddTaskSheet = false
+    if (showAddEditSheet) {
+        AddEditTaskSheet(
+            taskToEdit = taskToEdit,
+            onClose = {
+                // Close the edit sheet
+                showAddEditSheet = false
+                // If we were editing (not creating), reopen the detail sheet
+                if (taskToEdit != null) {
+                    selectedTaskId = taskToEdit?.id
+                }
+                // Clear the edit reference
+                taskToEdit = null
+            },
+            onCreateTask = { newTaskData ->
+                viewModel.sendIntent(TaskIntent.CreateTask(newTaskData))
+                showAddEditSheet = false
+            },
+            onUpdateTask = { updatedTask ->
+                viewModel.sendIntent(TaskIntent.UpdateTask(updatedTask))
+                showAddEditSheet = false
+                // Reopen detail view after update
+                selectedTaskId = updatedTask.id
             }
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TasksAppBar(
+    state: TaskState,
+    onStatusSelected: (TaskStatus) -> Unit,
+    onTimeFrameSelected: (TimeFrame) -> Unit
+) {
+    TopAppBar(
+        title = {
+            Column {
+                Text("Tasks", style = MaterialTheme.typography.headlineSmall)
+                Text(buildFilterText(state), style = MaterialTheme.typography.bodyLarge)
+            }
+        },
+        actions = {
+            StatusFilterDropdown(state.filters.status, onStatusSelected)
+            TimeFrameFilterDropdown(state.filters.timeFrame, onTimeFrameSelected)
+        }
+    )
+}
+
+@Composable
+private fun ContentContainer(
+    state: TaskState,
+    innerPadding: PaddingValues,
+    onTaskChecked: (Task, Boolean) -> Unit,
+    onTaskSelected: (Task) -> Unit,
+    onAddTask: () -> Unit
+) {
+    Column(modifier = Modifier.padding(innerPadding)) {
+        when (val uiState = state.uiState) {
+            TaskState.UiState.Loading -> LoadingIndicator()
+            is TaskState.UiState.Error -> uiState.message?.let { ErrorMessage(it) }
+            else -> {
+                if (state.filteredTasks.isEmpty()) {
+                    EmptyState(onAddTask)
+                } else {
+                    TaskCardList(
+                        tasks = state.filteredTasks,
+                        onTaskChecked = onTaskChecked,
+                        onTaskSelected = onTaskSelected
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddTaskFAB(onClick: () -> Unit) {
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
+    ) {
+        Icon(Icons.Default.Add, "Add Task")
+    }
+}
+
+@Composable
+private fun buildFilterText(state: TaskState): String {
+    val filters = listOfNotNull(
+        state.filters.timeFrame.takeIf { it != TimeFrame.ALL }?.displayName,
+        state.filters.status.takeIf { it != TaskStatus.ALL }?.displayName
+    )
+    return filters.joinToString(" • ").ifEmpty { "All Tasks" }
+}
+
+@Composable
+private fun StatusFilterDropdown(
+    currentStatus: TaskStatus,
+    onSelected: (TaskStatus) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_filter),
+                contentDescription = "Status filter",
+                tint = if (currentStatus != TaskStatus.ALL) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            TaskStatus.entries.forEach { status ->
+                DropdownMenuItem(
+                    text = { Text(status.displayName) },
+                    onClick = {
+                        onSelected(status)
+                        expanded = false
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(status.iconRes()),
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeFrameFilterDropdown(
+    currentTimeFrame: TimeFrame,
+    onSelected: (TimeFrame) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_calendar),
+                contentDescription = "Time filter",
+                tint = if (currentTimeFrame != TimeFrame.ALL) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            TimeFrame.entries.forEach { timeFrame ->
+                DropdownMenuItem(
+                    text = { Text(timeFrame.displayName) },
+                    onClick = {
+                        onSelected(timeFrame)
+                        expanded = false
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(timeFrame.iconRes()),
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+    }
+}
+
+// Extension functions for icon resources
+private fun TaskStatus.iconRes() = when (this) {
+    TaskStatus.COMPLETED -> R.drawable.ic_completed
+    TaskStatus.UNCOMPLETED -> R.drawable.ic_uncompleted
+    else -> R.drawable.ic_lists
+}
+
+private fun TimeFrame.iconRes() = when (this) {
+    TimeFrame.TODAY, TimeFrame.WEEK, TimeFrame.MONTH -> R.drawable.ic_lists
+    else -> R.drawable.ic_calendar
+}
 @Composable
 private fun EmptyState(onAddTask: () -> Unit) {
     Column(
@@ -302,9 +342,7 @@ private fun EmptyState(onAddTask: () -> Unit) {
 private fun TaskCardList(
     tasks: List<Task>,
     onTaskChecked: (Task, Boolean) -> Unit,
-    viewModel: TaskViewModel,  // Add viewModel parameter
-    selectedTaskToEdit: Task?,  // Add selectedTask parameter
-    onTaskSelected: (Task) -> Unit  // Add selection callback
+    onTaskSelected: (Task) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -323,38 +361,103 @@ private fun TaskCardList(
     }
 }
 
-
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SquareCheckbox(
-    checked: Boolean,
+private fun TaskCard(
+    task: Task,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val transition = updateTransition(checked, label = "checkbox")
-    val borderColor by transition.animateColor(label = "border") { isChecked ->
-        if (isChecked) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.outline
-    }
-    val checkAlpha by transition.animateFloat(label = "checkAlpha") { if (it) 1f else 0f }
-
-    Box(
-        modifier = modifier
-            .size(24.dp)
-            .clickable { onCheckedChange(!checked) }
-            .border(2.dp, borderColor, RoundedCornerShape(4.dp))
-            .padding(2.dp),
-        contentAlignment = Alignment.Center
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Icon(
-            Icons.Default.Check,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = checkAlpha),
-            modifier = Modifier.size(18.dp)
-        )
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Indicador de prioridad
+            Box(
+                modifier = Modifier
+                    .size(4.dp, 32.dp)
+                    .background(
+                        color = when (task.priority) {
+                            Priority.HIGH -> MaterialTheme.colorScheme.error
+                            Priority.MEDIUM -> Color(0xFFFFC107)
+                            Priority.LOW -> Color(0xFF4CAF50)
+                            else -> Color.Transparent
+                        },
+                        shape = RoundedCornerShape(4.dp)
+                    )
+            )
+
+            // Contenido principal
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = task.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2
+                )
+
+                // Muestra chips de fecha, duración, subtareas, etc.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    task.startDateConf?.let {
+                        LabelChip(
+                            icon = painterResource(R.drawable.ic_calendar),
+                            text = DateTimeFormatters.formatDateShort(it)
+                        )
+                    }
+
+                    task.durationConf?.let {
+                        LabelChip(
+                            icon = painterResource(R.drawable.ic_duration),
+                            text = DateTimeFormatters.formatDurationShort(it)
+                        )
+                    }
+
+                    if (task.subtasks.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_subtasks),
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size}",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Checkbox personalizado para completar la tarea
+            SquareCheckbox(
+                checked = task.isCompleted,
+                onCheckedChange = onCheckedChange
+            )
+        }
     }
 }
 
-// Enhanced Label Chip Component
 @Composable
 fun LabelChip(
     icon: Painter,
@@ -383,174 +486,40 @@ fun LabelChip(
     }
 }
 
-// Improved Task Card
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TaskCard(
-    task: Task,
+fun SquareCheckbox(
+    checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .clickable { onCheckedChange(!checked) }
+            .background(Color.Transparent)
     ) {
-        Row(
+        // Borde
+        Box(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Priority Indicator
-            Box(
-                modifier = Modifier
-                    .size(4.dp, 32.dp)
-                    .background(
-                        color = when (task.priority) {
-                            Priority.HIGH -> MaterialTheme.colorScheme.error
-                            Priority.MEDIUM -> Color(0xFFFFC107)
-                            Priority.LOW -> Color(0xFF4CAF50)
-                            else -> Color.Transparent
-                        },
-                        shape = RoundedCornerShape(4.dp)
-                    )
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = task.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2
+                .matchParentSize()
+                .background(Color.Transparent, RoundedCornerShape(4.dp))
+                .border(
+                    width = 2.dp,
+                    color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    shape = RoundedCornerShape(4.dp)
                 )
+        )
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    task.startDateConf?.let {
-                        LabelChip(
-                            icon = painterResource(R.drawable.ic_calendar),
-                            text = DateTimeFormatters.formatDateShort(it)
-                        )
-                    }
-
-                    task.durationConf?.let {
-                        LabelChip(
-                            icon = painterResource(R.drawable.ic_duration),
-                            text = DateTimeFormatters.formatDurationShort(it)
-                        )
-                    }
-                }
-            }
-
-            SquareCheckbox(
-                checked = task.isCompleted,
-                onCheckedChange = onCheckedChange
+        // Ícono de check
+        if (checked) {
+            Icon(
+                Icons.Default.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .size(18.dp)
+                    .align(Alignment.Center)
             )
         }
     }
-}
-
-@Composable
-private fun FilterSection(
-    selectedStatus: TaskStatus,
-    selectedTimeFrame: TimeFrame,
-    onStatusChanged: (TaskStatus) -> Unit,
-    onTimeFrameChanged: (TimeFrame) -> Unit
-) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Filter by Status", style = MaterialTheme.typography.labelLarge)
-        StatusFilterRow(selectedStatus, onStatusChanged)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text("Filter by Time", style = MaterialTheme.typography.labelLarge)
-        TimeFilterRow(selectedTimeFrame, onTimeFrameChanged)
-    }
-}
-@Composable
-private fun StatusFilterRow(
-    selectedStatus: TaskStatus,
-    onStatusChanged: (TaskStatus) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        TaskStatus.values().forEach { status ->
-            EnhancedFilterChip(
-                text = status.displayName,
-                selected = status == selectedStatus,
-                onClick = { onStatusChanged(status) }
-            )
-        }
-    }
-}
-@Composable
-private fun TimeFilterRow(
-    selectedTimeFrame: TimeFrame,
-    onTimeFrameChanged: (TimeFrame) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        TimeFrame.values().forEach { timeFrame ->
-            EnhancedFilterChip(
-                text = timeFrame.displayName,
-                selected = timeFrame == selectedTimeFrame,
-                onClick = { onTimeFrameChanged(timeFrame) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun EnhancedFilterChip(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surface,
-            labelColor = if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurface,
-            iconColor = if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurface
-        ),
-        border = FilterChipDefaults.filterChipBorder(
-            borderColor = MaterialTheme.colorScheme.outline,
-            selectedBorderColor = MaterialTheme.colorScheme.primary,
-            borderWidth = 1.dp,
-            enabled = true,
-            selected = selected
-        ),
-        leadingIcon = if (selected) {
-            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-        } else null,
-        label = {
-            Text(
-                text,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
-    )
 }

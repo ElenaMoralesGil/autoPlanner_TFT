@@ -1,19 +1,31 @@
 package com.elena.autoplanner.presentation.states
 
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.presentation.intents.TaskFilter
 
 /**
  * Estado único para la pantalla(s) de Tareas en MVI.
  */
+// Updated TaskState
 data class TaskState(
-    val allTasks: List<Task> = emptyList(),
+    val tasks: List<Task> = emptyList(),
     val filteredTasks: List<Task> = emptyList(),
-    val selectedStatus: TaskStatus = TaskStatus.ALL,
-    val selectedTimeFrame: TimeFrame = TimeFrame.ALL,
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
+    val filters: Filters = Filters(),
+    val uiState: UiState = UiState.Idle
+) {
+    data class Filters(
+        val status: TaskStatus = TaskStatus.ALL,
+        val timeFrame: TimeFrame = TimeFrame.ALL
+    )
+
+    sealed class UiState {
+        object Idle : UiState()
+        object Loading : UiState()
+        data class Success(val message: String? = null) : UiState()
+        data class Error(val message: String? = null) : UiState()
+    }
+}
+
+
 enum class TaskStatus(val displayName: String) {
     ALL("All"),
     COMPLETED("Completed"),

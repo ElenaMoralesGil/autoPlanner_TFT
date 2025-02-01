@@ -18,8 +18,11 @@ import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.elena.autoplanner.domain.usecases.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.AddTaskUseCase
+import com.elena.autoplanner.domain.usecases.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.DeleteTaskUseCase
+import com.elena.autoplanner.domain.usecases.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.UpdateTaskUseCase
 
 
@@ -71,9 +74,12 @@ val useCaseModule = module {
     single { AddTaskUseCase(get()) }
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
+    single { AddSubtaskUseCase(get()) }
+    single { ToggleSubtaskUseCase(get()) }
+    single { DeleteSubtaskUseCase(get()) }
 }
 
 // Módulo de ViewModels
 val viewModelModule = module {
-    viewModel { TaskViewModel(get(), get(), get(), get()) }
+    viewModel { TaskViewModel(get(), get(), get(), get(), get(), get(), get()) }
 }

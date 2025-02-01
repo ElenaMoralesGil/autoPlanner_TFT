@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -44,6 +45,19 @@ class TaskRepositoryImpl(
         }
         .flowOn(Dispatchers.IO)
 
+    override suspend fun getTask(taskId: Int): Task? {
+        val taskEntity = taskDao.getTask(taskId) ?: return null
+
+        val reminders = reminderDao.getRemindersForTask(taskId).first()
+        val repeatConfigs = repeatConfigDao.getRepeatConfigsForTask(taskId).first()
+        val subtasks = subtaskDao.getSubtasksForTask(taskId).first()
+
+        return taskEntity.toDomain(
+            reminders = reminders,
+            repeatConfigs = repeatConfigs,
+            subtasks = subtasks
+        )
+    }
 
     override suspend fun saveTask(task: Task) {
         val isNew = (task.id == 0)
@@ -93,8 +107,6 @@ class TaskRepositoryImpl(
     }
 
     override suspend fun deleteTask(task: Task) {
-        // Because of onDelete = CASCADE in your DB,
-        // reminders/repeat/subtasks get removed automatically
         taskDao.deleteTask(task.toTaskEntity())
     }
 }

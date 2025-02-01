@@ -7,34 +7,28 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
-abstract class BaseViewModel<T : BaseIntent> : ViewModel() {
+abstract class BaseViewModel<Intent : BaseIntent, State : Any> : ViewModel() {
+    private val _state = MutableStateFlow<State?>(null)
+    val state: StateFlow<State?> = _state.asStateFlow()
 
-    private val _intentsFlow = MutableSharedFlow<T>(extraBufferCapacity = 64)
-    val intentsFlow: SharedFlow<T> = _intentsFlow
+    protected val currentState: State
+        get() = _state.value ?: createInitialState()
 
-    private val _uiState = MutableStateFlow(UiState())
-    val uiState: StateFlow<UiState> = _uiState
+    abstract fun createInitialState(): State
+    abstract suspend fun handleIntent(intent: Intent)
 
-    init {
-        viewModelScope.launch {
-            _intentsFlow.collect { intent ->
-                onTriggerEvent(intent)
-            }
-        }
+    protected fun setState(reducer: State.() -> State) {
+        _state.update { it?.reducer() ?: createInitialState() }
     }
 
-    fun triggerEvent(intent: T) {
+    fun sendIntent(intent: Intent) {
         viewModelScope.launch {
-            _intentsFlow.emit(intent)
+            handleIntent(intent)
         }
-    }
-
-    protected abstract fun onTriggerEvent(intent: T)
-
-    protected fun updateUiState(uiState: UiState) {
-        _uiState.value = uiState
     }
 }

@@ -4,8 +4,9 @@ import com.elena.autoplanner.domain.models.Task
 import kotlinx.coroutines.flow.Flow
 
 interface TaskRepository {
-    fun getTasks(): Flow<List<Task>>  // Usa Flow para un flujo continuo de datos
-    suspend fun saveTask(task: Task)  // Método para guardar tareas
+    fun getTasks(): Flow<List<Task>>
+    suspend fun saveTask(task: Task)
     suspend fun updateTask(task: Task)
     suspend fun deleteTask(task: Task)
+    suspend fun getTask(taskId: Int): Task?
 }
