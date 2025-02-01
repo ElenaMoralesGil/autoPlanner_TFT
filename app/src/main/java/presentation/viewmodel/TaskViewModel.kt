@@ -26,7 +26,9 @@ class TaskViewModel(
     private val deleteSubtaskUseCase: DeleteSubtaskUseCase
 ) : BaseViewModel<TaskIntent, TaskState>() {
 
-    override fun createInitialState(): TaskState = TaskState()
+    override fun createInitialState(): TaskState = TaskState(
+        filters = TaskState.Filters(timeFrame = TimeFrame.TODAY)
+    )
 
     override suspend fun handleIntent(intent: TaskIntent) {
         when (intent) {
@@ -98,10 +100,10 @@ class TaskViewModel(
         }
     }
 
-    private fun deleteTask(task: Int) {
+    private fun deleteTask(taskId: Int) {
         viewModelScope.launch {
             try {
-                val task = currentState.tasks.find { it.id == task } ?: throw IllegalArgumentException("Task not found")
+                val task = currentState.tasks.find { it.id == taskId } ?: throw IllegalArgumentException("Task not found")
                 setState { copy(uiState = TaskState.UiState.Loading) }
                 deleteTaskUseCase(task)
                 setState {
@@ -153,7 +155,7 @@ class TaskViewModel(
         }
     }
 
-    fun toggleSubtask(task: Int, subtask: Int, checked: Boolean) {
+    private fun toggleSubtask(task: Int, subtask: Int, checked: Boolean) {
         viewModelScope.launch {
             try {
                 val updatedTask = toggleSubtaskUseCase(task, subtask, checked)

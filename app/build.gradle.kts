@@ -55,6 +55,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
 }
 
 dependencies {
@@ -76,13 +77,18 @@ dependencies {
     implementation(libs.xpp3)
     implementation(libs.androidx.navigation.safe.args.generator)
     implementation(libs.androidx.material3.android)
+
     ksp(libs.androidx.room.compiler)
 
+    testImplementation(libs.kotlinx.coroutines.test.v171)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.inline)
+    testImplementation(libs.kotlinx.coroutines.test.v164)
     testImplementation(libs.junit)
-    testImplementation(libs.ui.test.junit4)
-    androidTestImplementation(libs.androidx.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.mockk.android)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.ui.test.junit4)
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
 }

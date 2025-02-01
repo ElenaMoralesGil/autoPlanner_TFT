@@ -44,7 +44,6 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
     // Controladores de hoja
     var showAddEditSheet by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
-    val detailSubtaskListState = rememberLazyListState()
     // Esta variable conservará la tarea concreta que se va a editar
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
 
@@ -189,7 +188,7 @@ private fun ContentContainer(
             is TaskState.UiState.Error -> uiState.message?.let { ErrorMessage(it) }
             else -> {
                 if (state.filteredTasks.isEmpty()) {
-                    EmptyState(onAddTask)
+                    EmptyState()
                 } else {
                     TaskCardList(
                         tasks = state.filteredTasks,
@@ -308,7 +307,7 @@ private fun TimeFrame.iconRes() = when (this) {
     else -> R.drawable.ic_calendar
 }
 @Composable
-private fun EmptyState(onAddTask: () -> Unit) {
+private fun EmptyState() {
     Column(
         modifier = Modifier
             .fillMaxSize()
