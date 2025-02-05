@@ -9,19 +9,18 @@ import com.elena.autoplanner.data.repository.TaskRepositoryImpl
 import io.mockk.coEvery
 import io.mockk.mockk
 
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 
 import com.elena.autoplanner.data.local.entities.*
 import com.elena.autoplanner.domain.models.DayOfWeek
+import com.elena.autoplanner.domain.models.FrequencyType
 import com.elena.autoplanner.domain.models.IntervalUnit
 import java.time.LocalDateTime
-
-
 
 class TaskRepositoryImplTest {
 
@@ -32,7 +31,6 @@ class TaskRepositoryImplTest {
 
     private lateinit var repository: TaskRepositoryImpl
 
-    // Dispatcher de prueba para ejecutar en un entorno controlado
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
@@ -50,14 +48,12 @@ class TaskRepositoryImplTest {
         )
     }
 
-    /** ----------------------------- GET TASKS TESTS  -----------------------------------------**/
+    /** ---------------------------- PRUEBAS DE GETTASKS ---------------------------- **/
 
     @Test
     fun `getTasks returns empty list when no tasks are available`() = runTest(testDispatcher) {
-        // Configuración: el DAO retorna una lista vacía
         coEvery { taskDao.getAllTasks() } returns flowOf(emptyList())
 
-        // Ejecución y aserción utilizando Turbine
         repository.getTasks().test {
             val tasks = awaitItem()
             assertEquals(0, tasks.size)
@@ -66,85 +62,110 @@ class TaskRepositoryImplTest {
     }
 
     @Test
-    fun `getTasks returns list of tasks with associated entities`() = runTest(testDispatcher) {
-        // Se crea un taskEntity simulado, suponiendo que el método toDomain se encarga de mapear el DAO a Task
-        val taskEntity = /* Instanciar o simular un taskEntity con identificador 1 */
-        // Se recomienda crear un objeto de tipo TaskEntity o utilizar un stub adecuado
-            // Aquí se usa una función ficticia para representar dicha creación:
-            createFakeTaskEntity(id = 1)
+    fun `getTasks returns list with single task`() = runTest(testDispatcher) {
+        val taskEntity = createFakeTaskEntity(id = 1)
 
-        // Se simula que el DAO devuelve un flujo con la lista que contiene el taskEntity
         coEvery { taskDao.getAllTasks() } returns flowOf(listOf(taskEntity))
+        coEvery { reminderDao.getRemindersForTask(1) } returns flowOf(emptyList())
+        coEvery { repeatConfigDao.getRepeatConfigsForTask(1) } returns flowOf(emptyList())
+        coEvery { subtaskDao.getSubtasksForTask(1) } returns flowOf(emptyList())
 
-        // Se simulan los valores de las demás entidades relacionadas: reminders, repeats y subtasks
-        coEvery { reminderDao.getRemindersForTask(1) } returns flowOf(listOf(createFakeReminder( taskId = 1)))
-        coEvery { repeatConfigDao.getRepeatConfigsForTask(1) } returns flowOf(listOf(createFakeRepeatConfig( taskId = 1)))
-        coEvery { subtaskDao.getSubtasksForTask(1) } returns flowOf(listOf(createFakeSubtask( taskId = 1)))
-
-        // Ejecución de la prueba del Flow
         repository.getTasks().test {
             val tasks = awaitItem()
-            // Se asume que la función toDomain de taskEntity genera un objeto Task con los datos proporcionados
             assertEquals(1, tasks.size)
-            val task = tasks.first()
-            // Realizar aserciones sobre el objeto Task
-            // Por ejemplo, verificar que las listas de entidades asociadas se han mapeado correctamente
-            assertEquals(1, task.subtasks.size)
-            // Se pueden agregar más aserciones según el mapeo esperado
+            assertEquals(1, tasks.first().id)
             cancelAndConsumeRemainingEvents()
         }
     }
 
+    @Test
+    fun `getTasks returns multiple tasks`() = runTest(testDispatcher) {
+        val task1 = createFakeTaskEntity(id = 1)
+        val task2 = createFakeTaskEntity(id = 2)
 
+        coEvery { taskDao.getAllTasks() } returns flowOf(listOf(task1, task2))
+        coEvery { reminderDao.getRemindersForTask(any()) } returns flowOf(emptyList())
+        coEvery { repeatConfigDao.getRepeatConfigsForTask(any()) } returns flowOf(emptyList())
+        coEvery { subtaskDao.getSubtasksForTask(any()) } returns flowOf(emptyList())
 
-
-    private fun createFakeTaskEntity(id: Int): TaskEntity {
-        return TaskEntity(
-            id = id,
-            name = "Tarea $id",
-            isCompleted = false,
-            isExpired = false,
-            priority = "MEDIUM",
-            startDateTime = LocalDateTime.now(),
-            startDayPeriod = "MORNING",
-            endDateTime = LocalDateTime.now().plusHours(2),
-            endDayPeriod = "EVENING",
-            durationMinutes = 120
-        )
+        repository.getTasks().test {
+            val tasks = awaitItem()
+            assertEquals(2, tasks.size)
+            assertTrue(tasks.any { it.id == 1 })
+            assertTrue(tasks.any { it.id == 2 })
+            cancelAndConsumeRemainingEvents()
+        }
     }
 
+    @Test
+    fun `getTasks returns tasks with missing entities`() = runTest(testDispatcher) {
+        val taskEntity = createFakeTaskEntity(id = 3)
 
-    private fun createFakeReminder(taskId: Int): ReminderEntity {
-        return ReminderEntity(
-            id = taskId,
-            taskId = taskId,
-            mode = "PRESET_OFFSET",
-            offsetMinutes = 15,
-            exactDateTime = null
-        )
+        coEvery { taskDao.getAllTasks() } returns flowOf(listOf(taskEntity))
+        coEvery { reminderDao.getRemindersForTask(3) } returns flowOf(emptyList())
+        coEvery { repeatConfigDao.getRepeatConfigsForTask(3) } returns flowOf(emptyList())
+        coEvery { subtaskDao.getSubtasksForTask(3) } returns flowOf(emptyList())
+
+        repository.getTasks().test {
+            val tasks = awaitItem()
+            val task = tasks.first()
+            assertNull(task.reminderPlan)
+            assertNull(task.repeatPlan)
+            assertTrue(task.subtasks.isEmpty())
+            cancelAndConsumeRemainingEvents()
+        }
     }
 
+    /** ---------------------------- PRUEBAS DE GETTASK ---------------------------- **/
 
-    private fun createFakeRepeatConfig(taskId: Int): RepeatConfigEntity {
-        return RepeatConfigEntity(
-            id = taskId,
-            taskId = taskId,
-            frequencyType = "WEEKLY",
-            interval = 1,
-            intervalUnit = IntervalUnit.WEEK,
-            selectedDays = setOf(DayOfWeek.MON, DayOfWeek.WED)
-        )
+    @Test
+    fun `getTask returns null when task does not exist`() = runTest(testDispatcher) {
+        coEvery { taskDao.getTask(99) } returns null
+
+        val result = repository.getTask(99)
+        assertNull(result)
     }
 
+    @Test
+    fun `getTask returns task with all related entities`() = runTest(testDispatcher) {
+        val taskEntity = createFakeTaskEntity(id = 1)
+        val reminder = createFakeReminder(taskId = 1)
+        val repeatConfig = createFakeRepeatConfig(taskId = 1)
+        val subtask = createFakeSubtask(taskId = 1)
 
-    private fun createFakeSubtask(taskId: Int): SubtaskEntity {
-        return SubtaskEntity(
-            id = taskId,
-            parentTaskId = taskId,
-            name = "Subtarea para la tarea $taskId",
-            isCompleted = false,
-            estimatedDurationInMinutes = 30
-        )
+        coEvery { taskDao.getTask(1) } returns taskEntity
+        coEvery { reminderDao.getRemindersForTask(1) } returns flowOf(listOf(reminder))
+        coEvery { repeatConfigDao.getRepeatConfigsForTask(1) } returns flowOf(listOf(repeatConfig))
+        coEvery { subtaskDao.getSubtasksForTask(1) } returns flowOf(listOf(subtask))
+
+        val task = repository.getTask(1)
+        assertNotNull(task)
+        assertEquals(1, task?.id)
+        assertNotNull(task?.reminderPlan)
+        assertNotNull(task?.repeatPlan)
+        assertEquals(1, task?.subtasks?.size)
     }
 
+    @Test
+    fun `getTask returns task with no related entities`() = runTest(testDispatcher) {
+        val taskEntity = createFakeTaskEntity(id = 2)
+
+        coEvery { taskDao.getTask(2) } returns taskEntity
+        coEvery { reminderDao.getRemindersForTask(2) } returns flowOf(emptyList())
+        coEvery { repeatConfigDao.getRepeatConfigsForTask(2) } returns flowOf(emptyList())
+        coEvery { subtaskDao.getSubtasksForTask(2) } returns flowOf(emptyList())
+
+        val task = repository.getTask(2)
+        assertNotNull(task)
+        assertNull(task?.reminderPlan)
+        assertNull(task?.repeatPlan)
+        assertTrue(task?.subtasks?.isEmpty() == true)
+    }
+
+    /** ---------------------------- FUNCIONES AUXILIARES ---------------------------- **/
+
+    private fun createFakeTaskEntity(id: Int) = TaskEntity(id, "Tarea $id", false, false, "MEDIUM", LocalDateTime.now(), "MORNING", LocalDateTime.now().plusHours(2), "EVENING", 120)
+    private fun createFakeReminder(taskId: Int) = ReminderEntity(taskId * 10, taskId, "PRESET_OFFSET", 15, null)
+    private fun createFakeRepeatConfig(taskId: Int) = RepeatConfigEntity(taskId * 10 + 1, taskId, "WEEKLY", 1, IntervalUnit.WEEK, setOf(DayOfWeek.MON, DayOfWeek.WED))
+    private fun createFakeSubtask(taskId: Int) = SubtaskEntity(taskId * 10 + 2, taskId, "Subtarea $taskId", false, 30)
 }
