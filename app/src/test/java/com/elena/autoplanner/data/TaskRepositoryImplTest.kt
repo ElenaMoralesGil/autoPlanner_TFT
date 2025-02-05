@@ -17,9 +17,12 @@ import org.junit.Before
 import org.junit.Test
 
 import com.elena.autoplanner.data.local.entities.*
+import com.elena.autoplanner.data.mappers.toDomain
 import com.elena.autoplanner.domain.models.DayOfWeek
-import com.elena.autoplanner.domain.models.FrequencyType
 import com.elena.autoplanner.domain.models.IntervalUnit
+import io.mockk.Runs
+import io.mockk.coVerify
+import io.mockk.just
 import java.time.LocalDateTime
 
 class TaskRepositoryImplTest {
@@ -162,10 +165,157 @@ class TaskRepositoryImplTest {
         assertTrue(task?.subtasks?.isEmpty() == true)
     }
 
+    /** ---------------------------- PRUEBAS DE SAVETASK ---------------------------- **/
+
+    @Test
+    fun `saveTask inserts new task when ID is zero`() = runTest(testDispatcher) {
+
+        val taskEntity = createFakeTaskEntity(id = 0)
+        val domainTask = taskEntity.toDomain(
+            reminders = listOf(createFakeReminder(taskEntity.id)),
+            repeatConfigs = listOf(createFakeRepeatConfig(taskEntity.id)),
+            subtasks = listOf(createFakeSubtask(taskEntity.id))
+        )
+
+        coEvery { taskDao.insertTask(any()) } returns 1
+        coEvery { reminderDao.insertReminder(any()) } just Runs
+        coEvery { repeatConfigDao.insertRepeatConfig(any()) } just Runs
+        coEvery { subtaskDao.insertSubtask(any()) } just Runs
+
+
+        repository.saveTask(domainTask)
+
+        coVerify{ taskDao.insertTask(any()) }
+        coVerify { reminderDao.insertReminder(match {
+            it.taskId == 1
+        }) }
+        coVerify { repeatConfigDao.insertRepeatConfig(match {
+            it.taskId == 1
+        }) }
+        coVerify { subtaskDao.insertSubtask(match {
+            it.parentTaskId == 1
+        }) }
+    }
+
+    @Test
+    fun `saveTask updates existing task when ID is not zero`() = runTest(testDispatcher) {
+
+        val taskEntity = createFakeTaskEntity(id = 1)
+
+        val domainTask = taskEntity.toDomain(
+            reminders = listOf(createFakeReminder(taskEntity.id)),
+            repeatConfigs = listOf(createFakeRepeatConfig(taskEntity.id)),
+            subtasks = listOf(createFakeSubtask(taskEntity.id))
+        )
+
+        coEvery { taskDao.updateTask(any()) } just Runs
+        coEvery { reminderDao.deleteRemindersForTask(1) } just Runs
+        coEvery { reminderDao.insertReminder(any()) } just Runs
+        coEvery { repeatConfigDao.deleteRepeatConfigsForTask(1) } just Runs
+        coEvery { repeatConfigDao.insertRepeatConfig(any()) } just Runs
+        coEvery { subtaskDao.deleteSubtasksForTask(1) } just Runs
+        coEvery { subtaskDao.insertSubtask(any()) } just Runs
+
+
+        repository.saveTask(domainTask)
+
+        coVerify { taskDao.updateTask(any()) }
+        coVerify { reminderDao.deleteRemindersForTask(1) }
+        coVerify { reminderDao.insertReminder(any()) }
+        coVerify { repeatConfigDao.deleteRepeatConfigsForTask(1) }
+        coVerify { repeatConfigDao.insertRepeatConfig(any()) }
+        coVerify { subtaskDao.deleteSubtasksForTask(1) }
+        coVerify { subtaskDao.insertSubtask(any()) }
+    }
+
+    @Test
+    fun `saveTask handles task without related entities`() = runTest(testDispatcher) {
+
+        val taskEntity = createFakeTaskEntity(id = 0)
+
+        val domainTask = taskEntity.toDomain(
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
+        )
+
+        coEvery { taskDao.insertTask(any()) } returns 1L
+
+        repository.saveTask(domainTask)
+
+
+        coVerify { taskDao.insertTask(any()) }
+        coVerify(exactly = 0) { reminderDao.insertReminder(any()) }
+        coVerify(exactly = 0) { repeatConfigDao.insertRepeatConfig(any()) }
+        coVerify(exactly = 0) { subtaskDao.insertSubtask(any()) }
+    }
+
+    @Test(expected = Exception::class)
+    fun `saveTask handles insert failure`() = runTest(testDispatcher) {
+        // Se crea una entidad de tarea nueva (ID = 0)
+        val taskEntity = createFakeTaskEntity(id = 0)
+        // Conversión a dominio con listas vacías
+        val domainTask = taskEntity.toDomain(
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
+        )
+        // Se simula que la inserción falla lanzando una excepción
+        coEvery { taskDao.insertTask(any()) } throws Exception("DB Insert Error")
+
+        // Se espera que se lance la excepción al intentar guardar la tarea
+        repository.saveTask(domainTask)
+    }
+
+
     /** ---------------------------- FUNCIONES AUXILIARES ---------------------------- **/
 
-    private fun createFakeTaskEntity(id: Int) = TaskEntity(id, "Tarea $id", false, false, "MEDIUM", LocalDateTime.now(), "MORNING", LocalDateTime.now().plusHours(2), "EVENING", 120)
-    private fun createFakeReminder(taskId: Int) = ReminderEntity(taskId * 10, taskId, "PRESET_OFFSET", 15, null)
-    private fun createFakeRepeatConfig(taskId: Int) = RepeatConfigEntity(taskId * 10 + 1, taskId, "WEEKLY", 1, IntervalUnit.WEEK, setOf(DayOfWeek.MON, DayOfWeek.WED))
-    private fun createFakeSubtask(taskId: Int) = SubtaskEntity(taskId * 10 + 2, taskId, "Subtarea $taskId", false, 30)
+    private fun createFakeTaskEntity(
+        id: Int,
+        name: String = "Tarea $id",
+        isCompleted: Boolean = false,
+        isExpired: Boolean = false,
+        priority: String = "MEDIUM",
+        startDateTime: LocalDateTime? = LocalDateTime.now(),
+        startDayPeriod: String? = "MORNING",
+        endDateTime: LocalDateTime? = LocalDateTime.now().plusHours(2),
+        endDayPeriod: String? = "EVENING",
+        durationMinutes: Int? = 120
+    ) = TaskEntity(
+        id = id,
+        name = name,
+        isCompleted = isCompleted,
+        isExpired = isExpired,
+        priority = priority,
+        startDateTime = startDateTime,
+        startDayPeriod = startDayPeriod,
+        endDateTime = endDateTime,
+        endDayPeriod = endDayPeriod,
+        durationMinutes = durationMinutes
+    )
+
+    private fun createFakeReminder(taskId: Int) = ReminderEntity(
+        id = taskId * 10,
+        taskId = taskId,
+        mode = "PRESET_OFFSET",
+        offsetMinutes = 15,
+        exactDateTime = null
+    )
+
+    private fun createFakeRepeatConfig(taskId: Int) = RepeatConfigEntity(
+        id = taskId * 10 + 1,
+        taskId = taskId,
+        frequencyType = "WEEKLY",
+        interval = 1,
+        intervalUnit = IntervalUnit.WEEK,
+        selectedDays = setOf(DayOfWeek.MON, DayOfWeek.WED)
+    )
+
+    private fun createFakeSubtask(taskId: Int) = SubtaskEntity(
+        id = taskId * 10 + 2,
+        parentTaskId = taskId,
+        name = "Subtarea $taskId",
+        isCompleted = false,
+        estimatedDurationInMinutes = 30
+    )
 }
