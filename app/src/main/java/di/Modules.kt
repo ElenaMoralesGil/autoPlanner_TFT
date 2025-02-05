@@ -10,10 +10,9 @@ import com.elena.autoplanner.data.local.dao.TaskDao
 import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
-
 import com.elena.autoplanner.data.local.TaskDatabase
 import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.viewmodel.dsl.viewModel
+
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -24,6 +23,7 @@ import com.elena.autoplanner.domain.usecases.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.UpdateTaskUseCase
+import org.koin.core.module.dsl.viewModel
 
 
 val appModule = module {

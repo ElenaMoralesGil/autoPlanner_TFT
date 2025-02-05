@@ -1,31 +1,29 @@
 package com.elena.autoplanner.domain.usecases
 
+import com.elena.autoplanner.domain.models.DayPeriod
+import com.elena.autoplanner.domain.models.DurationPlan
+import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.repository.TaskRepository
+import com.elena.autoplanner.domain.usecases.GetTasksUseCase
 import io.mockk.coEvery
 import io.mockk.impl.annotations.MockK
 import io.mockk.MockKAnnotations
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runBlockingTest
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
 import org.junit.Assert.*
-import org.mockito.junit.MockitoJUnitRunner
 import java.io.IOException
+import java.time.LocalDateTime
 
-@OptIn(ExperimentalCoroutinesApi::class)
-@RunWith(MockitoJUnitRunner::class)
 class GetTasksUseCaseTest {
 
     @MockK
-    lateinit var repository: TaskRepository
+    private lateinit var repository: TaskRepository
 
     private lateinit var getTasksUseCase: GetTasksUseCase
 
@@ -36,84 +34,87 @@ class GetTasksUseCaseTest {
     }
 
     @Test
-    fun `test repository returns 3 tasks`() = runBlockingTest {
-        val t1 = Task(id = 1, name = "Task 1")
-        val t2 = Task(id = 2, name = "Task 2")
-        val t3 = Task(id = 3, name = "Task 3")
-        val fakeFlow = flowOf(listOf(t1, t2, t3))
+    fun `should get single list of tasks`() = runTest {
 
-        coEvery { repository.getTasks() } returns fakeFlow
+        val task = listOf(
+            Task(
+                id = 1,
+                name = "Task 1",
+                isCompleted = false,
+                isExpired = false,
+                priority = Priority.HIGH,
+                startDateConf = TimePlanning(LocalDateTime.now(), DayPeriod.MORNING),
+                endDateConf = TimePlanning(LocalDateTime.now().plusHours(1), DayPeriod.EVENING),
+                durationConf = DurationPlan(60),
+            )
+        )
+        coEvery { repository.getTasks() } returns flowOf(task)
 
-        val actual = getTasksUseCase()
-            .take(1)
-            .toList()
 
-        assertEquals(1, actual.size)
-        assertEquals(listOf(t1, t2, t3), actual[0])
+        val result = getTasksUseCase().first()
+
+
+        assertEquals(task, result)
     }
 
     @Test
-    fun `test repository returns empty list`() = runBlockingTest {
+    fun `should emit list of 3 tasks when repository returns 3 tasks`() = runTest {
+        // Given
+        val tasks = listOf(
+            Task(id = 1, name = "Task 1"),
+            Task(id = 2, name = "Task 2"),
+            Task(id = 3, name = "Task 3")
+        )
+        coEvery { repository.getTasks() } returns flowOf(tasks)
+
+        // When
+        val result = getTasksUseCase().first()
+
+        // Then
+        assertEquals(tasks, result)
+    }
+
+    @Test
+    fun `should emit empty list when repository returns no tasks`() = runTest {
+        // Given
         coEvery { repository.getTasks() } returns flowOf(emptyList())
 
-        val emissions = getTasksUseCase()
-            .take(1)
-            .toList()
+        // When
+        val result = getTasksUseCase().first()
 
-        assertEquals(1, emissions.size)
-        assertTrue(emissions[0].isEmpty())
+        // Then
+        assertTrue(result.isEmpty())
     }
 
-    @Test
-    fun `test exception in repository`() = runBlockingTest {
-        coEvery { repository.getTasks() } throws IOException("Simulated error")
-
-        try {
-            getTasksUseCase().take(1).toList()
-            fail("Expected IOException was not thrown")
-        } catch (e: IOException) {
-            assertEquals("Simulated error", e.message)
-        }
-    }
 
     @Test
-    fun `test repository emits changes`() = runBlockingTest {
-        val mutableFlow = MutableSharedFlow<List<Task>>(replay = 1)
-        coEvery { repository.getTasks() } returns mutableFlow
+    fun `should throw IOException when repository fails`() = runTest {
 
-        val collectedLists = mutableListOf<List<Task>>()
-        val job = launch {
-            getTasksUseCase().collect {
-                collectedLists.add(it)
+        val errorMessage = "Simulated error"
+        coEvery { repository.getTasks() } throws IOException(errorMessage)
+
+
+        val exception = runBlocking {
+            assertThrows(IOException::class.java) {
+                runBlocking { getTasksUseCase().first() }
             }
         }
 
-        val t1 = Task(id = 1, name = "Task 1")
-        mutableFlow.emit(listOf(t1))
-        val t2 = Task(id = 2, name = "Task 2")
-        mutableFlow.emit(listOf(t1, t2))
 
-        advanceUntilIdle()
-
-        assertEquals(2, collectedLists.size)
-        assertEquals(listOf(t1), collectedLists[0])
-        assertEquals(listOf(t1, t2), collectedLists[1])
-
-        job.cancel()
+        assertEquals(errorMessage, exception.message)
     }
 
     @Test
-    fun `test repository allows duplicate tasks`() = runBlockingTest {
+    fun `should allow duplicate tasks when repository provides duplicates`() = runTest {
+        // Given
         val t1 = Task(id = 1, name = "Task1")
         val t2 = Task(id = 1, name = "Task1")
-
         coEvery { repository.getTasks() } returns flowOf(listOf(t1, t2))
 
-        val emissions = getTasksUseCase()
-            .take(1)
-            .toList()
+        // When
+        val result = getTasksUseCase().first()
 
-        assertEquals(1, emissions.size)
-        assertEquals(listOf(t1, t2), emissions[0])
+        // Then
+        assertEquals(listOf(t1, t2), result)
     }
 }

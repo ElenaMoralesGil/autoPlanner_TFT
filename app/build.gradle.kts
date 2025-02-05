@@ -79,7 +79,8 @@ dependencies {
     implementation(libs.androidx.material3.android)
 
     ksp(libs.androidx.room.compiler)
-
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test.v171)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.inline)
