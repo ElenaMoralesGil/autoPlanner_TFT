@@ -13,7 +13,9 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 
-
+class TaskNotFoundException(message: String) : Exception(message)
+class InvalidTaskDataException(message: String) : Exception(message)
+class DatabaseException(message: String) : Exception(message)
 
 class TaskRepositoryImpl(
     private val taskDao: TaskDao,
@@ -60,41 +62,43 @@ class TaskRepositoryImpl(
     }
 
     override suspend fun saveTask(task: Task) {
+        // Se asume que la validación de datos se realiza en updateTask,
+        // por lo que saveTask asume que la tarea contiene datos válidos.
         val isNew = (task.id == 0)
 
         if (isNew) {
-            // Insert the main TaskEntity
+            // Insertar la entidad principal y obtener el ID recién generado.
             val newTaskId = taskDao.insertTask(task.toTaskEntity()).toInt()
 
-            // Insert the single reminder if present
+            // Insertar la entidad de recordatorio si existe.
             task.reminderPlan?.let { reminderPlan ->
                 reminderDao.insertReminder(reminderPlan.toEntity(newTaskId))
             }
-            // Insert the single repeat config if present
-            task.repeatPlan?.let { rep ->
-                repeatConfigDao.insertRepeatConfig(rep.toEntity(newTaskId))
+            // Insertar la entidad de repetición si existe.
+            task.repeatPlan?.let { repeatPlan ->
+                repeatConfigDao.insertRepeatConfig(repeatPlan.toEntity(newTaskId))
             }
-            // Insert subtasks
-            task.subtasks.forEach { st ->
-                subtaskDao.insertSubtask(st.toEntity(newTaskId))
+            // Insertar cada una de las subtareas.
+            task.subtasks.forEach { subtask ->
+                subtaskDao.insertSubtask(subtask.toEntity(newTaskId))
             }
         } else {
-            // Update the main TaskEntity
+            // Actualizar la entidad principal.
             taskDao.updateTask(task.toTaskEntity())
 
-            // Delete old reminder(s), insert new if present
+            // Eliminar los recordatorios antiguos y, si existe un nuevo, insertarlo.
             reminderDao.deleteRemindersForTask(task.id)
             task.reminderPlan?.let {
                 reminderDao.insertReminder(it.toEntity(task.id))
             }
 
-            // Delete old repeat config, insert new if present
+            // Eliminar la configuración de repetición antigua y, si existe una nueva, insertarla.
             repeatConfigDao.deleteRepeatConfigsForTask(task.id)
             task.repeatPlan?.let {
                 repeatConfigDao.insertRepeatConfig(it.toEntity(task.id))
             }
 
-            // Delete old subtasks, insert new
+            // Eliminar las subtareas antiguas y volver a insertar las nuevas.
             subtaskDao.deleteSubtasksForTask(task.id)
             task.subtasks.forEach {
                 subtaskDao.insertSubtask(it.toEntity(task.id))
@@ -102,9 +106,28 @@ class TaskRepositoryImpl(
         }
     }
 
+
+
+    /**
+     * Actualiza una tarea existente.
+     * Se verifica que la tarea no sea nula y que contenga datos válidos.
+     * En caso de actualizar una tarea ya existente (ID distinto de cero), se comprueba su existencia en la base de datos.
+     *
+     * @throws IllegalArgumentException si la tarea es nula.
+     * @throws InvalidTaskDataException si los datos de la tarea son inválidos (por ejemplo, título vacío).
+     * @throws TaskNotFoundException si se intenta actualizar una tarea que no existe.
+     */
     override suspend fun updateTask(task: Task) {
+
+        if (task.name.isBlank()) {
+            throw InvalidTaskDataException("Invalid task data")
+        }
+        if (task.id != 0) {
+            getTask(task.id) ?: throw TaskNotFoundException("Task not found")
+        }
         saveTask(task)
     }
+
 
     override suspend fun deleteTask(task: Task) {
         taskDao.deleteTask(task.toTaskEntity())

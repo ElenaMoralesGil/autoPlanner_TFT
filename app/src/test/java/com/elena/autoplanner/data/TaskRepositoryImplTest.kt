@@ -15,9 +15,11 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
-
 import com.elena.autoplanner.data.local.entities.*
 import com.elena.autoplanner.data.mappers.toDomain
+import com.elena.autoplanner.data.repository.DatabaseException
+import com.elena.autoplanner.data.repository.InvalidTaskDataException
+import com.elena.autoplanner.data.repository.TaskNotFoundException
 import com.elena.autoplanner.domain.models.DayOfWeek
 import com.elena.autoplanner.domain.models.IntervalUnit
 import io.mockk.Runs
@@ -38,10 +40,10 @@ class TaskRepositoryImplTest {
 
     @Before
     fun setUp() {
-        taskDao = mockk(relaxed = true)
-        reminderDao = mockk(relaxed = true)
-        repeatConfigDao = mockk(relaxed = true)
-        subtaskDao = mockk(relaxed = true)
+        taskDao = mockk()
+        reminderDao = mockk()
+        repeatConfigDao = mockk()
+        subtaskDao = mockk()
 
         repository = TaskRepositoryImpl(
             taskDao = taskDao,
@@ -169,7 +171,6 @@ class TaskRepositoryImplTest {
 
     @Test
     fun `saveTask inserts new task when ID is zero`() = runTest(testDispatcher) {
-
         val taskEntity = createFakeTaskEntity(id = 0)
         val domainTask = taskEntity.toDomain(
             reminders = listOf(createFakeReminder(taskEntity.id)),
@@ -177,24 +178,17 @@ class TaskRepositoryImplTest {
             subtasks = listOf(createFakeSubtask(taskEntity.id))
         )
 
-        coEvery { taskDao.insertTask(any()) } returns 1
+        coEvery { taskDao.insertTask(any()) } returns 1L
         coEvery { reminderDao.insertReminder(any()) } just Runs
         coEvery { repeatConfigDao.insertRepeatConfig(any()) } just Runs
         coEvery { subtaskDao.insertSubtask(any()) } just Runs
 
-
         repository.saveTask(domainTask)
 
-        coVerify{ taskDao.insertTask(any()) }
-        coVerify { reminderDao.insertReminder(match {
-            it.taskId == 1
-        }) }
-        coVerify { repeatConfigDao.insertRepeatConfig(match {
-            it.taskId == 1
-        }) }
-        coVerify { subtaskDao.insertSubtask(match {
-            it.parentTaskId == 1
-        }) }
+        coVerify { taskDao.insertTask(any()) }
+        coVerify { reminderDao.insertReminder(match { it.taskId == 1 }) }
+        coVerify { repeatConfigDao.insertRepeatConfig(match { it.taskId == 1 }) }
+        coVerify { subtaskDao.insertSubtask(match { it.parentTaskId == 1 }) }
     }
 
     @Test
@@ -266,6 +260,171 @@ class TaskRepositoryImplTest {
         // Se espera que se lance la excepción al intentar guardar la tarea
         repository.saveTask(domainTask)
     }
+
+    /** ---------------------------- PRUEBAS DE UPDATETASK ---------------------------- **/
+
+
+
+    @Test
+    fun `updateTask handles non-existing task`() = runTest {
+        val domainTask = createFakeTaskEntity(id = 999).toDomain(
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
+        )
+
+        coEvery { taskDao.getTask(999) } returns null
+
+        var exceptionThrown = false
+        try {
+            repository.updateTask(domainTask)
+        } catch (e: TaskNotFoundException) {
+            exceptionThrown = true
+            assertEquals("Task not found", e.message)
+        }
+
+        assertTrue("Se esperaba TaskNotFoundException", exceptionThrown)
+    }
+
+
+    @Test
+    fun `updateTask updates existing task correctly`() = runTest {
+        val taskEntity = createFakeTaskEntity(id = 1)
+        val domainTask = taskEntity.toDomain(
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
+        )
+
+        // Mockear todas las dependencias necesarias
+        coEvery { taskDao.getTask(1) } returns taskEntity
+        coEvery { reminderDao.getRemindersForTask(1) } returns flowOf(emptyList())
+        coEvery { repeatConfigDao.getRepeatConfigsForTask(1) } returns flowOf(emptyList())
+        coEvery { subtaskDao.getSubtasksForTask(1) } returns flowOf(emptyList())
+
+        // Mockear operaciones de guardado
+        coEvery { taskDao.updateTask(any()) } just Runs
+        coEvery { reminderDao.deleteRemindersForTask(1) } just Runs
+        coEvery { repeatConfigDao.deleteRepeatConfigsForTask(1) } just Runs
+        coEvery { subtaskDao.deleteSubtasksForTask(1) } just Runs
+
+        repository.updateTask(domainTask)
+
+        coVerify {
+            taskDao.updateTask(match { it.id == 1 })
+            reminderDao.deleteRemindersForTask(1)
+            repeatConfigDao.deleteRepeatConfigsForTask(1)
+            subtaskDao.deleteSubtasksForTask(1)
+        }
+    }
+
+    @Test
+    fun `updateTask throws exception for invalid task data`() = runTest {
+        val domainTask = createFakeTaskEntity(id = 1).toDomain(
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
+        ).copy(name = "")
+
+
+        var exceptionThrown = false
+        try {
+            repository.updateTask(domainTask)
+        } catch (e: InvalidTaskDataException) {
+            exceptionThrown = true
+            assertEquals("Invalid task data", e.message)
+        }
+
+        assertTrue("Se esperaba InvalidTaskDataException", exceptionThrown)
+    }
+
+
+    /** ---------------------------- PRUEBAS DE DELETETASK ---------------------------- **/
+    @Test
+    fun `deleteTask handles non-existent task`() = runTest {
+        val domainTask = createFakeTaskEntity(id = 999).toDomain(
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
+        )
+
+        // Mockear el DAO para lanzar excepción
+        coEvery { taskDao.deleteTask(any()) } throws TaskNotFoundException("Task not found")
+
+        var exceptionThrown = false
+        try {
+            repository.deleteTask(domainTask)
+        } catch (e: TaskNotFoundException) {
+            exceptionThrown = true
+            assertEquals("Task not found", e.message)
+        }
+
+        assertTrue("Se esperaba TaskNotFoundException", exceptionThrown)
+    }
+
+    @Test
+    fun `deleteTask ignores deletion of already deleted task`() = runTest {
+        // Create a task and simulate its deletion
+        val taskEntity = createFakeTaskEntity(id = 1)
+        val domainTask = createFakeTaskEntity(id = 1).toDomain(
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
+        )
+
+        // Mock that the task is already deleted
+        coEvery { taskDao.deleteTask(any()) } just Runs
+
+        // Call deleteTask on an already deleted task
+        repository.deleteTask(domainTask)
+
+        // Verify that deleteTask was called once, even if the task doesn't exist anymore
+        coVerify { taskDao.deleteTask(taskEntity) }
+    }
+
+
+    @Test
+    fun `deleteTask deletes existing task correctly`() = runTest {
+        val taskEntity = createFakeTaskEntity(id = 1)
+        val domainTask = taskEntity.toDomain(
+            reminders = listOf(createFakeReminder(taskEntity.id)),
+            repeatConfigs = listOf(createFakeRepeatConfig(taskEntity.id)),
+            subtasks = listOf(createFakeSubtask(taskEntity.id))
+        )
+
+        // Mock the deletion of the task
+        coEvery { taskDao.deleteTask(any()) } just Runs
+
+        // Call deleteTask with the domain task
+        repository.deleteTask(domainTask)
+
+        // Verify that deleteTask was called with the correct task entity
+        coVerify { taskDao.deleteTask(taskEntity) }
+    }
+
+    @Test
+    fun `deleteTask throws exception on database failure`() = runTest {
+        val domainTask = createFakeTaskEntity(id = 1).toDomain(
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
+        )
+
+        // Mockear error de base de datos
+        coEvery { taskDao.deleteTask(any()) } throws DatabaseException("Database error")
+
+        var exceptionThrown = false
+        try {
+            repository.deleteTask(domainTask)
+        } catch (e: DatabaseException) {
+            exceptionThrown = true
+            assertEquals("Database error", e.message)
+        }
+
+        assertTrue("Se esperaba DatabaseException", exceptionThrown)
+    }
+
+
 
 
     /** ---------------------------- FUNCIONES AUXILIARES ---------------------------- **/
