@@ -1,6 +1,7 @@
 package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.usecases.*
 import com.elena.autoplanner.presentation.intents.TaskIntent
@@ -66,6 +67,11 @@ class TaskViewModel(
     private fun createTask(newTaskData: NewTaskData) {
         viewModelScope.launch {
             try {
+                if (newTaskData.name.isBlank()) {
+                    setState { copy(uiState = TaskState.UiState.Error("Task name cannot be empty")) }
+                    return@launch
+                }
+
                 setState { copy(uiState = TaskState.UiState.Loading) }
                 val task = newTaskData.toTask()
                 addTaskUseCase(task)
@@ -81,6 +87,7 @@ class TaskViewModel(
             }
         }
     }
+
 
     private fun updateTask(task: Task) {
         viewModelScope.launch {
@@ -140,6 +147,11 @@ class TaskViewModel(
     private fun addSubtask(task: Int, subtaskName: String) {
         viewModelScope.launch {
             try {
+                if (subtaskName.isBlank()) {
+                    setState { copy(uiState = TaskState.UiState.Error(R.string.taskError.toString())) }
+                    return@launch
+                }
+
                 setState { copy(uiState = TaskState.UiState.Loading) }
                 val updatedTask = addSubtaskUseCase(task, subtaskName)
                 setState {

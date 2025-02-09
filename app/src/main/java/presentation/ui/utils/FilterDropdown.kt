@@ -27,7 +27,6 @@ fun FilterDropdown(
         onExpandedChange = { expanded = !expanded }
     ) {
         TextField(
-            // Se utiliza Modifier sin el menú ancla específico
             modifier = Modifier,
             readOnly = true,
             value = currentFilter.displayName,

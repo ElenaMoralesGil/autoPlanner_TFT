@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -38,7 +37,6 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
-
     val state by viewModel.state.collectAsState()
     var showAddEditSheet by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
@@ -60,7 +58,6 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
         },
         floatingActionButton = {
             AddTaskFAB {
-
                 taskToEdit = null
                 showAddEditSheet = true
             }
@@ -76,10 +73,6 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
                     onTaskSelected = { task ->
                         selectedTaskId = task.id
                     },
-                    onAddTask = {
-                        taskToEdit = null
-                        showAddEditSheet = true
-                    }
                 )
             }
         }
@@ -90,7 +83,7 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
             taskId = taskId,
             onDismiss = {
                 selectedTaskId = null
-                        },
+            },
             viewModel = viewModel,
             onSubtaskDeleted = { subtask ->
                 viewModel.sendIntent(TaskIntent.DeleteSubtask(taskId, subtask.id))
@@ -119,11 +112,9 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
             taskToEdit = taskToEdit,
             onClose = {
                 showAddEditSheet = false
-
                 if (taskToEdit != null) {
                     selectedTaskId = taskToEdit?.id
                 }
-
                 taskToEdit = null
             },
             onCreateTask = { newTaskData ->
@@ -166,7 +157,6 @@ private fun ContentContainer(
     innerPadding: PaddingValues,
     onTaskChecked: (Task, Boolean) -> Unit,
     onTaskSelected: (Task) -> Unit,
-    onAddTask: () -> Unit
 ) {
     Column(modifier = Modifier.padding(innerPadding)) {
         when (val uiState = state.uiState) {
@@ -281,7 +271,6 @@ private fun TimeFrameFilterDropdown(
     }
 }
 
-// Extension functions for icon resources
 private fun TaskStatus.iconRes() = when (this) {
     TaskStatus.COMPLETED -> R.drawable.ic_completed
     TaskStatus.UNCOMPLETED -> R.drawable.ic_uncompleted
@@ -346,7 +335,6 @@ private fun TaskCardList(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun TaskCard(
     task: Task,
@@ -368,7 +356,7 @@ private fun TaskCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Indicador de prioridad
+
             Box(
                 modifier = Modifier
                     .size(4.dp, 32.dp)
@@ -383,7 +371,6 @@ private fun TaskCard(
                     )
             )
 
-            // Contenido principal
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -395,7 +382,6 @@ private fun TaskCard(
                     maxLines = 2
                 )
 
-                // Muestra chips de fecha, duración, subtareas, etc.
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -434,7 +420,6 @@ private fun TaskCard(
                 }
             }
 
-            // Checkbox personalizado para completar la tarea
             SquareCheckbox(
                 checked = task.isCompleted,
                 onCheckedChange = onCheckedChange
@@ -483,7 +468,7 @@ fun SquareCheckbox(
             .clickable { onCheckedChange(!checked) }
             .background(Color.Transparent)
     ) {
-        // Borde
+
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -495,7 +480,6 @@ fun SquareCheckbox(
                 )
         )
 
-        // Ícono de check
         if (checked) {
             Icon(
                 Icons.Default.Check,

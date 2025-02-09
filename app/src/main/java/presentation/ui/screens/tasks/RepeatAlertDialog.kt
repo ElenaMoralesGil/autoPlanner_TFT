@@ -137,7 +137,7 @@ private fun RepeatPersonalizedAlertDialog(
 ) {
     var interval by remember { mutableIntStateOf(existing.interval ?: 1) }
     var intervalUnit by remember { mutableStateOf(existing.intervalUnit ?: IntervalUnit.WEEK) }
-    var selectedDays by remember { mutableStateOf(existing.selectedDays) }
+    val selectedDays by remember { mutableStateOf(existing.selectedDays) }
 
     GeneralAlertDialog(
         title = { Text("Custom Repeat") },
@@ -289,9 +289,6 @@ private fun FrequencyChip(
     }
 }
 
-/**
- * Botón estilo "chip" para representar un día de la semana.
- */
 @Composable
 private fun DayChip(
     label: String,

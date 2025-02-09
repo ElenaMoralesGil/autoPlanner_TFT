@@ -35,10 +35,10 @@ fun AddEditTaskSheet(
     taskToEdit: Task? = null,
     onClose: () -> Unit,
     onCreateTask: (NewTaskData) -> Unit,
-    onUpdateTask: (Task) -> Unit
+    onUpdateTask: (Task) -> Unit,
+    errorMessage: String? = null
 ) {
     val isEditMode = taskToEdit != null
-
 
     var taskName by remember { mutableStateOf(taskToEdit?.name ?: "") }
     var priority by remember { mutableStateOf(taskToEdit?.priority ?: Priority.NONE) }
@@ -47,6 +47,11 @@ fun AddEditTaskSheet(
     var durationConf by remember { mutableStateOf(taskToEdit?.durationConf) }
     var reminderPlan by remember { mutableStateOf(taskToEdit?.reminderPlan) }
     var repeatPlan by remember { mutableStateOf(taskToEdit?.repeatPlan) }
+    var localErrorMessage by remember { mutableStateOf<String?>(null) }
+    var subtasks by remember { mutableStateOf(taskToEdit?.subtasks ?: emptyList()) }
+    var showSubtasksSection by remember { mutableStateOf(false) }
+    var showPriorityDialog by remember { mutableStateOf(false) }
+    var showTimeConfigSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(taskToEdit) {
         taskName = taskToEdit?.name ?: ""
@@ -57,12 +62,6 @@ fun AddEditTaskSheet(
         reminderPlan = taskToEdit?.reminderPlan
         repeatPlan = taskToEdit?.repeatPlan
     }
-    var subtasks by remember { mutableStateOf(taskToEdit?.subtasks ?: emptyList()) }
-    var showSubtasksSection by remember { mutableStateOf(false) }
-
-
-    var showPriorityDialog by remember { mutableStateOf(false) }
-    var showTimeConfigSheet by remember { mutableStateOf(false) }
 
     ModalBottomSheet(onDismissRequest = onClose) {
         Column(
@@ -70,6 +69,13 @@ fun AddEditTaskSheet(
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
         ) {
+            (errorMessage ?: localErrorMessage)?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
 
             Row(
                 modifier = Modifier
@@ -91,34 +97,37 @@ fun AddEditTaskSheet(
 
                 IconButton(
                     onClick = {
-                        if (isEditMode) {
-                            // Actualizar tarea
-                            onUpdateTask(
-                                taskToEdit!!.copy(
-                                    name = taskName,
-                                    priority = priority,
-                                    startDateConf = startDateConf,
-                                    endDateConf = endDateConf,
-                                    durationConf = durationConf,
-                                    reminderPlan = reminderPlan,
-                                    repeatPlan = repeatPlan,
-                                    subtasks = subtasks
-                                )
-                            )
+                        if (taskName.isBlank()) {
+                            localErrorMessage = "Task name cannot be empty"
                         } else {
-                            // Crear tarea
-                            onCreateTask(
-                                NewTaskData(
-                                    name = taskName,
-                                    priority = priority,
-                                    startDateConf = startDateConf,
-                                    endDateConf = endDateConf,
-                                    durationConf = durationConf,
-                                    reminderPlan = reminderPlan,
-                                    repeatPlan = repeatPlan,
-                                    subtasks = subtasks
+                            if (isEditMode) {
+                                onUpdateTask(
+                                    taskToEdit!!.copy(
+                                        name = taskName,
+                                        priority = priority,
+                                        startDateConf = startDateConf,
+                                        endDateConf = endDateConf,
+                                        durationConf = durationConf,
+                                        reminderPlan = reminderPlan,
+                                        repeatPlan = repeatPlan,
+                                        subtasks = subtasks
+                                    )
                                 )
-                            )
+                            } else {
+                                onCreateTask(
+                                    NewTaskData(
+                                        name = taskName,
+                                        priority = priority,
+                                        startDateConf = startDateConf,
+                                        endDateConf = endDateConf,
+                                        durationConf = durationConf,
+                                        reminderPlan = reminderPlan,
+                                        repeatPlan = repeatPlan,
+                                        subtasks = subtasks
+                                    )
+                                )
+                            }
+                            localErrorMessage = null
                         }
                     },
                 ) {
@@ -126,7 +135,6 @@ fun AddEditTaskSheet(
                 }
             }
 
-            // INPUT DEL NOMBRE
             OutlinedTextField(
                 value = taskName,
                 onValueChange = { taskName = it },
@@ -138,7 +146,6 @@ fun AddEditTaskSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // FILA DE BOTONES
             ActionButtonsRow(
                 onTimeClick = { showTimeConfigSheet = true },
                 onPriorityClick = { showPriorityDialog = true },
@@ -148,7 +155,6 @@ fun AddEditTaskSheet(
                 }
             )
 
-            // VISUALIZACIÓN DE CONFIG
             if (hasAnyConfig(startDateConf, endDateConf, durationConf, reminderPlan, repeatPlan, priority)) {
                 Spacer(modifier = Modifier.height(16.dp))
                 TaskConfigDisplay(
@@ -161,7 +167,6 @@ fun AddEditTaskSheet(
                 )
             }
 
-            // SUBTAREAS
             if (showSubtasksSection) {
                 Spacer(modifier = Modifier.height(8.dp))
                 SubtaskSection(
@@ -185,13 +190,13 @@ fun AddEditTaskSheet(
                         subtasks = subtasks.filter { it.id != subtask.id }
                     },
                     showDeleteButton = true,
-                    showAddButton = true
+                    showAddButton = true,
+                    errorMessage = null
                 )
             }
         }
     }
 
-    // PRIORITY DIALOG
     if (showPriorityDialog) {
         PrioritySelectDialog(
             currentPriority = priority,
@@ -203,7 +208,6 @@ fun AddEditTaskSheet(
         )
     }
 
-    // TIME CONFIG SHEET
     if (showTimeConfigSheet) {
         TimeConfigSheet(
             onClose = { showTimeConfigSheet = false },
@@ -464,6 +468,7 @@ fun SubtaskSection(
     onSubtaskDeleted: (Subtask) -> Unit,
     showDeleteButton: Boolean,
     showAddButton: Boolean,
+    errorMessage: String?,
     modifier: Modifier = Modifier
 ) {
 
@@ -474,6 +479,14 @@ fun SubtaskSection(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
+
+        errorMessage?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
 
 
         LazyColumn(
@@ -495,6 +508,9 @@ fun SubtaskSection(
                 )
             }
         }
+
+
+
        if (showAddButton) {
            Row(
                verticalAlignment = Alignment.CenterVertically,
@@ -516,6 +532,13 @@ fun SubtaskSection(
                ) {
                    Icon(Icons.Default.Add, contentDescription = "Add subtask")
                }
+           }
+           if (newSubtaskText.isBlank()) {
+               Text(
+                   text = "Subtask name required",
+                   color = MaterialTheme.colorScheme.error,
+                   modifier = Modifier.padding(start = 16.dp)
+               )
            }
        }
     }

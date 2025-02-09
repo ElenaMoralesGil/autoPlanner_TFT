@@ -43,8 +43,7 @@ fun GeneralAlertDialog(
             }
         },
         confirmButton = {
-            // Botón de confirmación principal (ej: “Ready”)
-            // Aquí mostramos un Button o un TextButton con estilo unificado
+
             Button(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -54,8 +53,7 @@ fun GeneralAlertDialog(
             }
         },
         dismissButton = {
-            // Botón de acción secundaria:
-            // Si no deseas un botón “Dismiss”, lo dejas vacío
+
             if (onNeutral != null) {
                 TextButton(
                     onClick = onNeutral

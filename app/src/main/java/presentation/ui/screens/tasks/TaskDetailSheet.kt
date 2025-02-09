@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.Subtask
+import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -36,7 +37,7 @@ fun TaskDetailSheet(
         onDismissRequest = onDismiss
     ) {
         if (task == null) {
-            // Si no se encontró la tarea, muestra un círculo de carga (o un error).
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -46,7 +47,7 @@ fun TaskDetailSheet(
                 CircularProgressIndicator()
             }
         } else {
-            // La tarea existe; dibuja la UI con sus datos
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -62,7 +63,6 @@ fun TaskDetailSheet(
                     }
                 }
 
-                // Muestra otros datos/config de la tarea
                 TaskConfigDisplay(
                     startDate = task.startDateConf,
                     endDate = task.endDateConf,
@@ -73,14 +73,14 @@ fun TaskDetailSheet(
 
                 )
 
-                // Sección subtareas
                 SubtaskSection(
                     subtasks = task.subtasks,
                     onSubtaskToggled = onSubtaskToggled,
                     onSubtaskAdded = onSubtaskAdded,
                     onSubtaskDeleted = onSubtaskDeleted,
                     showDeleteButton = true,
-                    showAddButton = false
+                    showAddButton = false,
+                    errorMessage = (state?.uiState as? TaskState.UiState.Error)?.message
                 )
 
                 Row(

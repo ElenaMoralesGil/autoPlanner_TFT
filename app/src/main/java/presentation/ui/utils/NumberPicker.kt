@@ -17,10 +17,10 @@ fun NumberPicker(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            // Envuelves el contexto original en tu propio theme
+
             val themedContext = ContextThemeWrapper(context, R.style.MyNumberPickerTheme)
 
-            android.widget.NumberPicker(themedContext).apply {
+          NumberPicker(themedContext).apply {
                 minValue = range.first
                 maxValue = range.last
                 this.value = value

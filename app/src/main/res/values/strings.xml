@@ -18,5 +18,7 @@
     <string name="low_priority">Low Priority</string>
     <string name="save">Save</string>
 
+    // Error messages
+    <string name="taskError"> Task needs a name</string>
 
 </resources>
