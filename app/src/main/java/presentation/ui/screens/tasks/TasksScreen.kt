@@ -38,21 +38,16 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
-    // El estado global del ViewModel (lista de tareas, filtros, etc.)
-    val state by viewModel.state.collectAsState()
 
-    // Controladores de hoja
+    val state by viewModel.state.collectAsState()
     var showAddEditSheet by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
-    // Esta variable conservará la tarea concreta que se va a editar
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
 
-    // Al iniciar la pantalla, cargamos las tareas
     LaunchedEffect(Unit) {
         viewModel.sendIntent(TaskIntent.LoadTasks)
     }
 
-    // Estructura principal de la pantalla (TopBar, FAB, contenido, etc.)
     Scaffold(
         topBar = {
             state?.let {
@@ -65,8 +60,8 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
         },
         floatingActionButton = {
             AddTaskFAB {
-                // Modo crear tarea (sin ninguna seleccionada)
-                taskToEdit = null // Asegura que no habrá datos previos
+
+                taskToEdit = null
                 showAddEditSheet = true
             }
         },
@@ -79,11 +74,9 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
                         viewModel.sendIntent(TaskIntent.ToggleTaskCompletion(task, checked))
                     },
                     onTaskSelected = { task ->
-                        // Al hacer clic en una tarjeta de la lista, se abre la hoja de detalle
                         selectedTaskId = task.id
                     },
                     onAddTask = {
-                        // También se puede acceder aquí, si se quisiera
                         taskToEdit = null
                         showAddEditSheet = true
                     }
@@ -106,7 +99,6 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
                 viewModel.sendIntent(TaskIntent.AddSubtask(taskId, subtaskName))
             },
             onDelete = {
-                // Se elimina la tarea y se cierra la hoja de detalle
                 viewModel.sendIntent(TaskIntent.DeleteTask(taskId))
                 selectedTaskId = null
             },
@@ -114,13 +106,9 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
                 viewModel.sendIntent(TaskIntent.ToggleSubtask(taskId, subtaskId, isCompleted))
             },
             onEdit = {
-                // 1) Localizar la tarea que se está mostrando
                 val foundTask = state?.tasks?.find { it.id == taskId }
-                // 2) Guardarla para editarla en la otra hoja
                 taskToEdit = foundTask
-                // 3) Cerrar la hoja de detalle
                 selectedTaskId = null
-                // 4) Abrir la hoja de edición
                 showAddEditSheet = true
             }
         )
@@ -130,13 +118,12 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
         AddEditTaskSheet(
             taskToEdit = taskToEdit,
             onClose = {
-                // Close the edit sheet
                 showAddEditSheet = false
-                // If we were editing (not creating), reopen the detail sheet
+
                 if (taskToEdit != null) {
                     selectedTaskId = taskToEdit?.id
                 }
-                // Clear the edit reference
+
                 taskToEdit = null
             },
             onCreateTask = { newTaskData ->
@@ -146,7 +133,6 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
             onUpdateTask = { updatedTask ->
                 viewModel.sendIntent(TaskIntent.UpdateTask(updatedTask))
                 showAddEditSheet = false
-                // Reopen detail view after update
                 selectedTaskId = updatedTask.id
             }
         )

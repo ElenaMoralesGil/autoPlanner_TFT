@@ -8,7 +8,6 @@ import com.elena.autoplanner.domain.models.RepeatPlan
 import com.elena.autoplanner.data.local.entities.*
 import com.elena.autoplanner.domain.models.*
 
-
 /* ------------------- Entities -> Domain ------------------- */
 
 fun TaskEntity.toDomain(
@@ -16,7 +15,6 @@ fun TaskEntity.toDomain(
     repeatConfigs: List<RepeatConfigEntity>,
     subtasks: List<SubtaskEntity>
 ): Task {
-    // Convert priority
     val priorityEnum = when (priority) {
         "HIGH" -> Priority.HIGH
         "MEDIUM" -> Priority.MEDIUM
@@ -24,7 +22,6 @@ fun TaskEntity.toDomain(
         else -> Priority.NONE
     }
 
-    // Build startDateConf if we have dateTime or dayPeriod
     val startConf = if (startDateTime != null || startDayPeriod != null) {
         TimePlanning(
             dateTime = startDateTime,
@@ -32,7 +29,6 @@ fun TaskEntity.toDomain(
         )
     } else null
 
-    // Build endDateConf similarly
     val endConf = if (endDateTime != null || endDayPeriod != null) {
         TimePlanning(
             dateTime = endDateTime,
@@ -40,17 +36,12 @@ fun TaskEntity.toDomain(
         )
     } else null
 
-    // Build durationConf if we have a non-null duration
     val durConf = durationMinutes?.let { DurationPlan(it) }
 
-    // Convert the first reminder (or multiple if you choose):
-    // Right now we only take the first => single reminderPlan
     val domainReminderPlan = reminders.firstOrNull()?.toDomain()
 
-    // Convert the first repeat config => single repeatPlan
     val domainRepeatPlan = repeatConfigs.firstOrNull()?.toDomain()
 
-    // Convert subtasks
     val domainSubtasks = subtasks.map { it.toDomain() }
 
     return Task(
@@ -59,13 +50,11 @@ fun TaskEntity.toDomain(
         isCompleted = isCompleted,
         isExpired = isExpired,
         priority = priorityEnum,
-
         startDateConf = startConf,
         endDateConf = endConf,
         durationConf = durConf,
         reminderPlan = domainReminderPlan,
         repeatPlan = domainRepeatPlan,
-
         subtasks = domainSubtasks
     )
 }
@@ -109,15 +98,13 @@ fun SubtaskEntity.toDomain(): Subtask {
 /* ------------------- Domain -> Entities ------------------- */
 
 fun Task.toTaskEntity(): TaskEntity {
-    // Extract from startDateConf
+
     val startDateTime = startDateConf?.dateTime
     val startDayPeriod = startDateConf?.dayPeriod?.name
 
-    // Extract from endDateConf
     val endDateTime = endDateConf?.dateTime
     val endDayPeriod = endDateConf?.dayPeriod?.name
 
-    // Extract from durationConf
     val durMin = durationConf?.totalMinutes
 
     return TaskEntity(

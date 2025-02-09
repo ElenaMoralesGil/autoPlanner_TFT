@@ -1,7 +1,12 @@
 package com.elena.autoplanner.data.repository
 
-import com.elena.autoplanner.data.local.dao.*
-import com.elena.autoplanner.data.mappers.*
+import com.elena.autoplanner.data.local.dao.ReminderDao
+import com.elena.autoplanner.data.local.dao.RepeatConfigDao
+import com.elena.autoplanner.data.local.dao.SubtaskDao
+import com.elena.autoplanner.data.local.dao.TaskDao
+import com.elena.autoplanner.data.mappers.toDomain
+import com.elena.autoplanner.data.mappers.toEntity
+import com.elena.autoplanner.data.mappers.toTaskEntity
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.repository.TaskRepository
 import kotlinx.coroutines.Dispatchers
@@ -62,43 +67,39 @@ class TaskRepositoryImpl(
     }
 
     override suspend fun saveTask(task: Task) {
-        // Se asume que la validación de datos se realiza en updateTask,
-        // por lo que saveTask asume que la tarea contiene datos válidos.
+
         val isNew = (task.id == 0)
 
         if (isNew) {
-            // Insertar la entidad principal y obtener el ID recién generado.
+
             val newTaskId = taskDao.insertTask(task.toTaskEntity()).toInt()
 
-            // Insertar la entidad de recordatorio si existe.
+
             task.reminderPlan?.let { reminderPlan ->
                 reminderDao.insertReminder(reminderPlan.toEntity(newTaskId))
             }
-            // Insertar la entidad de repetición si existe.
+
             task.repeatPlan?.let { repeatPlan ->
                 repeatConfigDao.insertRepeatConfig(repeatPlan.toEntity(newTaskId))
             }
-            // Insertar cada una de las subtareas.
+
             task.subtasks.forEach { subtask ->
                 subtaskDao.insertSubtask(subtask.toEntity(newTaskId))
             }
         } else {
-            // Actualizar la entidad principal.
+
             taskDao.updateTask(task.toTaskEntity())
 
-            // Eliminar los recordatorios antiguos y, si existe un nuevo, insertarlo.
             reminderDao.deleteRemindersForTask(task.id)
             task.reminderPlan?.let {
                 reminderDao.insertReminder(it.toEntity(task.id))
             }
 
-            // Eliminar la configuración de repetición antigua y, si existe una nueva, insertarla.
             repeatConfigDao.deleteRepeatConfigsForTask(task.id)
             task.repeatPlan?.let {
                 repeatConfigDao.insertRepeatConfig(it.toEntity(task.id))
             }
 
-            // Eliminar las subtareas antiguas y volver a insertar las nuevas.
             subtaskDao.deleteSubtasksForTask(task.id)
             task.subtasks.forEach {
                 subtaskDao.insertSubtask(it.toEntity(task.id))
@@ -106,17 +107,6 @@ class TaskRepositoryImpl(
         }
     }
 
-
-
-    /**
-     * Actualiza una tarea existente.
-     * Se verifica que la tarea no sea nula y que contenga datos válidos.
-     * En caso de actualizar una tarea ya existente (ID distinto de cero), se comprueba su existencia en la base de datos.
-     *
-     * @throws IllegalArgumentException si la tarea es nula.
-     * @throws InvalidTaskDataException si los datos de la tarea son inválidos (por ejemplo, título vacío).
-     * @throws TaskNotFoundException si se intenta actualizar una tarea que no existe.
-     */
     override suspend fun updateTask(task: Task) {
 
         if (task.name.isBlank()) {
@@ -127,7 +117,6 @@ class TaskRepositoryImpl(
         }
         saveTask(task)
     }
-
 
     override suspend fun deleteTask(task: Task) {
         taskDao.deleteTask(task.toTaskEntity())

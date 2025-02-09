@@ -14,8 +14,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.elena.autoplanner.presentation.intents.TaskFilter
 
-
-// FilterDropdown.kt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterDropdown(
@@ -29,7 +27,8 @@ fun FilterDropdown(
         onExpandedChange = { expanded = !expanded }
     ) {
         TextField(
-            modifier = Modifier.menuAnchor(),
+            // Se utiliza Modifier sin el menú ancla específico
+            modifier = Modifier,
             readOnly = true,
             value = currentFilter.displayName,
             onValueChange = {},
