@@ -3,6 +3,7 @@ package com.elena.autoplanner.data
 import com.elena.autoplanner.data.mappers.toDomain
 
 import com.elena.autoplanner.data.local.entities.*
+import com.elena.autoplanner.data.mappers.toEntity
 import com.elena.autoplanner.data.mappers.toTaskEntity
 import com.elena.autoplanner.domain.models.*
 import org.junit.Assert.*
@@ -153,5 +154,21 @@ class MappersTest {
         assertEquals(LocalDateTime.of(2023, 1, 1, 10, 0), entity.startDateTime)
         assertEquals("MORNING", entity.startDayPeriod)
         assertEquals(120, entity.durationMinutes)
+    }
+
+    @Test
+    fun `ReminderPlan toEntity maps correctly`() {
+        val plan = ReminderPlan(
+            mode = ReminderMode.EXACT,
+            offsetMinutes = null,
+            exactDateTime = LocalDateTime.of(2023, 1, 1, 9, 30)
+        )
+
+        val entity = plan.toEntity(taskId = 1)
+
+        assertEquals(1, entity.taskId)
+        assertEquals("EXACT", entity.mode)
+        assertNull(entity.offsetMinutes)
+        assertEquals(LocalDateTime.of(2023, 1, 1, 9, 30), entity.exactDateTime)
     }
 }
