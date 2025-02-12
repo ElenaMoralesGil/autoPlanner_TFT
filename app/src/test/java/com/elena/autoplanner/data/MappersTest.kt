@@ -1,12 +1,29 @@
 package com.elena.autoplanner.data
 
+import com.elena.autoplanner.data.local.entities.ReminderEntity
+import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
+import com.elena.autoplanner.data.local.entities.SubtaskEntity
+import com.elena.autoplanner.data.local.entities.TaskEntity
 import com.elena.autoplanner.data.mappers.toDomain
-
-import com.elena.autoplanner.data.local.entities.*
 import com.elena.autoplanner.data.mappers.toEntity
 import com.elena.autoplanner.data.mappers.toTaskEntity
-import com.elena.autoplanner.domain.models.*
-import org.junit.Assert.*
+import com.elena.autoplanner.domain.models.DayOfWeek
+import com.elena.autoplanner.domain.models.DayPeriod
+import com.elena.autoplanner.domain.models.DurationPlan
+import com.elena.autoplanner.domain.models.FrequencyType
+import com.elena.autoplanner.domain.models.IntervalUnit
+import com.elena.autoplanner.domain.models.Priority
+import com.elena.autoplanner.domain.models.ReminderMode
+import com.elena.autoplanner.domain.models.ReminderPlan
+import com.elena.autoplanner.domain.models.RepeatPlan
+import com.elena.autoplanner.domain.models.Subtask
+import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TimePlanning
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
 
@@ -127,6 +144,32 @@ class MappersTest {
     }
 
     @Test
+    fun `TaskEntity with all nullable fields as null converts to domain object with null configurations`() {
+        val taskEntity = TaskEntity(
+            id = 1,
+            name = "Test Task",
+            isCompleted = false,
+            isExpired = false,
+            priority = "NONE",
+            startDateTime = null,
+            startDayPeriod = null,
+            endDateTime = null,
+            endDayPeriod = null,
+            durationMinutes = null
+        )
+
+        val task = taskEntity.toDomain(emptyList(), emptyList(), emptyList())
+        assertNull(task.startDateConf)
+        assertNull(task.endDateConf)
+        assertEquals(Priority.NONE, task.priority)
+        assertNull(task.durationConf)
+        assertNull(task.reminderPlan)
+        assertNull(task.repeatPlan)
+        assertTrue(task.subtasks.isEmpty())
+
+    }
+
+    @Test
     fun `Task to TaskEntity maps correctly`() {
         val task = Task(
             id = 1,
@@ -154,6 +197,32 @@ class MappersTest {
         assertEquals(LocalDateTime.of(2023, 1, 1, 10, 0), entity.startDateTime)
         assertEquals("MORNING", entity.startDayPeriod)
         assertEquals(120, entity.durationMinutes)
+    }
+
+    @Test
+    fun `TaskEntity with empty reminders converts correctly`() {
+        val taskEntity = TaskEntity(
+            id = 1,
+            name = "Test Task",
+            isCompleted = false,
+            isExpired = false,
+            priority = "HIGH",
+            startDateTime = LocalDateTime.of(2023, 1, 1, 10, 0),
+            startDayPeriod = "MORNING",
+            endDateTime = LocalDateTime.of(2023, 1, 1, 12, 0),
+            endDayPeriod = "EVENING",
+            durationMinutes = 120
+        )
+
+        val taskDomain = taskEntity.toDomain(
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
+        )
+
+        assertNull(taskDomain.reminderPlan)
+        assertNull(taskDomain.repeatPlan)
+        assertTrue(taskDomain.subtasks.isEmpty())
     }
 
     @Test
@@ -205,5 +274,31 @@ class MappersTest {
         assertEquals("Subtask 1", entity.name)
         assertTrue(entity.isCompleted)
         assertEquals(45, entity.estimatedDurationInMinutes)
+    }
+
+    @Test
+    fun `Task with all nullable fields as null converts to taskEntity object with null configurations`(){
+        val task = Task(
+            id = 1,
+            name = "Test Task",
+            priority = Priority.NONE,
+            startDateConf = null,
+            endDateConf = null,
+            durationConf = null,
+            reminderPlan = null,
+            repeatPlan = null,
+            subtasks = emptyList()
+        )
+
+        val entity = task.toTaskEntity()
+
+        assertEquals(1, entity.id)
+        assertEquals("Test Task", entity.name)
+        assertEquals(Priority.NONE, task.priority)
+        assertNull(entity.startDateTime)
+        assertNull(entity.startDayPeriod)
+        assertNull(entity.endDateTime)
+        assertNull(entity.endDayPeriod)
+        assertNull(entity.durationMinutes)
     }
 }
