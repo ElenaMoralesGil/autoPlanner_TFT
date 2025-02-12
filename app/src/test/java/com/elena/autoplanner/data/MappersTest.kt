@@ -189,4 +189,21 @@ class MappersTest {
         assertEquals(IntervalUnit.MONTH, entity.intervalUnit)
         assertEquals(setOf(DayOfWeek.TUE), entity.selectedDays)
     }
+
+    @Test
+    fun `Subtask toEntity maps correctly`() {
+        val subtask = Subtask(
+            id = 12,
+            name = "Subtask 1",
+            isCompleted = true,
+            estimatedDurationInMinutes = 45
+        )
+
+        val entity = subtask.toEntity(taskId = 1)
+
+        assertEquals(1, entity.parentTaskId)
+        assertEquals("Subtask 1", entity.name)
+        assertTrue(entity.isCompleted)
+        assertEquals(45, entity.estimatedDurationInMinutes)
+    }
 }
