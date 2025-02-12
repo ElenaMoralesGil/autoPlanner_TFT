@@ -171,4 +171,22 @@ class MappersTest {
         assertNull(entity.offsetMinutes)
         assertEquals(LocalDateTime.of(2023, 1, 1, 9, 30), entity.exactDateTime)
     }
+
+    @Test
+    fun `RepeatPlan toEntity maps correctly`() {
+        val plan = RepeatPlan(
+            frequencyType = FrequencyType.MONTHLY,
+            interval = 2,
+            intervalUnit = IntervalUnit.MONTH,
+            selectedDays = setOf(DayOfWeek.TUE)
+        )
+
+        val entity = plan.toEntity(taskId = 1)
+
+        assertEquals(1, entity.taskId)
+        assertEquals("MONTHLY", entity.frequencyType)
+        assertEquals(2, entity.interval)
+        assertEquals(IntervalUnit.MONTH, entity.intervalUnit)
+        assertEquals(setOf(DayOfWeek.TUE), entity.selectedDays)
+    }
 }
