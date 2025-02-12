@@ -1,6 +1,5 @@
 package com.elena.autoplanner.domain.usecases
 
-import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.repository.TaskRepository
 import kotlinx.coroutines.flow.Flow
@@ -22,7 +21,7 @@ class ToggleSubtaskUseCase(private val repository: TaskRepository) {
             if (it.id == subtask) it.copy(isCompleted = checked) else it
         }
         val updatedTask = task.copy(subtasks = updatedSubtasks)
-        repository.updateTask(updatedTask)
+        repository.saveTask(updatedTask)
         return updatedTask
     }
 }

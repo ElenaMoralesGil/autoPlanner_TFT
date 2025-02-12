@@ -7,7 +7,9 @@ import com.elena.autoplanner.data.local.dao.TaskDao
 import com.elena.autoplanner.data.mappers.toDomain
 import com.elena.autoplanner.data.mappers.toEntity
 import com.elena.autoplanner.data.mappers.toTaskEntity
+import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.repository.TaskRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import java.time.LocalDateTime
 
 class TaskNotFoundException(message: String) : Exception(message)
 class InvalidTaskDataException(message: String) : Exception(message)
@@ -68,57 +71,71 @@ class TaskRepositoryImpl(
 
     override suspend fun saveTask(task: Task) {
 
-        val isNew = (task.id == 0)
+        val taskToSave = task.copy(
+            startDateConf = task.startDateConf ?: TimePlanning(dateTime = LocalDateTime.now())
+        )
 
-        if (isNew) {
+        validateTaskData(taskToSave)
 
-            val newTaskId = taskDao.insertTask(task.toTaskEntity()).toInt()
-
-
-            task.reminderPlan?.let { reminderPlan ->
-                reminderDao.insertReminder(reminderPlan.toEntity(newTaskId))
-            }
-
-            task.repeatPlan?.let { repeatPlan ->
-                repeatConfigDao.insertRepeatConfig(repeatPlan.toEntity(newTaskId))
-            }
-
-            task.subtasks.forEach { subtask ->
-                subtaskDao.insertSubtask(subtask.toEntity(newTaskId))
-            }
+        val taskId = if (taskToSave.id == 0) {
+            taskDao.insertTask(taskToSave.toTaskEntity()).toInt()
         } else {
+            taskDao.updateTask(taskToSave.toTaskEntity())
+            taskToSave.id
+        }
+        updateRelationships(taskId, taskToSave)
+    }
 
-            taskDao.updateTask(task.toTaskEntity())
+    private suspend fun updateRelationships(taskId: Int, task: Task) {
+        // Actualizar recordatorios.
+        reminderDao.deleteRemindersForTask(taskId)
+        task.reminderPlan?.let { reminder ->
+            reminderDao.insertReminder(reminder.toEntity(taskId))
+        }
 
-            reminderDao.deleteRemindersForTask(task.id)
-            task.reminderPlan?.let {
-                reminderDao.insertReminder(it.toEntity(task.id))
-            }
+        // Actualizar configuraciones de repetición.
+        repeatConfigDao.deleteRepeatConfigsForTask(taskId)
+        task.repeatPlan?.let { repeatPlan ->
+            repeatConfigDao.insertRepeatConfig(repeatPlan.toEntity(taskId))
+        }
 
-            repeatConfigDao.deleteRepeatConfigsForTask(task.id)
-            task.repeatPlan?.let {
-                repeatConfigDao.insertRepeatConfig(it.toEntity(task.id))
-            }
-
-            subtaskDao.deleteSubtasksForTask(task.id)
-            task.subtasks.forEach {
-                subtaskDao.insertSubtask(it.toEntity(task.id))
-            }
+        // Actualizar subtareas.
+        subtaskDao.deleteSubtasksForTask(taskId)
+        val subtaskEntities = task.subtasks.map { subtask ->
+            subtask.toEntity(taskId)
+        }
+        if (subtaskEntities.isNotEmpty()) {
+            subtaskDao.insertSubtasks(subtaskEntities)
         }
     }
 
-    override suspend fun updateTask(task: Task) {
-
-        if (task.name.isBlank()) {
-            throw InvalidTaskDataException("Invalid task data")
-        }
-        if (task.id != 0) {
-            getTask(task.id) ?: throw TaskNotFoundException("Task not found")
-        }
-        saveTask(task)
-    }
 
     override suspend fun deleteTask(task: Task) {
         taskDao.deleteTask(task.toTaskEntity())
+        reminderDao.deleteRemindersForTask(task.id)
+        repeatConfigDao.deleteRepeatConfigsForTask(task.id)
+        subtaskDao.deleteSubtasksForTask(task.id)
+
     }
+
+    private fun validateTaskData(task: Task) {
+        when {
+            task.name.isBlank() ->
+                throw InvalidTaskDataException("Task name cannot be empty")
+
+            task.startDateConf?.dateTime?.isAfter(task.endDateConf?.dateTime) == true ->
+                throw InvalidTaskDataException("Start date must be before end date")
+
+            task.startDateConf == null && task.endDateConf != null ->
+                throw InvalidTaskDataException("End date requires start date")
+
+
+            (task.durationConf?.totalMinutes ?: 0) < 0 ->
+                throw InvalidTaskDataException("Duration cannot be negative")
+
+            task.priority == Priority.NONE ->
+                throw InvalidTaskDataException("Priority must be specified")
+        }
+    }
+
 }

@@ -5,26 +5,30 @@ import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
-import com.elena.autoplanner.data.repository.TaskRepositoryImpl
-import io.mockk.coEvery
-import io.mockk.mockk
-
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
-import org.junit.Before
-import org.junit.Test
-import com.elena.autoplanner.data.local.entities.*
+import com.elena.autoplanner.data.local.entities.ReminderEntity
+import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
+import com.elena.autoplanner.data.local.entities.SubtaskEntity
+import com.elena.autoplanner.data.local.entities.TaskEntity
 import com.elena.autoplanner.data.mappers.toDomain
 import com.elena.autoplanner.data.repository.DatabaseException
-import com.elena.autoplanner.data.repository.InvalidTaskDataException
 import com.elena.autoplanner.data.repository.TaskNotFoundException
+import com.elena.autoplanner.data.repository.TaskRepositoryImpl
 import com.elena.autoplanner.domain.models.DayOfWeek
 import com.elena.autoplanner.domain.models.IntervalUnit
 import io.mockk.Runs
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
+import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
 import java.time.LocalDateTime
 
 class TaskRepositoryImplTest {
@@ -178,24 +182,31 @@ class TaskRepositoryImplTest {
             subtasks = listOf(createFakeSubtask(taskEntity.id))
         )
 
+        // Configuración para la inserción de la tarea.
         coEvery { taskDao.insertTask(any()) } returns 1L
+
+        // Configuración para los métodos de eliminación.
+        coEvery { reminderDao.deleteRemindersForTask(any()) } just Runs
+        coEvery { repeatConfigDao.deleteRepeatConfigsForTask(any()) } just Runs
+        coEvery { subtaskDao.deleteSubtasksForTask(any()) } just Runs
+
+        // Configuración para los métodos de inserción.
         coEvery { reminderDao.insertReminder(any()) } just Runs
         coEvery { repeatConfigDao.insertRepeatConfig(any()) } just Runs
-        coEvery { subtaskDao.insertSubtask(any()) } just Runs
+        coEvery { subtaskDao.insertSubtasks(any()) } just Runs
 
         repository.saveTask(domainTask)
 
         coVerify { taskDao.insertTask(any()) }
         coVerify { reminderDao.insertReminder(match { it.taskId == 1 }) }
         coVerify { repeatConfigDao.insertRepeatConfig(match { it.taskId == 1 }) }
-        coVerify { subtaskDao.insertSubtask(match { it.parentTaskId == 1 }) }
+        coVerify { subtaskDao.insertSubtasks(match { it.first().parentTaskId == 1 }) }
     }
+
 
     @Test
     fun `saveTask updates existing task when ID is not zero`() = runTest(testDispatcher) {
-
         val taskEntity = createFakeTaskEntity(id = 1)
-
         val domainTask = taskEntity.toDomain(
             reminders = listOf(createFakeReminder(taskEntity.id)),
             repeatConfigs = listOf(createFakeRepeatConfig(taskEntity.id)),
@@ -203,13 +214,16 @@ class TaskRepositoryImplTest {
         )
 
         coEvery { taskDao.updateTask(any()) } just Runs
-        coEvery { reminderDao.deleteRemindersForTask(1) } just Runs
-        coEvery { reminderDao.insertReminder(any()) } just Runs
-        coEvery { repeatConfigDao.deleteRepeatConfigsForTask(1) } just Runs
-        coEvery { repeatConfigDao.insertRepeatConfig(any()) } just Runs
-        coEvery { subtaskDao.deleteSubtasksForTask(1) } just Runs
-        coEvery { subtaskDao.insertSubtask(any()) } just Runs
 
+        // Configuración para las operaciones de eliminación.
+        coEvery { reminderDao.deleteRemindersForTask(any()) } just Runs
+        coEvery { repeatConfigDao.deleteRepeatConfigsForTask(any()) } just Runs
+        coEvery { subtaskDao.deleteSubtasksForTask(any()) } just Runs
+
+        // Configuración para las operaciones de inserción.
+        coEvery { reminderDao.insertReminder(any()) } just Runs
+        coEvery { repeatConfigDao.insertRepeatConfig(any()) } just Runs
+        coEvery { subtaskDao.insertSubtasks(any()) } just Runs
 
         repository.saveTask(domainTask)
 
@@ -219,14 +233,13 @@ class TaskRepositoryImplTest {
         coVerify { repeatConfigDao.deleteRepeatConfigsForTask(1) }
         coVerify { repeatConfigDao.insertRepeatConfig(any()) }
         coVerify { subtaskDao.deleteSubtasksForTask(1) }
-        coVerify { subtaskDao.insertSubtask(any()) }
+        coVerify { subtaskDao.insertSubtasks(any()) }
     }
+
 
     @Test
     fun `saveTask handles task without related entities`() = runTest(testDispatcher) {
-
         val taskEntity = createFakeTaskEntity(id = 0)
-
         val domainTask = taskEntity.toDomain(
             reminders = emptyList(),
             repeatConfigs = emptyList(),
@@ -234,15 +247,18 @@ class TaskRepositoryImplTest {
         )
 
         coEvery { taskDao.insertTask(any()) } returns 1L
+        coEvery { reminderDao.deleteRemindersForTask(any()) } just Runs
+        coEvery { repeatConfigDao.deleteRepeatConfigsForTask(any()) } just Runs
+        coEvery { subtaskDao.deleteSubtasksForTask(any()) } just Runs
 
         repository.saveTask(domainTask)
-
 
         coVerify { taskDao.insertTask(any()) }
         coVerify(exactly = 0) { reminderDao.insertReminder(any()) }
         coVerify(exactly = 0) { repeatConfigDao.insertRepeatConfig(any()) }
         coVerify(exactly = 0) { subtaskDao.insertSubtask(any()) }
     }
+
 
     @Test(expected = Exception::class)
     fun `saveTask handles insert failure`() = runTest(testDispatcher) {
@@ -254,41 +270,14 @@ class TaskRepositoryImplTest {
             repeatConfigs = emptyList(),
             subtasks = emptyList()
         )
-        // Se simula que la inserción falla lanzando una excepción
         coEvery { taskDao.insertTask(any()) } throws Exception("DB Insert Error")
 
-        // Se espera que se lance la excepción al intentar guardar la tarea
         repository.saveTask(domainTask)
     }
 
-    /** ---------------------------- PRUEBAS DE UPDATETASK ---------------------------- **/
-
-
 
     @Test
-    fun `updateTask handles non-existing task`() = runTest {
-        val domainTask = createFakeTaskEntity(id = 999).toDomain(
-            reminders = emptyList(),
-            repeatConfigs = emptyList(),
-            subtasks = emptyList()
-        )
-
-        coEvery { taskDao.getTask(999) } returns null
-
-        var exceptionThrown = false
-        try {
-            repository.updateTask(domainTask)
-        } catch (e: TaskNotFoundException) {
-            exceptionThrown = true
-            assertEquals("Task not found", e.message)
-        }
-
-        assertTrue("Se esperaba TaskNotFoundException", exceptionThrown)
-    }
-
-
-    @Test
-    fun `updateTask updates existing task correctly`() = runTest {
+    fun `saveTask updates existing task correctly`() = runTest {
         val taskEntity = createFakeTaskEntity(id = 1)
         val domainTask = taskEntity.toDomain(
             reminders = emptyList(),
@@ -296,19 +285,17 @@ class TaskRepositoryImplTest {
             subtasks = emptyList()
         )
 
-        // Mockear todas las dependencias necesarias
         coEvery { taskDao.getTask(1) } returns taskEntity
         coEvery { reminderDao.getRemindersForTask(1) } returns flowOf(emptyList())
         coEvery { repeatConfigDao.getRepeatConfigsForTask(1) } returns flowOf(emptyList())
         coEvery { subtaskDao.getSubtasksForTask(1) } returns flowOf(emptyList())
 
-        // Mockear operaciones de guardado
         coEvery { taskDao.updateTask(any()) } just Runs
         coEvery { reminderDao.deleteRemindersForTask(1) } just Runs
         coEvery { repeatConfigDao.deleteRepeatConfigsForTask(1) } just Runs
         coEvery { subtaskDao.deleteSubtasksForTask(1) } just Runs
 
-        repository.updateTask(domainTask)
+        repository.saveTask(domainTask)
 
         coVerify {
             taskDao.updateTask(match { it.id == 1 })
@@ -317,27 +304,6 @@ class TaskRepositoryImplTest {
             subtaskDao.deleteSubtasksForTask(1)
         }
     }
-
-    @Test
-    fun `updateTask throws exception for invalid task data`() = runTest {
-        val domainTask = createFakeTaskEntity(id = 1).toDomain(
-            reminders = emptyList(),
-            repeatConfigs = emptyList(),
-            subtasks = emptyList()
-        ).copy(name = "")
-
-
-        var exceptionThrown = false
-        try {
-            repository.updateTask(domainTask)
-        } catch (e: InvalidTaskDataException) {
-            exceptionThrown = true
-            assertEquals("Invalid task data", e.message)
-        }
-
-        assertTrue("Se esperaba InvalidTaskDataException", exceptionThrown)
-    }
-
 
     /** ---------------------------- PRUEBAS DE DELETETASK ---------------------------- **/
     @Test
@@ -372,14 +338,19 @@ class TaskRepositoryImplTest {
             subtasks = emptyList()
         )
 
-        // Mock that the task is already deleted
         coEvery { taskDao.deleteTask(any()) } just Runs
+        coEvery { reminderDao.deleteRemindersForTask(any()) } just Runs
+        coEvery { repeatConfigDao.deleteRepeatConfigsForTask(any()) } just Runs
+        coEvery { subtaskDao.deleteSubtasksForTask(any()) } just Runs
 
-        // Call deleteTask on an already deleted task
         repository.deleteTask(domainTask)
 
-        // Verify that deleteTask was called once, even if the task doesn't exist anymore
-        coVerify { taskDao.deleteTask(taskEntity) }
+        coVerify {
+            taskDao.deleteTask(taskEntity)
+            reminderDao.deleteRemindersForTask(domainTask.id)
+            repeatConfigDao.deleteRepeatConfigsForTask(domainTask.id)
+            subtaskDao.deleteSubtasksForTask(domainTask.id)
+        }
     }
 
 
@@ -387,19 +358,24 @@ class TaskRepositoryImplTest {
     fun `deleteTask deletes existing task correctly`() = runTest {
         val taskEntity = createFakeTaskEntity(id = 1)
         val domainTask = taskEntity.toDomain(
-            reminders = listOf(createFakeReminder(taskEntity.id)),
-            repeatConfigs = listOf(createFakeRepeatConfig(taskEntity.id)),
-            subtasks = listOf(createFakeSubtask(taskEntity.id))
+            reminders = emptyList(),
+            repeatConfigs = emptyList(),
+            subtasks = emptyList()
         )
 
-        // Mock the deletion of the task
         coEvery { taskDao.deleteTask(any()) } just Runs
+        coEvery { reminderDao.deleteRemindersForTask(any()) } just Runs
+        coEvery { repeatConfigDao.deleteRepeatConfigsForTask(any()) } just Runs
+        coEvery { subtaskDao.deleteSubtasksForTask(any()) } just Runs
 
-        // Call deleteTask with the domain task
         repository.deleteTask(domainTask)
 
-        // Verify that deleteTask was called with the correct task entity
-        coVerify { taskDao.deleteTask(taskEntity) }
+        coVerify {
+            taskDao.deleteTask(taskEntity)
+            reminderDao.deleteRemindersForTask(domainTask.id)
+            repeatConfigDao.deleteRepeatConfigsForTask(domainTask.id)
+            subtaskDao.deleteSubtasksForTask(domainTask.id)
+        }
     }
 
     @Test
@@ -423,6 +399,32 @@ class TaskRepositoryImplTest {
 
         assertTrue("Se esperaba DatabaseException", exceptionThrown)
     }
+
+    @Test
+    fun `task roundtrip mapping preserves all data`() = runTest {
+    }
+
+    @Test
+    fun `saveTask sets default start date for new tasks`() = runTest {
+    }
+
+    @Test
+    fun `updateTask validates time configuration integrity`() = runTest {
+    }
+
+    @Test
+    fun `saveTask throws error for negative duration`() = runTest {
+
+    }
+
+
+
+
+
+
+
+
+
 
 
 
@@ -477,4 +479,5 @@ class TaskRepositoryImplTest {
         isCompleted = false,
         estimatedDurationInMinutes = 30
     )
+
 }

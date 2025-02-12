@@ -7,7 +7,7 @@ class UpdateTaskUseCase(
     private val repository: TaskRepository
 ) {
     suspend operator fun invoke(task: Task) {
-        repository.updateTask(task)
+        repository.saveTask(task)
     }
 }
 class DeleteSubtaskUseCase(private val repository: TaskRepository) {
@@ -15,7 +15,7 @@ class DeleteSubtaskUseCase(private val repository: TaskRepository) {
         val task = repository.getTask(taskId) ?: throw IllegalArgumentException("Task not found")
         val updatedSubtasks = task.subtasks.filter { it.id != subtaskId }
         val updatedTask = task.copy(subtasks = updatedSubtasks)
-        repository.updateTask(updatedTask)
+        repository.saveTask(updatedTask)
         return updatedTask
     }
 }

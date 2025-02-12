@@ -16,7 +16,7 @@ class AddSubtaskUseCase(private val repository: TaskRepository) {
         val task = repository.getTask(taskId) ?: throw IllegalArgumentException("Task not found")
         val subtask = Subtask(name = name)
         val updatedTask = task.copy(subtasks = task.subtasks + subtask)
-        repository.updateTask(updatedTask)
+        repository.saveTask(updatedTask)
         return updatedTask
     }
 }

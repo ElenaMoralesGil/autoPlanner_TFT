@@ -1,6 +1,11 @@
 package com.elena.autoplanner.data.local.dao
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
 import com.elena.autoplanner.data.local.entities.SubtaskEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -10,6 +15,8 @@ interface SubtaskDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSubtask(subtask: SubtaskEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSubtasks(subtask: List<SubtaskEntity>)
     @Update
     suspend fun updateSubtask(subtask: SubtaskEntity)
 
