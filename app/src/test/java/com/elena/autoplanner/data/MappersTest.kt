@@ -3,6 +3,7 @@ package com.elena.autoplanner.data
 import com.elena.autoplanner.data.mappers.toDomain
 
 import com.elena.autoplanner.data.local.entities.*
+import com.elena.autoplanner.data.mappers.toTaskEntity
 import com.elena.autoplanner.domain.models.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -122,5 +123,35 @@ class MappersTest {
         assertEquals("Subtask 1", subtask.name)
         assertFalse(subtask.isCompleted)
         assertEquals(30, subtask.estimatedDurationInMinutes)
+    }
+
+    @Test
+    fun `Task to TaskEntity maps correctly`() {
+        val task = Task(
+            id = 1,
+            name = "Test Task",
+            priority = Priority.HIGH,
+            startDateConf = TimePlanning(
+                dateTime = LocalDateTime.of(2023, 1, 1, 10, 0),
+                dayPeriod = DayPeriod.MORNING
+            ),
+            endDateConf = TimePlanning(
+                dateTime = LocalDateTime.of(2023, 1, 1, 12, 0),
+                dayPeriod = DayPeriod.EVENING
+            ),
+            durationConf = DurationPlan(120),
+            reminderPlan = ReminderPlan(ReminderMode.PRESET_OFFSET, 15, null),
+            repeatPlan = RepeatPlan(FrequencyType.WEEKLY, 1, IntervalUnit.WEEK, setOf(DayOfWeek.MON)),
+            subtasks = listOf(Subtask(12, "Subtask 1", false, 30))
+        )
+
+        val entity = task.toTaskEntity()
+
+        assertEquals(1, entity.id)
+        assertEquals("Test Task", entity.name)
+        assertEquals("HIGH", entity.priority)
+        assertEquals(LocalDateTime.of(2023, 1, 1, 10, 0), entity.startDateTime)
+        assertEquals("MORNING", entity.startDayPeriod)
+        assertEquals(120, entity.durationMinutes)
     }
 }
