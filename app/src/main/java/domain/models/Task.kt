@@ -9,7 +9,6 @@ data class Task(
     val isExpired: Boolean = false,
     val priority: Priority = Priority.NONE,
 
-    // New advanced fields:
     val startDateConf: TimePlanning? = null,
     val endDateConf: TimePlanning? = null,
     val durationConf: DurationPlan? = null,
@@ -22,18 +21,16 @@ data class Task(
 enum class Priority {
     HIGH, MEDIUM, LOW, NONE
 }
-/** Example domain class for start/end date + time-of-day fields, etc. */
+
 data class TimePlanning(
     val dateTime: LocalDateTime?,
-    val dayPeriod: DayPeriod? = null // e.g. MORNING, EVENING, etc.
+    val dayPeriod: DayPeriod? = null
 )
 
-/** For partial day periods like your icons. */
 enum class DayPeriod {
     MORNING, EVENING, NIGHT, ALLDAY, NONE
 }
 
-/** Duration plan could hold total minutes or separate hours/min. */
 data class DurationPlan(
     val totalMinutes: Int?
 )
