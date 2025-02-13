@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.intents
 
-import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame

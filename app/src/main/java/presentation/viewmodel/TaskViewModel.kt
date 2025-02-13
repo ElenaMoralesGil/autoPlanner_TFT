@@ -3,7 +3,13 @@ package com.elena.autoplanner.presentation.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.usecases.*
+import com.elena.autoplanner.domain.usecases.AddSubtaskUseCase
+import com.elena.autoplanner.domain.usecases.AddTaskUseCase
+import com.elena.autoplanner.domain.usecases.DeleteSubtaskUseCase
+import com.elena.autoplanner.domain.usecases.DeleteTaskUseCase
+import com.elena.autoplanner.domain.usecases.GetTasksUseCase
+import com.elena.autoplanner.domain.usecases.ToggleSubtaskUseCase
+import com.elena.autoplanner.domain.usecases.UpdateTaskUseCase
 import com.elena.autoplanner.presentation.intents.TaskIntent
 import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.states.TaskStatus
@@ -14,7 +20,8 @@ import com.elena.autoplanner.presentation.utils.isDueThisMonth
 import com.elena.autoplanner.presentation.utils.isDueThisWeek
 import com.elena.autoplanner.presentation.utils.isDueToday
 import com.elena.autoplanner.presentation.utils.toTask
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 
 class TaskViewModel(
@@ -167,13 +174,13 @@ class TaskViewModel(
         }
     }
 
-    private fun toggleSubtask(task: Int, subtask: Int, checked: Boolean) {
+    private fun toggleSubtask(taskId: Int, subtaskId: Int, checked: Boolean) {
         viewModelScope.launch {
             try {
-                val updatedTask = toggleSubtaskUseCase(task, subtask, checked)
+                val updatedTask = toggleSubtaskUseCase(taskId, subtaskId, checked)
                 setState {
                     copy(
-                        tasks = currentState.tasks.map { if (it.id == task) updatedTask else it },
+                        tasks = currentState.tasks.map { if (it.id == taskId) updatedTask else it },
                         filteredTasks = applyFilters(currentState.tasks),
                         uiState = TaskState.UiState.Idle
                     )
