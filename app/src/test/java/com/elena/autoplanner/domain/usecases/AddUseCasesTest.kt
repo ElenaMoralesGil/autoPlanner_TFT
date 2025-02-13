@@ -9,6 +9,7 @@ import io.mockk.just
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Test
 
 class AddUseCasesTest {
@@ -38,6 +39,18 @@ class AddUseCasesTest {
         assertEquals(1, result.subtasks.size)
         assertEquals("New Subtask", result.subtasks.first().name)
         coVerify { repository.saveTask(any()) }
+    }
+
+    @Test
+    fun `invoke should throw when task not found`() = runTest {
+        coEvery { repository.getTask(any()) } returns null
+
+        try {
+            subtaskUseCase(999, "Invalid Subtask")
+            fail("Expected IllegalArgumentException")
+        } catch (e: IllegalArgumentException) {
+            assertEquals("Task not found", e.message)
+        }
     }
 
 
