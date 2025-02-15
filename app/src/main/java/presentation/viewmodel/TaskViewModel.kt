@@ -79,19 +79,18 @@ class TaskViewModel(
                     return@launch
                 }
 
-                setState { copy(uiState = TaskState.UiState.Loading) }
                 val task = newTaskData.toTask()
-                addTaskUseCase(task)
+                val newTaskList = currentState.tasks.toMutableList().apply { add(task) }
+
                 setState {
                     copy(
-                        tasks = currentState.tasks + task,
-                        filteredTasks = applyFilters(
-                            currentState.tasks + task,
-                            currentState.filters
-                        ),
+                        tasks = newTaskList,
+                        filteredTasks = applyFilters(newTaskList, filters),
                         uiState = TaskState.UiState.Success("Task created")
                     )
                 }
+
+                addTaskUseCase(task)
             } catch (e: Exception) {
                 setState { copy(uiState = TaskState.UiState.Error(e.message)) }
             }
@@ -145,11 +144,8 @@ class TaskViewModel(
     private fun toggleTaskCompletion(task: Task, checked: Boolean) {
         viewModelScope.launch {
             try {
-                val updatedTask = task.copy(
-                    isCompleted = checked,
-                    isExpired = if (checked) false else task.isExpired
-                )
-                updateTaskUseCase(updatedTask)
+
+                val updatedTask = task.copy(isCompleted = checked)
                 setState {
                     copy(
                         tasks = currentState.tasks.map { if (it.id == task.id) updatedTask else it },
@@ -157,8 +153,17 @@ class TaskViewModel(
                         uiState = TaskState.UiState.Idle
                     )
                 }
+
+                // Then perform actual update
+                updateTaskUseCase(updatedTask)
             } catch (e: Exception) {
-                setState { copy(uiState = TaskState.UiState.Error(e.message)) }
+                // Rollback UI state on error
+                setState {
+                    copy(
+                        tasks = currentState.tasks.map { if (it.id == task.id) task else it },
+                        uiState = TaskState.UiState.Error(e.message)
+                    )
+                }
             }
         }
     }

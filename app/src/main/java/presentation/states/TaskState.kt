@@ -19,6 +19,8 @@ data class TaskState(
         data class Success(val message: String? = null) : UiState()
         data class Error(val message: String? = null) : UiState()
     }
+
+    fun isEmpty() = filteredTasks.isEmpty() && uiState !is UiState.Loading
 }
 
 

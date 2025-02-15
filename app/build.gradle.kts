@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.androidx.material3.android)
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.foundation.android)
+    implementation(libs.androidx.animation.core.android)
 
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.kotlinx.coroutines.test)
