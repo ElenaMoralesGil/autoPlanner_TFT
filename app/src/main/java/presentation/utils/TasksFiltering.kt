@@ -2,14 +2,19 @@ package com.elena.autoplanner.presentation.utils
 
 
 import com.elena.autoplanner.domain.models.Task
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
-import java.time.DayOfWeek
 
 fun Task.isDueToday(): Boolean {
     val today = LocalDate.now()
     return startDateConf?.dateTime?.toLocalDate() == today ||
             endDateConf?.dateTime?.toLocalDate() == today
+}
+
+fun Task.isExpired(): Boolean {
+    val today = LocalDate.now()
+    return endDateConf?.dateTime?.toLocalDate()?.isBefore(today) ?: false
 }
 
 fun Task.isDueThisWeek(): Boolean {

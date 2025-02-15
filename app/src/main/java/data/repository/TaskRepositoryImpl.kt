@@ -7,7 +7,6 @@ import com.elena.autoplanner.data.local.dao.TaskDao
 import com.elena.autoplanner.data.mappers.toDomain
 import com.elena.autoplanner.data.mappers.toEntity
 import com.elena.autoplanner.data.mappers.toTaskEntity
-import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.repository.TaskRepository
@@ -72,7 +71,7 @@ class TaskRepositoryImpl(
     override suspend fun saveTask(task: Task) {
 
         val taskToSave = task.copy(
-            startDateConf = task.startDateConf ?: TimePlanning(dateTime = LocalDateTime.now())
+            startDateConf = task.startDateConf ?: TimePlanning(dateTime = LocalDateTime.now()),
         )
 
         validateTaskData(taskToSave)
@@ -123,9 +122,8 @@ class TaskRepositoryImpl(
             task.name.isBlank() ->
                 throw InvalidTaskDataException("Task name cannot be empty")
 
-            task.startDateConf?.dateTime?.isAfter(task.endDateConf?.dateTime) == true ->
+            task.endDateConf != null && task.startDateConf?.dateTime?.isAfter(task.endDateConf.dateTime) == true ->
                 throw InvalidTaskDataException("Start date must be before end date")
-
             task.startDateConf == null && task.endDateConf != null ->
                 throw InvalidTaskDataException("End date requires start date")
 
@@ -133,8 +131,6 @@ class TaskRepositoryImpl(
             (task.durationConf?.totalMinutes ?: 0) < 0 ->
                 throw InvalidTaskDataException("Duration cannot be negative")
 
-            task.priority == Priority.NONE ->
-                throw InvalidTaskDataException("Priority must be specified")
         }
     }
 

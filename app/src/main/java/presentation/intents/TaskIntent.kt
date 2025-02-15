@@ -18,12 +18,3 @@ sealed class TaskIntent : BaseIntent() {
     data class DeleteSubtask(val task: Int, val subtask: Int) : TaskIntent()
     object ClearError : TaskIntent()
 }
-
-enum class TaskFilter(val displayName: String) {
-    TODAY("Today"),
-    WEEK("Week"),
-    MONTH("Month"),
-    ALL("All"),
-    COMPLETED("Completed"),
-    UNCOMPLETED("Uncompleted");
-}

@@ -35,5 +35,6 @@ enum class TimeFrame(val displayName: String) {
     TODAY("Today"),
     ALL("All Time"),
     WEEK("This Week"),
-    MONTH("This Month")
+    MONTH("This Month"),
+    EXPIRED("Expired")
 }

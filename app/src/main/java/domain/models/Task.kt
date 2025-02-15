@@ -9,7 +9,7 @@ data class Task(
     val isExpired: Boolean = false,
     val priority: Priority = Priority.NONE,
 
-    val startDateConf: TimePlanning? = null,
+    var startDateConf: TimePlanning? = null,
     val endDateConf: TimePlanning? = null,
     val durationConf: DurationPlan? = null,
     val reminderPlan: ReminderPlan? = null,

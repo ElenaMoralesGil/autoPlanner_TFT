@@ -2,6 +2,7 @@ package com.elena.autoplanner.presentation.viewModels
 
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.usecases.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.AddTaskUseCase
 import com.elena.autoplanner.domain.usecases.DeleteSubtaskUseCase
@@ -12,6 +13,7 @@ import com.elena.autoplanner.domain.usecases.UpdateTaskUseCase
 import com.elena.autoplanner.presentation.intents.TaskIntent
 import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.states.TaskStatus
+import com.elena.autoplanner.presentation.states.TimeFrame
 import com.elena.autoplanner.presentation.utils.NewTaskData
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import io.mockk.Runs
@@ -21,6 +23,7 @@ import io.mockk.just
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -32,6 +35,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.LocalDateTime
 
 class TaskViewModelTest {
     private val getTasksUseCase: GetTasksUseCase = mockk()
@@ -196,4 +200,114 @@ class TaskViewModelTest {
         assertTrue(viewModel.state.value!!.tasks.first().subtasks.isEmpty())
         coVerify { deleteSubtaskUseCase(taskId, subtaskId) }
     }
+
+    @Test
+    fun `createTask should handle repository errors`() = runTest(testDispatcher) {
+        val errorMessage = "Network error"
+        coEvery { addTaskUseCase(any()) } throws Exception(errorMessage)
+        val validTaskData = NewTaskData(name = "Valid Task")
+
+        viewModel.sendIntent(TaskIntent.CreateTask(validTaskData))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state?.uiState is TaskState.UiState.Error)
+        assertEquals(errorMessage, (state?.uiState as TaskState.UiState.Error).message)
+    }
+
+    @Test
+    fun `toggleTaskCompletion should update correct task`() = runTest(testDispatcher) {
+        val task1 = Task(id = 1, name = "Task 1", isCompleted = false)
+        val task2 = Task(id = 2, name = "Task 2", isCompleted = false)
+        coEvery { getTasksUseCase() } returns flowOf(listOf(task1, task2))
+        coEvery { updateTaskUseCase(any()) } just Runs
+
+        viewModel.sendIntent(TaskIntent.LoadTasks)
+        viewModel.sendIntent(TaskIntent.ToggleTaskCompletion(task1, true))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val updatedTask = viewModel.state.value!!.tasks.find { it.id == 1 }
+        assertTrue(updatedTask?.isCompleted == true)
+    }
+
+    @Test
+    fun `filters should combine status and timeframe`() = runTest(testDispatcher) {
+        val todayTask = Task(id = 1, isCompleted = false).apply {
+            startDateConf = TimePlanning(LocalDateTime.now())
+        }
+        val oldTask = Task(id = 2, isCompleted = true).apply {
+            startDateConf = TimePlanning(LocalDateTime.now().minusMonths(2))
+        }
+        coEvery { getTasksUseCase() } returns flowOf(listOf(todayTask, oldTask))
+
+        // Set both filters
+        viewModel.sendIntent(TaskIntent.LoadTasks)
+        viewModel.sendIntent(TaskIntent.UpdateStatusFilter(TaskStatus.COMPLETED))
+        viewModel.sendIntent(TaskIntent.UpdateTimeFrameFilter(TimeFrame.TODAY))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(0, viewModel.state.value!!.filteredTasks.size) // No tasks match both filters
+    }
+
+    @Test
+    fun `addSubtask should show error for empty name`() = runTest(testDispatcher) {
+        val taskId = 1
+        viewModel.sendIntent(TaskIntent.AddSubtask(taskId, ""))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.state.value!!.uiState is TaskState.UiState.Error)
+        coVerify(exactly = 0) { addSubtaskUseCase(any(), any()) }
+    }
+
+    @Test
+    fun `clearError should reset error state`() = runTest(testDispatcher) {
+        viewModel.sendIntent(TaskIntent.CreateTask(NewTaskData(name = "")))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.sendIntent(TaskIntent.ClearError)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.state.value!!.uiState is TaskState.UiState.Idle)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `loadTasks should show loading state`() = runTest(testDispatcher) {
+        coEvery { getTasksUseCase() } returns flow {
+            delay(100)
+            emit(emptyList())
+        }
+
+        viewModel.sendIntent(TaskIntent.LoadTasks)
+        testDispatcher.scheduler.advanceTimeBy(50)
+
+        assertTrue(viewModel.state.value!!.uiState is TaskState.UiState.Loading)
+    }
+
+    @Test
+    fun `filters should show tasks completed this week`() = runTest(testDispatcher) {
+        // Setup
+        val task = Task(
+            id = 1,
+            isCompleted = true,
+            endDateConf = TimePlanning(LocalDateTime.now().minusDays(1))
+        )
+        coEvery { getTasksUseCase() } returns flowOf(listOf(task))
+
+        // Action
+        viewModel.sendIntent(TaskIntent.LoadTasks)
+        viewModel.sendIntent(TaskIntent.UpdateStatusFilter(TaskStatus.COMPLETED))
+        viewModel.sendIntent(TaskIntent.UpdateTimeFrameFilter(TimeFrame.WEEK))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Debugging
+        println("Filtered Tasks: ${viewModel.state.value!!.filteredTasks}")
+        println("Task End Date: ${task.endDateConf?.dateTime}")
+
+        // Assertion
+        assertEquals(1, viewModel.state.value!!.filteredTasks.size)
+    }
+
+
+
 }

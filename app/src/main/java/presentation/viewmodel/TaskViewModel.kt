@@ -19,6 +19,7 @@ import com.elena.autoplanner.presentation.utils.NewTaskData
 import com.elena.autoplanner.presentation.utils.isDueThisMonth
 import com.elena.autoplanner.presentation.utils.isDueThisWeek
 import com.elena.autoplanner.presentation.utils.isDueToday
+import com.elena.autoplanner.presentation.utils.isExpired
 import com.elena.autoplanner.presentation.utils.toTask
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
@@ -35,7 +36,7 @@ class TaskViewModel(
 ) : BaseViewModel<TaskIntent, TaskState>() {
 
     override fun createInitialState(): TaskState = TaskState(
-        filters = TaskState.Filters(timeFrame = TimeFrame.TODAY)
+        filters = TaskState.Filters(timeFrame = TimeFrame.TODAY, status = TaskStatus.ALL)
     )
 
     override suspend fun handleIntent(intent: TaskIntent) {
@@ -63,7 +64,7 @@ class TaskViewModel(
                     setState {
                         copy(
                             tasks = tasks,
-                            filteredTasks = applyFilters(tasks),
+                            filteredTasks = applyFilters(tasks, filters),
                             uiState = TaskState.UiState.Idle
                         )
                     }
@@ -85,7 +86,10 @@ class TaskViewModel(
                 setState {
                     copy(
                         tasks = currentState.tasks + task,
-                        filteredTasks = applyFilters(currentState.tasks + task),
+                        filteredTasks = applyFilters(
+                            currentState.tasks + task,
+                            currentState.filters
+                        ), // Add filters
                         uiState = TaskState.UiState.Success("Task created")
                     )
                 }
@@ -104,7 +108,10 @@ class TaskViewModel(
                 setState {
                     copy(
                         tasks = currentState.tasks.map { if (it.id == task.id) task else it },
-                        filteredTasks = applyFilters(currentState.tasks),
+                        filteredTasks = applyFilters(
+                            currentState.tasks,
+                            currentState.filters
+                        ), // Add filters
                         uiState = TaskState.UiState.Success("Task updated")
                     )
                 }
@@ -123,7 +130,10 @@ class TaskViewModel(
                 setState {
                     copy(
                         tasks = currentState.tasks - task,
-                        filteredTasks = applyFilters(currentState.tasks - task),
+                        filteredTasks = applyFilters(
+                            currentState.tasks - task,
+                            currentState.filters
+                        ),
                         uiState = TaskState.UiState.Success("Task deleted")
                     )
                 }
@@ -141,7 +151,7 @@ class TaskViewModel(
                 setState {
                     copy(
                         tasks = currentState.tasks.map { if (it.id == task.id) updatedTask else it },
-                        filteredTasks = applyFilters(currentState.tasks),
+                        filteredTasks = applyFilters(currentState.tasks, currentState.filters),
                         uiState = TaskState.UiState.Idle
                     )
                 }
@@ -164,7 +174,7 @@ class TaskViewModel(
                 setState {
                     copy(
                         tasks = currentState.tasks.map { if (it.id == task) updatedTask else it },
-                        filteredTasks = applyFilters(currentState.tasks),
+                        filteredTasks = applyFilters(currentState.tasks, currentState.filters),
                         uiState = TaskState.UiState.Success("Subtask added")
                     )
                 }
@@ -181,7 +191,7 @@ class TaskViewModel(
                 setState {
                     copy(
                         tasks = currentState.tasks.map { if (it.id == taskId) updatedTask else it },
-                        filteredTasks = applyFilters(currentState.tasks),
+                        filteredTasks = applyFilters(currentState.tasks, currentState.filters),
                         uiState = TaskState.UiState.Idle
                     )
                 }
@@ -199,7 +209,7 @@ class TaskViewModel(
                 setState {
                     copy(
                         tasks = currentState.tasks.map { if (it.id == task) updatedTask else it },
-                        filteredTasks = applyFilters(currentState.tasks),
+                        filteredTasks = applyFilters(currentState.tasks, currentState.filters),
                         uiState = TaskState.UiState.Success("Subtask deleted")
                     )
                 }
@@ -211,35 +221,38 @@ class TaskViewModel(
 
     private fun updateStatusFilter(status: TaskStatus) {
         setState {
+            val newFilters = filters.copy(status = status)
             copy(
-                filters = filters.copy(status = status),
-                filteredTasks = applyFilters(tasks)
+                filters = newFilters,
+                filteredTasks = applyFilters(tasks, newFilters)
             )
         }
     }
 
     private fun updateTimeFrameFilter(timeFrame: TimeFrame) {
         setState {
+            val newFilters = filters.copy(timeFrame = timeFrame)
             copy(
-                filters = filters.copy(timeFrame = timeFrame),
-                filteredTasks = applyFilters(tasks)
+                filters = newFilters,
+                filteredTasks = applyFilters(tasks, newFilters)
             )
         }
     }
 
-    private fun applyFilters(tasks: List<Task>): List<Task> = tasks
+    private fun applyFilters(tasks: List<Task>, filters: TaskState.Filters): List<Task> = tasks
         .filter { task ->
-            when (currentState.filters.status) {
+            when (filters.status) {
                 TaskStatus.COMPLETED -> task.isCompleted
                 TaskStatus.UNCOMPLETED -> !task.isCompleted
                 TaskStatus.ALL -> true
             }
         }
         .filter { task ->
-            when (currentState.filters.timeFrame) {
+            when (filters.timeFrame) {
                 TimeFrame.TODAY -> task.isDueToday()
                 TimeFrame.WEEK -> task.isDueThisWeek()
                 TimeFrame.MONTH -> task.isDueThisMonth()
+                TimeFrame.EXPIRED -> task.isExpired()
                 TimeFrame.ALL -> true
             }
         }
