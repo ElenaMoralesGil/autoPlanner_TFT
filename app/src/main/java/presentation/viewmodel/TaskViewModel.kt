@@ -19,7 +19,6 @@ import com.elena.autoplanner.presentation.utils.NewTaskData
 import com.elena.autoplanner.presentation.utils.isDueThisMonth
 import com.elena.autoplanner.presentation.utils.isDueThisWeek
 import com.elena.autoplanner.presentation.utils.isDueToday
-import com.elena.autoplanner.presentation.utils.isExpired
 import com.elena.autoplanner.presentation.utils.toTask
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
@@ -89,7 +88,7 @@ class TaskViewModel(
                         filteredTasks = applyFilters(
                             currentState.tasks + task,
                             currentState.filters
-                        ), // Add filters
+                        ),
                         uiState = TaskState.UiState.Success("Task created")
                     )
                 }
@@ -111,7 +110,7 @@ class TaskViewModel(
                         filteredTasks = applyFilters(
                             currentState.tasks,
                             currentState.filters
-                        ), // Add filters
+                        ),
                         uiState = TaskState.UiState.Success("Task updated")
                     )
                 }
@@ -146,7 +145,10 @@ class TaskViewModel(
     private fun toggleTaskCompletion(task: Task, checked: Boolean) {
         viewModelScope.launch {
             try {
-                val updatedTask = task.copy(isCompleted = checked)
+                val updatedTask = task.copy(
+                    isCompleted = checked,
+                    isExpired = if (checked) false else task.isExpired
+                )
                 updateTaskUseCase(updatedTask)
                 setState {
                     copy(
@@ -242,20 +244,21 @@ class TaskViewModel(
     private fun applyFilters(tasks: List<Task>, filters: TaskState.Filters): List<Task> = tasks
         .filter { task ->
             when (filters.status) {
-                TaskStatus.COMPLETED -> task.isCompleted
-                TaskStatus.UNCOMPLETED -> !task.isCompleted
-                TaskStatus.ALL -> true
+                TaskStatus.COMPLETED -> task.isCompleted && !task.isExpired
+                TaskStatus.UNCOMPLETED -> !task.isCompleted && !task.isExpired
+                TaskStatus.ALL -> !task.isExpired
             }
         }
         .filter { task ->
             when (filters.timeFrame) {
-                TimeFrame.TODAY -> task.isDueToday()
-                TimeFrame.WEEK -> task.isDueThisWeek()
-                TimeFrame.MONTH -> task.isDueThisMonth()
-                TimeFrame.EXPIRED -> task.isExpired()
+                TimeFrame.TODAY -> task.isDueToday() && !task.isExpired
+                TimeFrame.WEEK -> task.isDueThisWeek() && !task.isExpired
+                TimeFrame.MONTH -> task.isDueThisMonth() && !task.isExpired
+                TimeFrame.EXPIRED -> task.isExpired
                 TimeFrame.ALL -> true
             }
         }
+
 
     private fun clearError() {
         setState { copy(uiState = TaskState.UiState.Idle) }

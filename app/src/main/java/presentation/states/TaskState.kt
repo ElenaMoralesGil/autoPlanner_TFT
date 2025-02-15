@@ -2,10 +2,6 @@ package com.elena.autoplanner.presentation.states
 
 import com.elena.autoplanner.domain.models.Task
 
-/**
- * Estado único para la pantalla(s) de Tareas en MVI.
- */
-// Updated TaskState
 data class TaskState(
     val tasks: List<Task> = emptyList(),
     val filteredTasks: List<Task> = emptyList(),
@@ -25,6 +21,12 @@ data class TaskState(
     }
 }
 
+
+enum class TaskSection {
+    NOT_DONE,
+    COMPLETED,
+    EXPIRED
+}
 
 enum class TaskStatus(val displayName: String) {
     ALL("All"),

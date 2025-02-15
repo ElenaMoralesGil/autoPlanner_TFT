@@ -1,8 +1,10 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,14 +12,17 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -32,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -44,16 +50,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.intents.TaskIntent
+import com.elena.autoplanner.presentation.states.TaskSection
 import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
@@ -62,7 +76,8 @@ import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import org.koin.androidx.compose.koinViewModel
-import java.time.LocalDateTime
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 
 @Composable
@@ -81,8 +96,20 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
             state?.let {
                 TasksAppBar(
                     state = it,
-                    onStatusSelected = { status -> viewModel.sendIntent(TaskIntent.UpdateStatusFilter(status)) },
-                    onTimeFrameSelected = { tf -> viewModel.sendIntent(TaskIntent.UpdateTimeFrameFilter(tf)) }
+                    onStatusSelected = { status ->
+                        viewModel.sendIntent(
+                            TaskIntent.UpdateStatusFilter(
+                                status
+                            )
+                        )
+                    },
+                    onTimeFrameSelected = { tf ->
+                        viewModel.sendIntent(
+                            TaskIntent.UpdateTimeFrameFilter(
+                                tf
+                            )
+                        )
+                    }
                 )
             }
         },
@@ -94,16 +121,59 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
         },
         content = { innerPadding ->
             state?.let { currentState ->
-                ContentContainer(
-                    state = currentState,
-                    innerPadding = innerPadding,
-                    onTaskChecked = { task, checked ->
-                        viewModel.sendIntent(TaskIntent.ToggleTaskCompletion(task, checked))
-                    },
-                    onTaskSelected = { task ->
-                        selectedTaskId = task.id
-                    },
-                )
+                Column(modifier = Modifier.padding(innerPadding)) {
+                    when (val uiState = currentState.uiState) {
+                        TaskState.UiState.Loading -> LoadingIndicator()
+                        is TaskState.UiState.Error -> uiState.message?.let { ErrorMessage(it) }
+                        else -> {
+                            if (currentState.filteredTasks.isEmpty()) {
+                                EmptyState()
+                            } else {
+                                TasksSectionContent(
+                                    state = currentState,
+                                    onTaskChecked = { task, checked ->
+                                        viewModel.sendIntent(
+                                            TaskIntent.ToggleTaskCompletion(
+                                                task,
+                                                checked
+                                            )
+                                        )
+                                    },
+                                    onTaskSelected = { task ->
+                                        selectedTaskId = task.id
+                                    },
+                                    onDragEnd = { task, targetSection ->
+                                        when (targetSection) {
+                                            TaskSection.COMPLETED -> viewModel.sendIntent(
+                                                TaskIntent.UpdateTask(
+                                                    task.copy(
+                                                        isCompleted = true,
+                                                        isExpired = false
+                                                    )
+                                                )
+                                            )
+
+                                            TaskSection.EXPIRED -> viewModel.sendIntent(
+                                                TaskIntent.UpdateTask(task.copy(isExpired = true))
+                                            )
+
+                                            TaskSection.NOT_DONE -> {
+                                                viewModel.sendIntent(
+                                                    TaskIntent.UpdateTask(
+                                                        task.copy(
+                                                            isCompleted = false,
+                                                            isExpired = false
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     )
@@ -160,6 +230,7 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TasksAppBar(
@@ -181,31 +252,6 @@ private fun TasksAppBar(
     )
 }
 
-@Composable
-private fun ContentContainer(
-    state: TaskState,
-    innerPadding: PaddingValues,
-    onTaskChecked: (Task, Boolean) -> Unit,
-    onTaskSelected: (Task) -> Unit,
-) {
-    Column(modifier = Modifier.padding(innerPadding)) {
-        when (val uiState = state.uiState) {
-            TaskState.UiState.Loading -> LoadingIndicator()
-            is TaskState.UiState.Error -> uiState.message?.let { ErrorMessage(it) }
-            else -> {
-                if (state.filteredTasks.isEmpty()) {
-                    EmptyState()
-                } else {
-                    TaskCardList(
-                        tasks = state.filteredTasks,
-                        onTaskChecked = onTaskChecked,
-                        onTaskSelected = onTaskSelected
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun AddTaskFAB(onClick: () -> Unit) {
@@ -311,6 +357,7 @@ private fun TimeFrame.iconRes() = when (this) {
     TimeFrame.TODAY, TimeFrame.WEEK, TimeFrame.MONTH -> R.drawable.ic_lists
     else -> R.drawable.ic_calendar
 }
+
 @Composable
 private fun EmptyState() {
     Column(
@@ -343,30 +390,190 @@ private fun EmptyState() {
 }
 
 @Composable
-private fun TaskCardList(
-    tasks: List<Task>,
+private fun TasksSectionContent(
+    state: TaskState,
     onTaskChecked: (Task, Boolean) -> Unit,
-    onTaskSelected: (Task) -> Unit
+    onTaskSelected: (Task) -> Unit,
+    onDragEnd: (Task, TaskSection) -> Unit
 ) {
+    val tasks = state.filteredTasks
+    val notDoneTasks = tasks.filter { !it.isCompleted && !it.isExpired }
+    val completedTasks = tasks.filter { it.isCompleted && !it.isExpired }
+    val expiredTasks = tasks.filter { it.isExpired }
+
+    // Only show relevant sections based on filters
+    val showNotDone = when (state.filters.status) {
+        TaskStatus.ALL, TaskStatus.UNCOMPLETED -> true
+        else -> false
+    }
+
+    val showCompleted = when (state.filters.status) {
+        TaskStatus.ALL, TaskStatus.COMPLETED -> true
+        else -> false
+    }
+
+    val showExpired = state.filters.timeFrame == TimeFrame.EXPIRED
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(16.dp)
     ) {
-        items(tasks) { task ->
-            TaskCard(
-                task = task,
-                onCheckedChange = { checked -> onTaskChecked(task, checked) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onTaskSelected(task) }
-            )
+        if (showNotDone && notDoneTasks.isNotEmpty()) {
+            stickyHeader {
+                EnhancedSectionHeader(
+                    title = "Not Done",
+                    count = notDoneTasks.size,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            items(notDoneTasks) { task ->
+                AnimatedDraggableTaskCard(
+                    task = task,
+                    onDragEnd = { targetSection -> onDragEnd(task, targetSection) },
+                    onCheckedChange = { checked -> onTaskChecked(task, checked) },
+                    onTaskSelected = { onTaskSelected(task) }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
+        if (showCompleted && completedTasks.isNotEmpty()) {
+            stickyHeader {
+                EnhancedSectionHeader(
+                    title = "Completed",
+                    count = completedTasks.size,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+            items(completedTasks) { task ->
+                AnimatedDraggableTaskCard(
+                    task = task,
+                    onDragEnd = { targetSection -> onDragEnd(task, targetSection) },
+                    onCheckedChange = { checked -> onTaskChecked(task, checked) },
+                    onTaskSelected = { onTaskSelected(task) }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
+        if (showExpired && expiredTasks.isNotEmpty()) {
+            stickyHeader {
+                EnhancedSectionHeader(
+                    title = "Expired",
+                    count = expiredTasks.size,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            items(expiredTasks) { task ->
+                AnimatedDraggableTaskCard(
+                    task = task,
+                    onDragEnd = { targetSection -> onDragEnd(task, targetSection) },
+                    onCheckedChange = { checked -> onTaskChecked(task, checked) },
+                    onTaskSelected = { onTaskSelected(task) }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     }
 }
 
 @Composable
-private fun TaskCard(
+fun AnimatedDraggableTaskCard(
+    task: Task,
+    onDragEnd: (TaskSection) -> Unit,
+    onCheckedChange: (Boolean) -> Unit,
+    onTaskSelected: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var offsetX by remember { mutableStateOf(0f) }
+    val dragThreshold = 100f
+    var isDragging by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    val maxOffset = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
+
+    Box(
+        modifier = modifier
+            .offset { IntOffset(offsetX.roundToInt(), 0) }
+            .pointerInput(task.id) {
+                detectDragGestures(
+                    onDragStart = { isDragging = true },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        offsetX = (offsetX + dragAmount.x).coerceIn(-maxOffset, maxOffset)
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        val targetSection = when {
+                            offsetX > dragThreshold -> TaskSection.COMPLETED
+                            offsetX < -dragThreshold -> TaskSection.EXPIRED
+                            else -> TaskSection.NOT_DONE
+                        }
+                        onDragEnd(targetSection)
+                        offsetX = 0f
+                    },
+                    onDragCancel = {
+                        offsetX = 0f
+                        isDragging = false
+                    }
+                )
+            }
+    ) {
+        // Drag direction indicators
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                            .copy(alpha = offsetX.coerceIn(0f, 1f))
+                    ),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                if (offsetX > 0) {
+                    Text("Complete", color = MaterialTheme.colorScheme.onSecondaryContainer)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(
+                        color = MaterialTheme.colorScheme.errorContainer
+                            .copy(alpha = abs(offsetX).coerceIn(0f, 1f))
+                    ),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (offsetX < 0) {
+                    Text("Expired", color = MaterialTheme.colorScheme.onErrorContainer)
+                }
+            }
+        }
+
+        EnhancedTaskCard(
+            task = task,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier
+                .clickable { onTaskSelected() }
+                .graphicsLayer {
+                    val scale = 1f - (abs(offsetX) * 0.002f)
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .shadow(
+                    4.dp,
+                    RoundedCornerShape(12.dp),
+                    spotColor = MaterialTheme.colorScheme.outline
+                )
+        )
+    }
+}
+
+@Composable
+fun EnhancedTaskCard(
     task: Task,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -374,128 +581,219 @@ private fun TaskCard(
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp,
+            focusedElevation = 4.dp,
+            hoveredElevation = 3.dp
+        ),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
+            // Priority indicator
             Box(
                 modifier = Modifier
-                    .size(4.dp, 32.dp)
+                    .size(8.dp)
                     .background(
                         color = when (task.priority) {
                             Priority.HIGH -> MaterialTheme.colorScheme.error
-                            Priority.MEDIUM -> Color(0xFFFFC107)
-                            Priority.LOW -> Color(0xFF4CAF50)
-                            else -> Color.Transparent
+                            Priority.MEDIUM -> MaterialTheme.colorScheme.tertiary
+                            Priority.LOW -> MaterialTheme.colorScheme.secondary
+                            else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                         },
-                        shape = RoundedCornerShape(4.dp)
+                        shape = CircleShape
                     )
             )
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = task.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.sp
+                    ),
+                    color = if (task.isCompleted)
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.onSurface
                 )
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    task.startDateConf?.let {
-                        LabelChip(
-                            icon = painterResource(R.drawable.ic_calendar),
-                            text = DateTimeFormatters.formatDateShort(it)
-                        )
-                    }
-
-                    task.durationConf?.let {
-                        LabelChip(
-                            icon = painterResource(R.drawable.ic_duration),
-                            text = DateTimeFormatters.formatDurationShort(it)
-                        )
-                    }
-                    task.endDateConf?.dateTime?.takeIf { it.isBefore(LocalDateTime.now()) }?.let {
-                        LabelChip(
-                            icon = painterResource(R.drawable.expired),
-                            text = "Expired",
-                            modifier = Modifier.background(MaterialTheme.colorScheme.error)
-                        )
-                    }
-
-
-                    if (task.subtasks.isNotEmpty()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_subtasks),
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size}",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
+                if (task.startDateConf != null || task.durationConf != null || task.subtasks.isNotEmpty()) {
+                    TaskMetadata(task = task)
                 }
             }
 
-            SquareCheckbox(
-                checked = task.isCompleted,
-                onCheckedChange = onCheckedChange
-            )
+            // Enhanced checkbox using Material3 Surface
+            Surface(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+                onClick = { onCheckedChange(!task.isCompleted) },
+                shape = RoundedCornerShape(6.dp),
+                color = if (task.isCompleted)
+                    MaterialTheme.colorScheme.primary
+                else
+                    Color.Transparent,
+                border = BorderStroke(
+                    width = 2.dp,
+                    color = if (task.isCompleted)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            ) {
+                if (task.isCompleted) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .fillMaxSize()
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun LabelChip(
-    icon: Painter,
-    text: String,
+fun EnhancedSectionHeader(
+    title: String,
+    count: Int,
+    color: Color,
     modifier: Modifier = Modifier
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            painter = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp)
+        Box(
+            modifier = Modifier
+                .size(4.dp, 24.dp)
+                .background(color, RoundedCornerShape(2.dp))
         )
-        Spacer(Modifier.width(4.dp))
+
+        Spacer(modifier = Modifier.width(12.dp))
+
         Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
 @Composable
-fun SquareCheckbox(
+private fun PriorityIndicator(priority: Priority) {
+    val color = when (priority) {
+        Priority.HIGH -> MaterialTheme.colorScheme.error
+        Priority.MEDIUM -> MaterialTheme.colorScheme.tertiary
+        Priority.LOW -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.outline
+    }
+
+    EnhancedChip(
+        icon = painterResource(R.drawable.priority),
+        iconTint = color,
+        text = priority.name.lowercase(),
+    )
+}
+
+@Composable
+private fun TaskMetadata(task: Task) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        task.startDateConf?.let {
+            EnhancedChip(
+                icon = painterResource(R.drawable.ic_calendar),
+                iconTint = MaterialTheme.colorScheme.primary,
+                text = DateTimeFormatters.formatDateShort(it)
+            )
+        }
+
+        task.durationConf?.let {
+            EnhancedChip(
+                icon = painterResource(R.drawable.ic_duration),
+                iconTint = MaterialTheme.colorScheme.primary,
+                text = DateTimeFormatters.formatDurationShort(it)
+            )
+        }
+
+        if (task.subtasks.isNotEmpty()) {
+            EnhancedChip(
+                icon = painterResource(R.drawable.ic_subtasks),
+                iconTint = MaterialTheme.colorScheme.primary,
+                text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size}"
+            )
+        }
+
+        if (task.priority != Priority.NONE) {
+            PriorityIndicator(task.priority)
+        }
+    }
+}
+
+@Composable
+fun EnhancedChip(
+    icon: Painter,
+    iconTint: Color,
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                painter = icon,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = iconTint
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun EnhancedCheckbox(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -504,29 +802,33 @@ fun SquareCheckbox(
         modifier = modifier
             .size(24.dp)
             .clickable { onCheckedChange(!checked) }
-            .background(Color.Transparent)
     ) {
-
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(Color.Transparent, RoundedCornerShape(4.dp))
-                .border(
-                    width = 2.dp,
-                    color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                .background(
+                    color = if (checked) MaterialTheme.colorScheme.primary else Color.Transparent,
                     shape = RoundedCornerShape(4.dp)
                 )
-        )
-
-        if (checked) {
-            Icon(
-                Icons.Default.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .size(18.dp)
-                    .align(Alignment.Center)
-            )
+                .border(
+                    width = 2.dp,
+                    color = if (checked)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(4.dp)
+                )
+        ) {
+            if (checked) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .padding(2.dp)
+                        .fillMaxSize()
+                )
+            }
         }
     }
 }

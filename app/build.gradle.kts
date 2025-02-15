@@ -75,8 +75,11 @@ dependencies {
     implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
     implementation(libs.xpp3)
+
     implementation(libs.androidx.navigation.safe.args.generator)
     implementation(libs.androidx.material3.android)
+    implementation(libs.androidx.foundation.layout.android)
+    implementation(libs.androidx.foundation.android)
 
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.kotlinx.coroutines.test)
