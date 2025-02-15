@@ -1,12 +1,9 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -31,10 +28,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -52,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,7 +64,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
@@ -398,7 +395,7 @@ private fun TasksSectionContent(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
+        contentPadding = PaddingValues(8.dp)
     ) {
         if (showNotDone) {
             stickyHeader {
@@ -415,7 +412,9 @@ private fun TasksSectionContent(
                     onDelete = { onDelete(task) },
                     onEdit = { onEdit(task) },
                     onTaskSelected = { onTaskSelected(task) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -436,7 +435,9 @@ private fun TasksSectionContent(
                     onDelete = { onDelete(task) },
                     onEdit = { onEdit(task) },
                     onTaskSelected = { onTaskSelected(task) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -457,7 +458,9 @@ private fun TasksSectionContent(
                     onDelete = { onDelete(task) },
                     onEdit = { onEdit(task) },
                     onTaskSelected = { onTaskSelected(task) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -465,93 +468,22 @@ private fun TasksSectionContent(
     }
 }
 
-@Composable
-fun AnimatedDraggableTaskCard(
-    task: Task,
-    onDelete: () -> Unit,
-    onEdit: () -> Unit,
-    onCheckedChange: (Boolean) -> Unit,
-    onTaskSelected: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var offsetX by remember { mutableStateOf(0f) }
-    val maxOffset = with(LocalDensity.current) { 80.dp.toPx() }
-    val animatedOffset by animateFloatAsState(
-        targetValue = offsetX,
-        animationSpec = spring(stiffness = Spring.StiffnessLow)
-    )
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-    ) {
-        // Background actions
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (animatedOffset > 0) {
-                EditAction(modifier = Modifier.weight(0.2f))
-            }
-            if (animatedOffset < 0) {
-                DeleteAction(modifier = Modifier.weight(0.2f))
-            }
-        }
-
-        // Main card content
-        Card(
-            modifier = Modifier
-                .offset { IntOffset(animatedOffset.roundToInt(), 0) }
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            when {
-                                offsetX > maxOffset -> { // Swipe right for edit
-                                    onEdit()
-                                    offsetX = 0f
-                                }
-
-                                offsetX < -maxOffset -> { // Swipe left for delete
-                                    onDelete()
-                                    offsetX = 0f
-                                }
-
-                                else -> offsetX = 0f // Return to position
-                            }
-                        },
-                        onHorizontalDrag = { change, dragAmount ->
-                            change.consume()
-                            offsetX = (offsetX + dragAmount).coerceIn(-maxOffset, maxOffset)
-                        }
-                    )
-                }
-        ) {
-            EnhancedTaskCard(
-                task = task,
-                onCheckedChange = onCheckedChange,
-                onTaskSelected = onTaskSelected,
-                modifier = Modifier.fillMaxWidth(),
-                onDelete = onDelete,
-                onEdit = onEdit
-            )
-        }
-    }
-}
 
 @Composable
 private fun DeleteAction(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.error),
-        contentAlignment = Alignment.Center
+            .background(MaterialTheme.colorScheme.errorContainer),
+        contentAlignment = Alignment.CenterEnd
     ) {
         Icon(
             Icons.Default.Delete,
             contentDescription = "Delete",
-            tint = MaterialTheme.colorScheme.onError
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(8.dp)
         )
     }
 }
@@ -561,26 +493,30 @@ private fun EditAction(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.primary),
-        contentAlignment = Alignment.Center
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.CenterStart
     ) {
         Icon(
             Icons.Default.Edit,
             contentDescription = "Edit",
-            tint = MaterialTheme.colorScheme.onPrimary
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier
+                .size(40.dp)
+                .padding(8.dp)
         )
     }
 }
+
 @Composable
 fun EnhancedTaskCard(
     task: Task,
     onCheckedChange: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
-    onTaskSelected: () -> Unit, // Added task selection callback
+    onTaskSelected: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var offsetX by remember { mutableStateOf(0f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
     val maxOffset = with(LocalDensity.current) { 150.dp.toPx() }
     val animatedOffset by animateFloatAsState(
         targetValue = offsetX,
@@ -593,7 +529,6 @@ fun EnhancedTaskCard(
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
     ) {
-        // Background actions
         Row(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -607,7 +542,6 @@ fun EnhancedTaskCard(
             }
         }
 
-        // Main card content
         Card(
             modifier = Modifier
                 .offset { IntOffset(animatedOffset.roundToInt(), 0) }
@@ -633,7 +567,14 @@ fun EnhancedTaskCard(
                             }
                         }
                     )
-                }
+                },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 4.dp
+            ),
+            shape = RoundedCornerShape(8.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -661,20 +602,16 @@ fun EnhancedTaskCard(
                     modifier = Modifier
                         .weight(1f)
                         .clickable {
-                            if (offsetX == 0f) onTaskSelected() // Only trigger when not swiped
+                            if (offsetX == 0f) onTaskSelected()
                         },
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = task.name,
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 0.sp
+                            fontWeight = FontWeight.Medium
                         ),
-                        color = if (task.isCompleted)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        else
-                            MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     if (task.startDateConf != null || task.durationConf != null || task.subtasks.isNotEmpty()) {
@@ -682,16 +619,13 @@ fun EnhancedTaskCard(
                     }
                 }
 
-                // Checkbox with proper padding
                 Checkbox(
                     checked = task.isCompleted,
                     onCheckedChange = onCheckedChange,
                     colors = CheckboxDefaults.colors(
                         checkedColor = MaterialTheme.colorScheme.primary,
-                        checkmarkColor = MaterialTheme.colorScheme.onPrimary,
-                        uncheckedColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                    ),
-                    modifier = Modifier.padding(start = 8.dp)
+                        checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
             }
         }
@@ -817,47 +751,6 @@ fun EnhancedChip(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface
             )
-        }
-    }
-}
-
-@Composable
-private fun EnhancedCheckbox(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .size(24.dp)
-            .clickable { onCheckedChange(!checked) }
-    ) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    color = if (checked) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    shape = RoundedCornerShape(4.dp)
-                )
-                .border(
-                    width = 2.dp,
-                    color = if (checked)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(4.dp)
-                )
-        ) {
-            if (checked) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier
-                        .padding(2.dp)
-                        .fillMaxSize()
-                )
-            }
         }
     }
 }
