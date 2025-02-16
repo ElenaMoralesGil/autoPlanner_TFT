@@ -517,11 +517,6 @@ fun TimePickerColumn(
     onValueChange: (Int) -> Unit,
     label: String
 ) {
-    val itemHeight = 40.dp
-    val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedValue)
-    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
-
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
@@ -529,73 +524,11 @@ fun TimePickerColumn(
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
         Spacer(Modifier.height(8.dp))
-
-        Box(
-            modifier = Modifier
-                .height(itemHeight * 5)
-                .width(80.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            LazyColumn(
-                state = listState,
-                flingBehavior = flingBehavior,
-                contentPadding = PaddingValues(vertical = itemHeight * 2),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(range.count()) { index ->
-                    val value = range.first + index
-                    val isSelected = (value == selectedValue)
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(itemHeight),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = value.toString().padStart(2, '0'),
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-
-            }
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.8f)
-                    .height(itemHeight)
-                    .background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-            )
-        }
+        NumberPicker(
+            value = selectedValue,
+            range = range,
+            onValueChange = onValueChange,
+            modifier = Modifier.width(80.dp)
+        )
     }
-
-    LaunchedEffect(listState, itemHeightPx) {
-        snapshotFlow {
-            val firstVisibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
-            val offsetFirstItem = firstVisibleItem?.offset ?: 0
-            val offsetItems = offsetFirstItem / itemHeightPx
-
-            Pair(listState.firstVisibleItemIndex, offsetItems)
-        }.collect { (firstIndex, offsetItems) ->
-
-        val centerIndex = (firstIndex + offsetItems + 2.5f).roundToInt()
-            val boundedIndex = centerIndex.coerceIn(0, range.count() - 1)
-            val newValue = range.first + boundedIndex
-
-            if (newValue != selectedValue) {
-                onValueChange(newValue)
-            }
-        }
-    }
-
 }

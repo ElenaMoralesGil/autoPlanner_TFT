@@ -1,11 +1,8 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
-import androidx.compose.foundation.ExperimentalFoundationApi
+
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
@@ -14,14 +11,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.ReminderMode
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 import com.elena.autoplanner.presentation.ui.utils.SelectionGrid
-import kotlin.math.roundToInt
+import com.elena.autoplanner.presentation.ui.utils.StringPicker
+
 
 @Composable
 fun ReminderAlertDialog(
@@ -195,12 +191,6 @@ fun ScrollingStringPickerColumn(
     onIndexChange: (Int) -> Unit,
     label: String
 ) {
-    val itemHeight = 40.dp
-    val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
-
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
-    val flingBehavior = rememberSnapFlingBehavior(listState)
-
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
@@ -209,67 +199,12 @@ fun ScrollingStringPickerColumn(
             )
         )
         Spacer(Modifier.height(8.dp))
-
-        Box(
-            modifier = Modifier
-                .height(itemHeight * 5)
-                .width(110.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            LazyColumn(
-                state = listState,
-                flingBehavior = flingBehavior,
-                contentPadding = PaddingValues(vertical = itemHeight * 2),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(items.size) { index ->
-                    val isSelected = (index == selectedIndex)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(itemHeight),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = items[index],
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-                    }
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.8f)
-                    .height(itemHeight)
-                    .shapeAndBg()
-            )
-        }
-    }
-
-    LaunchedEffect(listState, itemHeightPx) {
-        snapshotFlow {
-            val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
-            val offsetFirst = firstVisible?.offset ?: 0
-            val offsetItems = offsetFirst / itemHeightPx
-
-            listState.firstVisibleItemIndex to offsetItems
-        }.collect { (firstIndex, offsetItems) ->
-            val centerIndex = (firstIndex + offsetItems + 2.5f).roundToInt()
-                .coerceIn(0, items.size - 1)
-
-            if (centerIndex != selectedIndex) {
-                onIndexChange(centerIndex)
-            }
-        }
-    }
-
-    LaunchedEffect(selectedIndex) {
-        listState.scrollToItem(selectedIndex)
+        StringPicker(
+            items = items,
+            selectedIndex = selectedIndex,
+            onValueChange = onIndexChange,
+            modifier = Modifier.width(110.dp)
+        )
     }
 }
 
