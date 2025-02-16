@@ -44,7 +44,6 @@ fun TaskEntity.toDomain(
         )
     } else null
 
-    val isExpired = calculateExpiration(endConf, LocalDateTime.now())
 
     val durConf = durationMinutes?.let { DurationPlan(it) }
 
@@ -63,7 +62,6 @@ fun TaskEntity.toDomain(
 
         startDateConf = startConf,
         endDateConf = endConf,
-        isExpired = isExpired,
         durationConf = durConf,
         reminderPlan = domainReminderPlan,
         repeatPlan = domainRepeatPlan,
@@ -159,7 +157,6 @@ fun Task.toTaskEntity(): TaskEntity {
         id = id,
         name = name,
         isCompleted = isCompleted,
-        isExpired = isExpired,
         priority = priority.name,
 
         startDateTime = startDateTime,

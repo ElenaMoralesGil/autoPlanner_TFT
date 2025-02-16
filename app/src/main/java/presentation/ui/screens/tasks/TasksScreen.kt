@@ -389,8 +389,8 @@ private fun TasksSectionContent(
     onEdit: (Task) -> Unit
 ) {
     val tasks = state.filteredTasks
-    val notDoneTasks = tasks.filter { !it.isCompleted && !it.isExpired }
-    val expiredNotCompletedTasks = tasks.filter { it.isExpired && !it.isCompleted }
+    val notDoneTasks = tasks.filter { !it.isCompleted && !it.isExpired() }
+    val expiredNotCompletedTasks = tasks.filter { it.isExpired() && !it.isCompleted }
     val completedTasks = tasks.filter { it.isCompleted }
 
     val showNotDone = when (state.filters.status) {
@@ -624,7 +624,7 @@ fun EnhancedTaskCard(
                     )
 
                     if (task.startDateConf != null || task.durationConf != null ||
-                        task.subtasks.isNotEmpty() || task.isExpired
+                        task.subtasks.isNotEmpty() || task.isExpired()
                     ) {
                         TaskMetadata(task = task)
                     }
@@ -721,8 +721,7 @@ private fun TaskMetadata(task: Task) {
         }
 
 
-        // Expired status chip
-        if (task.isExpired) {
+        if (task.isExpired()) {
             EnhancedChip(
                 icon = painterResource(R.drawable.expired),
                 iconTint = MaterialTheme.colorScheme.error,

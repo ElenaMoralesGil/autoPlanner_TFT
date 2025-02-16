@@ -23,6 +23,7 @@ import com.elena.autoplanner.domain.usecases.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.UpdateTaskUseCase
+import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import org.koin.core.module.dsl.viewModel
 
 
@@ -81,5 +82,10 @@ val useCaseModule = module {
 
 // Módulo de ViewModels
 val viewModelModule = module {
-    viewModel { TaskViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { CalendarViewModel() }
+    viewModel {
+        TaskViewModel(get(), get(), get(), get(), get(), get(), get())
+    }
+
+
 }

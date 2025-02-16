@@ -174,7 +174,7 @@ class TaskViewModel(
         }
     }
 
-    private fun addSubtask(task: Int, subtaskName: String) {
+    fun addSubtask(task: Int, subtaskName: String) {
         viewModelScope.launch {
             try {
                 if (subtaskName.isBlank()) {
@@ -197,7 +197,7 @@ class TaskViewModel(
         }
     }
 
-    private fun toggleSubtask(taskId: Int, subtaskId: Int, checked: Boolean) {
+    fun toggleSubtask(taskId: Int, subtaskId: Int, checked: Boolean) {
         viewModelScope.launch {
             try {
                 val updatedTask = toggleSubtaskUseCase(taskId, subtaskId, checked)
@@ -214,7 +214,7 @@ class TaskViewModel(
         }
     }
 
-    private fun deleteSubtask(task: Int, subtask: Int) {
+    fun deleteSubtask(task: Int, subtask: Int) {
         viewModelScope.launch {
             try {
                 setState { copy(uiState = TaskState.UiState.Loading) }
@@ -253,8 +253,8 @@ class TaskViewModel(
     }
 
     private fun applyFilters(tasks: List<Task>, filters: TaskState.Filters): List<Task> {
-        val expiredTasks = tasks.filter { it.isExpired }
-        val nonExpiredTasks = tasks.filter { !it.isExpired }
+        val expiredTasks = tasks.filter { it.isExpired() }
+        val nonExpiredTasks = tasks.filter { !it.isExpired() }
 
         val timeFilteredTasks = when (filters.timeFrame) {
             TimeFrame.TODAY -> nonExpiredTasks.filter { it.isDueToday() }
