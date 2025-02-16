@@ -57,6 +57,7 @@ import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
+import com.elena.autoplanner.presentation.ui.utils.NumberPicker
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -356,29 +357,24 @@ fun CalendarGrid(
     todayDay: Int?,
     onDayClick: (Int) -> Unit
 ) {
-    // 1. Obtener el número de días en el mes actual
+
     val daysInMonth = YearMonth.of(displayYear, displayMonth).lengthOfMonth()
-
-    // 2. Determinar el día de la semana del primer día del mes
     val firstDayOfWeek = LocalDate.of(displayYear, displayMonth, 1).dayOfWeek.value
-    val leadingEmptyDays = (firstDayOfWeek - 1) % 7 // Ajustar al inicio de la semana
+    val leadingEmptyDays = (firstDayOfWeek - 1) % 7
 
-    // 3. Crear una lista para celdas: vacías + días del mes
     val calendarCells = buildList {
-        // Agregar celdas vacías al inicio
         repeat(leadingEmptyDays) { add(null) }
-        // Agregar los días del mes
+
         for (day in 1..daysInMonth) add(day)
     }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(7),
-        modifier = Modifier.height(200.dp), // Ajustar el alto según tus necesidades
-        userScrollEnabled = false // Sin desplazamiento vertical
+        modifier = Modifier.height(200.dp),
+        userScrollEnabled = false
     ) {
         items(calendarCells) { day ->
             if (day != null) {
-                // Día válido del mes
                 val isToday = (day == todayDay)
                 val isSelected = (day == selectedDay)
                 val isHighlighted = highlightDate != null && highlightDate == LocalDate.of(displayYear, displayMonth, day)
@@ -391,7 +387,6 @@ fun CalendarGrid(
                     onClick = { onDayClick(day) }
                 )
             } else {
-                // Celda vacía
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -403,10 +398,6 @@ fun CalendarGrid(
 }
 
 
-/**
- * "DayPeriodOption" for morning/evening/night/all day.
- * Renders an icon from resources + text + sublabel if needed.
- */
 @Composable
 fun DayPeriodOption(
     iconRes: Int,
@@ -441,9 +432,6 @@ fun DayPeriodOption(
     }
 }
 
-/**
- * Utility for e.g. "Oct 2024"
- */
 fun monthYearLabel(month: Int, year: Int): String {
     val monthName = when (month) {
         1 -> "Jan"
@@ -478,25 +466,31 @@ fun HourMinutePickerDialog(
         text = {
             Row(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Selector de Horas (0..23)
-                TimePickerColumn(
-                    range = 0..23,
-                    selectedValue = selectedHour,
-                    onValueChange = { newHour -> selectedHour = newHour },
-                    label = "Hour"
-                )
-
-                // Selector de Minutos (0..59)
-                TimePickerColumn(
-                    range = 0..59,
-                    selectedValue = selectedMinute,
-                    onValueChange = { newMinute -> selectedMinute = newMinute },
-                    label = "Minute"
-                )
+                // Hour picker using the refactored NumberPicker
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Hour")
+                    NumberPicker(
+                        value = selectedHour,
+                        range = 0..23,
+                        onValueChange = { selectedHour = it },
+                        modifier = Modifier.width(100.dp)
+                    )
+                }
+                // Minute picker using the refactored NumberPicker
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Minute")
+                    NumberPicker(
+                        value = selectedMinute,
+                        range = 0..59,
+                        onValueChange = { selectedMinute = it },
+                        modifier = Modifier.width(100.dp)
+                    )
+                }
             }
         },
         confirmButton = {
@@ -516,8 +510,6 @@ fun HourMinutePickerDialog(
 }
 
 
-
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TimePickerColumn(
     range: IntRange,
@@ -526,10 +518,7 @@ fun TimePickerColumn(
     label: String
 ) {
     val itemHeight = 40.dp
-
-    // 1. Convertir la altura en píxeles dentro del contexto composable:
     val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
-
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedValue)
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
@@ -543,7 +532,7 @@ fun TimePickerColumn(
 
         Box(
             modifier = Modifier
-                .height(itemHeight * 5)  // 5 ítems visibles, por ejemplo
+                .height(itemHeight * 5)
                 .width(80.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -598,8 +587,8 @@ fun TimePickerColumn(
 
             Pair(listState.firstVisibleItemIndex, offsetItems)
         }.collect { (firstIndex, offsetItems) ->
-            // Ajuste a 2.5 para que el 3er ítem (índice 2 de 0..4) sea el verdadero centro
-            val centerIndex = (firstIndex + offsetItems + 2.5f).roundToInt()
+
+        val centerIndex = (firstIndex + offsetItems + 2.5f).roundToInt()
             val boundedIndex = centerIndex.coerceIn(0, range.count() - 1)
             val newValue = range.first + boundedIndex
 
