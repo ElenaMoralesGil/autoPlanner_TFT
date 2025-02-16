@@ -1,12 +1,20 @@
 package com.elena.autoplanner.data.mappers
 
+import com.elena.autoplanner.data.local.entities.ReminderEntity
+import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
+import com.elena.autoplanner.data.local.entities.SubtaskEntity
 import com.elena.autoplanner.data.local.entities.TaskEntity
+import com.elena.autoplanner.domain.models.DayPeriod
+import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.FrequencyType
+import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.ReminderMode
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
-import com.elena.autoplanner.data.local.entities.*
-import com.elena.autoplanner.domain.models.*
+import com.elena.autoplanner.domain.models.Subtask
+import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TimePlanning
+import java.time.LocalDateTime
 
 /* ------------------- Entities -> Domain ------------------- */
 
@@ -36,6 +44,8 @@ fun TaskEntity.toDomain(
         )
     } else null
 
+    val isExpired = calculateExpiration(endConf, LocalDateTime.now())
+
     val durConf = durationMinutes?.let { DurationPlan(it) }
 
     val domainReminderPlan = reminders.firstOrNull()?.toDomain()
@@ -48,15 +58,53 @@ fun TaskEntity.toDomain(
         id = id,
         name = name,
         isCompleted = isCompleted,
-        isExpired = isExpired,
+
         priority = priorityEnum,
+
         startDateConf = startConf,
         endDateConf = endConf,
+        isExpired = isExpired,
         durationConf = durConf,
         reminderPlan = domainReminderPlan,
         repeatPlan = domainRepeatPlan,
         subtasks = domainSubtasks
     )
+}
+
+private fun calculateExpiration(
+    endDateConf: TimePlanning?,
+    currentDateTime: LocalDateTime
+): Boolean {
+    return when {
+        endDateConf?.dateTime != null ->
+            endDateConf.dateTime.isBefore(currentDateTime)
+
+        endDateConf?.dayPeriod != null -> {
+            val expirationTime = when (endDateConf.dayPeriod) {
+                DayPeriod.MORNING -> currentDateTime
+                    .toLocalDate()
+                    .atTime(12, 0)
+
+                DayPeriod.EVENING -> currentDateTime
+                    .toLocalDate()
+                    .atTime(18, 0)
+
+                DayPeriod.NIGHT -> currentDateTime
+                    .toLocalDate()
+                    .plusDays(1)
+                    .atStartOfDay()
+
+                DayPeriod.ALLDAY -> currentDateTime
+                    .toLocalDate()
+                    .atStartOfDay()
+
+                DayPeriod.NONE -> null
+            }
+            expirationTime?.isBefore(currentDateTime) ?: false
+        }
+
+        else -> false
+    }
 }
 
 fun ReminderEntity.toDomain(): ReminderPlan {

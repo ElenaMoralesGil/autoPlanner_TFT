@@ -48,7 +48,12 @@ class TaskViewModel(
             is TaskIntent.UpdateStatusFilter -> updateStatusFilter(intent.status)
             is TaskIntent.UpdateTimeFrameFilter -> updateTimeFrameFilter(intent.timeFrame)
             is TaskIntent.AddSubtask -> addSubtask(intent.task, intent.subtaskName)
-            is TaskIntent.ToggleSubtask -> toggleSubtask(intent.task, intent.subtask, intent.checked)
+            is TaskIntent.ToggleSubtask -> toggleSubtask(
+                intent.task,
+                intent.subtask,
+                intent.checked
+            )
+
             is TaskIntent.DeleteSubtask -> deleteSubtask(intent.task, intent.subtask)
             TaskIntent.ClearError -> clearError()
         }
@@ -122,7 +127,8 @@ class TaskViewModel(
     private fun deleteTask(taskId: Int) {
         viewModelScope.launch {
             try {
-                val task = currentState.tasks.find { it.id == taskId } ?: throw IllegalArgumentException("Task not found")
+                val task = currentState.tasks.find { it.id == taskId }
+                    ?: throw IllegalArgumentException("Task not found")
                 setState { copy(uiState = TaskState.UiState.Loading) }
                 deleteTaskUseCase(task)
                 setState {
@@ -246,23 +252,26 @@ class TaskViewModel(
         }
     }
 
-    private fun applyFilters(tasks: List<Task>, filters: TaskState.Filters): List<Task> = tasks
-        .filter { task ->
+    private fun applyFilters(tasks: List<Task>, filters: TaskState.Filters): List<Task> {
+        val expiredTasks = tasks.filter { it.isExpired }
+        val nonExpiredTasks = tasks.filter { !it.isExpired }
+
+        val timeFilteredTasks = when (filters.timeFrame) {
+            TimeFrame.TODAY -> nonExpiredTasks.filter { it.isDueToday() }
+            TimeFrame.WEEK -> nonExpiredTasks.filter { it.isDueThisWeek() }
+            TimeFrame.MONTH -> nonExpiredTasks.filter { it.isDueThisMonth() }
+            TimeFrame.ALL -> nonExpiredTasks
+            TimeFrame.EXPIRED -> expiredTasks
+        }
+
+        return (timeFilteredTasks + expiredTasks).filter { task ->
             when (filters.status) {
-                TaskStatus.COMPLETED -> task.isCompleted && !task.isExpired
-                TaskStatus.UNCOMPLETED -> !task.isCompleted && !task.isExpired
-                TaskStatus.ALL -> !task.isExpired
+                TaskStatus.COMPLETED -> task.isCompleted
+                TaskStatus.UNCOMPLETED -> !task.isCompleted
+                TaskStatus.ALL -> true
             }
         }
-        .filter { task ->
-            when (filters.timeFrame) {
-                TimeFrame.TODAY -> task.isDueToday() && !task.isExpired
-                TimeFrame.WEEK -> task.isDueThisWeek() && !task.isExpired
-                TimeFrame.MONTH -> task.isDueThisMonth() && !task.isExpired
-                TimeFrame.EXPIRED -> task.isExpired
-                TimeFrame.ALL -> true
-            }
-        }
+    }
 
 
     private fun clearError() {

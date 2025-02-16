@@ -6,11 +6,11 @@ data class Task(
     val id: Int = 0,
     val name: String = "",
     val isCompleted: Boolean = false,
-    val isExpired: Boolean = false,
     val priority: Priority = Priority.NONE,
 
     var startDateConf: TimePlanning? = null,
     val endDateConf: TimePlanning? = null,
+    val isExpired: Boolean = false,
     val durationConf: DurationPlan? = null,
     val reminderPlan: ReminderPlan? = null,
     val repeatPlan: RepeatPlan? = null,

@@ -24,12 +24,6 @@ data class TaskState(
 }
 
 
-enum class TaskSection {
-    NOT_DONE,
-    COMPLETED,
-    EXPIRED
-}
-
 enum class TaskStatus(val displayName: String) {
     ALL("All"),
     COMPLETED("Completed"),

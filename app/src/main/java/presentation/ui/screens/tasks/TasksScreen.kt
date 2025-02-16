@@ -45,6 +45,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -91,6 +92,7 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             state?.let {
                 TasksAppBar(
@@ -218,10 +220,20 @@ private fun TasksAppBar(
     onTimeFrameSelected: (TimeFrame) -> Unit
 ) {
     TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         title = {
             Column {
                 Text("Tasks", style = MaterialTheme.typography.headlineSmall)
-                Text(buildFilterText(state), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    buildFilterText(state),
+                    Modifier.padding(start = 2.dp),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                )
             }
         },
         actions = {
@@ -265,7 +277,7 @@ private fun StatusFilterDropdown(
                 painter = painterResource(R.drawable.ic_filter),
                 contentDescription = "Status filter",
                 tint = if (currentStatus != TaskStatus.ALL) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.secondary
             )
         }
 
@@ -378,8 +390,8 @@ private fun TasksSectionContent(
 ) {
     val tasks = state.filteredTasks
     val notDoneTasks = tasks.filter { !it.isCompleted && !it.isExpired }
-    val completedTasks = tasks.filter { it.isCompleted && !it.isExpired }
-    val expiredTasks = tasks.filter { it.isExpired }
+    val expiredNotCompletedTasks = tasks.filter { it.isExpired && !it.isCompleted }
+    val completedTasks = tasks.filter { it.isCompleted }
 
     val showNotDone = when (state.filters.status) {
         TaskStatus.ALL, TaskStatus.UNCOMPLETED -> true
@@ -391,13 +403,34 @@ private fun TasksSectionContent(
         else -> false
     }
 
-    val showExpired = state.filters.timeFrame == TimeFrame.EXPIRED
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(8.dp)
     ) {
-        if (showNotDone) {
+        if (showNotDone && expiredNotCompletedTasks.isNotEmpty()) {
+            stickyHeader {
+                EnhancedSectionHeader(
+                    title = "Expired",
+                    count = expiredNotCompletedTasks.size,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            items(expiredNotCompletedTasks, key = { it.id }) { task ->
+                EnhancedTaskCard(
+                    task = task,
+                    onCheckedChange = { checked -> onTaskChecked(task, checked) },
+                    onDelete = { onDelete(task) },
+                    onEdit = { onEdit(task) },
+                    onTaskSelected = { onTaskSelected(task) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 8.dp, top = 8.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
+        if (showNotDone && notDoneTasks.isNotEmpty()) {
             stickyHeader {
                 EnhancedSectionHeader(
                     title = "Not Done",
@@ -414,21 +447,21 @@ private fun TasksSectionContent(
                     onTaskSelected = { onTaskSelected(task) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 24.dp, end = 8.dp)
+                        .padding(start = 24.dp, end = 8.dp, top = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
 
-        if (showCompleted) {
+        if (showCompleted && completedTasks.isNotEmpty()) {
             stickyHeader {
                 EnhancedSectionHeader(
                     title = "Completed",
                     count = completedTasks.size,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            items(completedTasks, key = { it.id }) { task ->
+            items(completedTasks) { task ->
                 EnhancedTaskCard(
                     task = task,
                     onCheckedChange = { checked -> onTaskChecked(task, checked) },
@@ -437,37 +470,13 @@ private fun TasksSectionContent(
                     onTaskSelected = { onTaskSelected(task) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 24.dp, end = 8.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-
-        if (showExpired) {
-            stickyHeader {
-                EnhancedSectionHeader(
-                    title = "Expired",
-                    count = expiredTasks.size,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            items(expiredTasks, key = { it.id }) { task ->
-                EnhancedTaskCard(
-                    task = task,
-                    onCheckedChange = { checked -> onTaskChecked(task, checked) },
-                    onDelete = { onDelete(task) },
-                    onEdit = { onEdit(task) },
-                    onTaskSelected = { onTaskSelected(task) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 24.dp, end = 8.dp)
+                        .padding(start = 24.dp, end = 8.dp, top = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
 }
-
 
 @Composable
 private fun DeleteAction(modifier: Modifier = Modifier) {
@@ -572,7 +581,7 @@ fun EnhancedTaskCard(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
             elevation = CardDefaults.cardElevation(
-                defaultElevation = 4.dp
+                defaultElevation = 2.dp
             ),
             shape = RoundedCornerShape(8.dp)
         ) {
@@ -614,7 +623,9 @@ fun EnhancedTaskCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    if (task.startDateConf != null || task.durationConf != null || task.subtasks.isNotEmpty()) {
+                    if (task.startDateConf != null || task.durationConf != null ||
+                        task.subtasks.isNotEmpty() || task.isExpired
+                    ) {
                         TaskMetadata(task = task)
                     }
                 }
@@ -656,7 +667,9 @@ fun EnhancedSectionHeader(
 
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
             color = MaterialTheme.colorScheme.onSurface
         )
 
@@ -670,21 +683,6 @@ fun EnhancedSectionHeader(
     }
 }
 
-@Composable
-private fun PriorityIndicator(priority: Priority) {
-    val color = when (priority) {
-        Priority.HIGH -> MaterialTheme.colorScheme.error
-        Priority.MEDIUM -> MaterialTheme.colorScheme.tertiary
-        Priority.LOW -> MaterialTheme.colorScheme.secondary
-        else -> MaterialTheme.colorScheme.outline
-    }
-
-    EnhancedChip(
-        icon = painterResource(R.drawable.priority),
-        iconTint = color,
-        text = priority.name.lowercase(),
-    )
-}
 
 @Composable
 private fun TaskMetadata(task: Task) {
@@ -692,35 +690,62 @@ private fun TaskMetadata(task: Task) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        task.startDateConf?.let {
+
+        if (task.subtasks.isNotEmpty()) {
             EnhancedChip(
-                icon = painterResource(R.drawable.ic_calendar),
-                iconTint = MaterialTheme.colorScheme.primary,
-                text = DateTimeFormatters.formatDateShort(it)
+                icon = painterResource(R.drawable.ic_subtasks),
+                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size}"
+            )
+        }
+
+        if (task.priority != Priority.NONE) {
+            EnhancedChip(
+                icon = painterResource(R.drawable.priority),
+                iconTint = when (task.priority) {
+                    Priority.HIGH -> MaterialTheme.colorScheme.error
+                    Priority.MEDIUM -> MaterialTheme.colorScheme.tertiary
+                    Priority.LOW -> MaterialTheme.colorScheme.secondary
+                    else -> MaterialTheme.colorScheme.primary
+                },
+                text = task.priority.name.lowercase()
             )
         }
 
         task.durationConf?.let {
             EnhancedChip(
                 icon = painterResource(R.drawable.ic_duration),
-                iconTint = MaterialTheme.colorScheme.primary,
+                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                 text = DateTimeFormatters.formatDurationShort(it)
             )
         }
 
-        if (task.subtasks.isNotEmpty()) {
+
+        // Expired status chip
+        if (task.isExpired) {
             EnhancedChip(
-                icon = painterResource(R.drawable.ic_subtasks),
-                iconTint = MaterialTheme.colorScheme.primary,
-                text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size}"
+                icon = painterResource(R.drawable.expired),
+                iconTint = MaterialTheme.colorScheme.error,
+                text = "Expired"
             )
         }
 
-        if (task.priority != Priority.NONE) {
-            PriorityIndicator(task.priority)
+        task.startDateConf?.let { startDate ->
+            val dateText = buildString {
+                append(DateTimeFormatters.formatDateShort(startDate))
+                task.endDateConf?.let { endDate ->
+                    append(" - ${DateTimeFormatters.formatDateShort(endDate)}")
+                }
+            }
+            EnhancedChip(
+                icon = painterResource(R.drawable.ic_calendar),
+                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                text = dateText
+            )
         }
     }
 }
+
 
 @Composable
 fun EnhancedChip(

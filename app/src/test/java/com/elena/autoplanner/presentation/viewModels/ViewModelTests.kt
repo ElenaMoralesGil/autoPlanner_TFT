@@ -286,7 +286,7 @@ class TaskViewModelTest {
 
     @Test
     fun `filters should show tasks completed this week`() = runTest(testDispatcher) {
-        // Setup
+
         val task = Task(
             id = 1,
             isCompleted = true,
@@ -294,18 +294,53 @@ class TaskViewModelTest {
         )
         coEvery { getTasksUseCase() } returns flowOf(listOf(task))
 
-        // Action
         viewModel.sendIntent(TaskIntent.LoadTasks)
         viewModel.sendIntent(TaskIntent.UpdateStatusFilter(TaskStatus.COMPLETED))
         viewModel.sendIntent(TaskIntent.UpdateTimeFrameFilter(TimeFrame.WEEK))
         testDispatcher.scheduler.advanceUntilIdle()
-
-        // Debugging
-        println("Filtered Tasks: ${viewModel.state.value!!.filteredTasks}")
-        println("Task End Date: ${task.endDateConf?.dateTime}")
-
-        // Assertion
         assertEquals(1, viewModel.state.value!!.filteredTasks.size)
+    }
+
+    @Test
+    fun `expired tasks should show metadata even without other attributes`() =
+        runTest(testDispatcher) {
+            // Create expired task with no other metadata
+            val expiredTask = Task(
+                id = 1,
+                name = "Expired Task",
+                isExpired = true
+            )
+
+            coEvery { getTasksUseCase() } returns flowOf(listOf(expiredTask))
+
+            viewModel.sendIntent(TaskIntent.LoadTasks)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Verify task is in expired section
+            assertEquals(1, viewModel.state.value!!.filteredTasks.size)
+
+            // In your UI tests, verify the metadata section renders with only "Expired" chip
+        }
+
+    @Test
+    fun `expired metadata should appear without subtasks`() = runTest(testDispatcher) {
+        val task = Task(
+            id = 1,
+            name = "Solo Expired",
+            isExpired = true,
+            // No subtasks/dates/duration
+        )
+
+        coEvery { getTasksUseCase() } returns flowOf(listOf(task))
+
+        viewModel.sendIntent(TaskIntent.LoadTasks)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Verify task appears in expired section
+        assertTrue(viewModel.state.value!!.filteredTasks.first().isExpired)
+
+        // UI test should verify presence of expired chip
+        // even without other metadata
     }
 
 
