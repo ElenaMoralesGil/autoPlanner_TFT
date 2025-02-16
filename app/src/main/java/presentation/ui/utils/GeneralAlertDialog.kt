@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation.ui.utils
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ fun GeneralAlertDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onNeutral: (() -> Unit)? = null,
+    hideDismissButton: Boolean = false
 
 ) {
     AlertDialog(
@@ -54,17 +56,15 @@ fun GeneralAlertDialog(
         },
         dismissButton = {
 
-            if (onNeutral != null) {
-                TextButton(
-                    onClick = onNeutral
-                ) {
-                    Text("None")
-                }
-            } else {
-                TextButton(
-                    onClick = onDismiss
-                ) {
-                    Text("Cancel")
+            if (!hideDismissButton) {
+                if (onNeutral != null) {
+                    TextButton(onClick = onNeutral) {
+                        Text("None")
+                    }
+                } else {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
                 }
             }
         },

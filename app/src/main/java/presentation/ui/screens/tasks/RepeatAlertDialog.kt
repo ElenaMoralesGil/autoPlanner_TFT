@@ -107,7 +107,7 @@ fun RepeatAlertDialog(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+
 @Composable
 private fun DaysOfWeekSelector(
     selectedDays: Set<Int>,
@@ -201,61 +201,6 @@ private fun IntervalSelector(
     }
 }
 
-
-
-@Composable
-fun FrequencySelectionGrid(
-    selectedPlan: RepeatPlan,
-    onSelect: (RepeatPlan) -> Unit,
-    onPersonalized: () -> Unit
-) {
-    val frequencies = listOf(
-        FrequencyType.DAILY to "Daily",
-        FrequencyType.WEEKLY to "Weekly",
-        FrequencyType.MONTHLY to "Monthly",
-        FrequencyType.YEARLY to "Yearly"
-    )
-
-    Column(
-        modifier = Modifier
-            .verticalScroll(rememberScrollState())
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        frequencies.chunked(1).forEach { rowItems ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                rowItems.forEach { (type, label) ->
-                    FrequencyChip(
-                        label = label,
-                        selected = selectedPlan.frequencyType == type,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onSelect(RepeatPlan(frequencyType = type)) }
-                    )
-                }
-            }
-        }
-
-
-        FrequencyChip(
-            label = "Custom...",
-            selected = selectedPlan.frequencyType == FrequencyType.CUSTOM,
-            modifier = Modifier.fillMaxWidth(),
-            onClick = onPersonalized,
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null
-                )
-            }
-        )
-    }
-}
-
-
-
 @Composable
 private fun FrequencyChip(
     label: String,
@@ -320,7 +265,7 @@ fun SegmentedControlColumn(
     onSelectionChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Contenedor principal
+
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(8.dp),
@@ -330,7 +275,7 @@ fun SegmentedControlColumn(
             options.forEachIndexed { index, option ->
                 val isSelected = index == selectedIndex
 
-                // Esquinas redondeadas según posición
+
                 val shapeItem = when (index) {
                     0 -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
                     options.lastIndex -> RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)

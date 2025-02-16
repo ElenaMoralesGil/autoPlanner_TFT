@@ -84,18 +84,16 @@ fun ReminderPersonalizedAlertDialog(
     onDismiss: () -> Unit,
     onReady: (ReminderPlan) -> Unit
 ) {
-    // Pestañas: 0 => “Days before”, 1 => “Weeks before”
-    var selectedTab by remember { mutableStateOf(0) }
 
-    // Estados para offset en días/semanas
-    var selectedDayIndex by remember { mutableStateOf(0) }
-    var selectedWeekIndex by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
 
-    // Estados para la hora/minuto
-    var selectedHour by remember { mutableStateOf(8) }
-    var selectedMinute by remember { mutableStateOf(0) }
+    var selectedDayIndex by remember { mutableIntStateOf(0) }
+    var selectedWeekIndex by remember { mutableIntStateOf(0) }
 
-    // Listas de días/semanas
+
+    var selectedHour by remember { mutableIntStateOf(8) }
+    var selectedMinute by remember { mutableIntStateOf(0) }
+
     val dayOffsets = listOf(
         "Same day",
         "1 day before",
@@ -115,8 +113,8 @@ fun ReminderPersonalizedAlertDialog(
 
     GeneralAlertDialog(
         title = {
-            // Barrita de pestañas
-            TabRow(selectedTabIndex = selectedTab) {
+
+        TabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = (selectedTab == 0),
                     onClick = { selectedTab = 0 },
@@ -130,15 +128,15 @@ fun ReminderPersonalizedAlertDialog(
             }
         },
         content = {
-            // Tres columnas: offset (días o semanas), hour, minute
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                // COLUMNA 1: Offset en días o semanas
+
                 if (selectedTab == 0) {
-                    // Muestra la lista de dayOffsets con scroll
+
                     ScrollingStringPickerColumn(
                         items = dayOffsets,
                         selectedIndex = selectedDayIndex,
@@ -146,7 +144,7 @@ fun ReminderPersonalizedAlertDialog(
                         label = "Days"
                     )
                 } else {
-                    // Muestra la lista de weekOffsets con scroll
+
                     ScrollingStringPickerColumn(
                         items = weekOffsets,
                         selectedIndex = selectedWeekIndex,
@@ -156,7 +154,6 @@ fun ReminderPersonalizedAlertDialog(
                 }
                 Row{
 
-                    // COLUMNA 2: Hora (0..23)
                     TimePickerColumn(
                         range = 0..23,
                         selectedValue = selectedHour,
@@ -190,7 +187,7 @@ fun ReminderPersonalizedAlertDialog(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+
 @Composable
 fun ScrollingStringPickerColumn(
     items: List<String>,
@@ -244,8 +241,6 @@ fun ScrollingStringPickerColumn(
                     }
                 }
             }
-
-            // Ventana de selección centrada
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -256,7 +251,6 @@ fun ScrollingStringPickerColumn(
         }
     }
 
-    // Snap al ítem central
     LaunchedEffect(listState, itemHeightPx) {
         snapshotFlow {
             val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
@@ -274,13 +268,11 @@ fun ScrollingStringPickerColumn(
         }
     }
 
-    // Forzar scroll inicial
     LaunchedEffect(selectedIndex) {
         listState.scrollToItem(selectedIndex)
     }
 }
 
-// Helper para "caja" del ítem seleccionado
 @Composable
 private fun Modifier.shapeAndBg() = this
     .background(

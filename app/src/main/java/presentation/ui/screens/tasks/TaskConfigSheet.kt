@@ -1,23 +1,38 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
+import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatDateTimeWithPeriod
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatDurationForDisplay
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatReminderForDisplay
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatRepeatForDisplay
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,17 +51,16 @@ fun TimeConfigSheet(
         RepeatPlan?
     ) -> Unit
 ) {
-    // Local copies
+
     var localStart by remember { mutableStateOf(currentStart) }
     var localEnd by remember { mutableStateOf(currentEnd) }
     var localDuration by remember { mutableStateOf(currentDuration) }
     var localReminder by remember { mutableStateOf(currentReminder) }
     var localRepeat by remember { mutableStateOf(currentRepeat) }
 
-    // Which dialog is open above the sheet
     var openDialog by remember { mutableStateOf<TimeDialogType?>(null) }
 
-    // The bottom sheet that sits behind
+
     ModalBottomSheet(onDismissRequest = onClose) {
         Row(
             modifier = Modifier
@@ -66,8 +80,10 @@ fun TimeConfigSheet(
             }
         }
 
-        // The 5 items
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp)) {
             TimeConfigItem("Start date",
                 formatDateTimeWithPeriod(localStart)
             ) { openDialog = TimeDialogType.StartDate }
@@ -93,7 +109,6 @@ fun TimeConfigSheet(
         }
     }
 
-    // Show the small floating dialogs as an AlertDialog (or custom) above the sheet
     when (openDialog) {
         TimeDialogType.StartDate -> {
             StartEndDateAlertDialog(
@@ -113,6 +128,19 @@ fun TimeConfigSheet(
                 existing = localEnd,
                 highlightDate = localStart?.dateTime?.toLocalDate(),
                 onDismiss = { openDialog = null },
+                validator = { planning ->
+                    planning?.let {
+                        if (localStart != null) {
+                            if (it.dateTime?.isBefore(localStart!!.dateTime) == true)
+                                "End date cannot be before start date."
+                            else null
+                        } else {
+                            if (it.dateTime?.toLocalDate()?.isBefore(LocalDate.now()) == true)
+                                "End date cannot be before today."
+                            else null
+                        }
+                    }
+                },
                 onReady = { newVal ->
                     localEnd = newVal
                     openDialog = null
