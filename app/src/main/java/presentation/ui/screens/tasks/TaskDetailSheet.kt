@@ -34,7 +34,8 @@ fun TaskDetailSheet(
     }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         if (task == null) {
 

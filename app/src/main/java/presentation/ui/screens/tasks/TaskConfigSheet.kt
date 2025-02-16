@@ -61,12 +61,16 @@ fun TimeConfigSheet(
     var openDialog by remember { mutableStateOf<TimeDialogType?>(null) }
 
 
-    ModalBottomSheet(onDismissRequest = onClose) {
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
+
         ) {
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.Close, contentDescription = "Close time config")

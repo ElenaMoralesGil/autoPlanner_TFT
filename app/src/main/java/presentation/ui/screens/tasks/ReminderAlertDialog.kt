@@ -127,28 +127,34 @@ fun ReminderPersonalizedAlertDialog(
 
             Row(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.Top
             ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (selectedTab == 0) {
 
-                if (selectedTab == 0) {
+                        ScrollingStringPickerColumn(
+                            items = dayOffsets,
+                            selectedIndex = selectedDayIndex,
+                            onIndexChange = { selectedDayIndex = it },
+                            label = "Days"
+                        )
+                    } else {
 
-                    ScrollingStringPickerColumn(
-                        items = dayOffsets,
-                        selectedIndex = selectedDayIndex,
-                        onIndexChange = { selectedDayIndex = it },
-                        label = "Days"
-                    )
-                } else {
-
-                    ScrollingStringPickerColumn(
-                        items = weekOffsets,
-                        selectedIndex = selectedWeekIndex,
-                        onIndexChange = { selectedWeekIndex = it },
-                        label = "Weeks"
-                    )
+                        ScrollingStringPickerColumn(
+                            items = weekOffsets,
+                            selectedIndex = selectedWeekIndex,
+                            onIndexChange = { selectedWeekIndex = it },
+                            label = "Weeks"
+                        )
+                    }
                 }
-                Row{
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
 
                     TimePickerColumn(
                         range = 0..23,
@@ -164,7 +170,7 @@ fun ReminderPersonalizedAlertDialog(
                         label = "Min"
                     )
                 }
-            }
+                }
         },
         onDismiss = onDismiss,
         onConfirm = {
@@ -194,7 +200,7 @@ fun ScrollingStringPickerColumn(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall.copy(
+            style = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         )

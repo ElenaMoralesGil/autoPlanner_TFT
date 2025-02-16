@@ -4,7 +4,6 @@ import android.view.ContextThemeWrapper
 import android.widget.NumberPicker
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.elena.autoplanner.R
 

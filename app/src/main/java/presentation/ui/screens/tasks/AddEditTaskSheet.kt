@@ -63,7 +63,10 @@ fun AddEditTaskSheet(
         repeatPlan = taskToEdit?.repeatPlan
     }
 
-    ModalBottomSheet(onDismissRequest = onClose) {
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
