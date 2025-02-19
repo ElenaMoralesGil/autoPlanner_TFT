@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,9 +33,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.elena.autoplanner.domain.models.isToday
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 
 @Composable
 fun CustomCalendar(
@@ -70,6 +74,33 @@ fun CustomCalendar(
     }
 }
 
+@Composable
+fun WeekHeader(
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val weekDays = remember(selectedDate) {
+        selectedDate.getWeekDays()
+    }
+
+    Column(modifier = modifier) {
+        DayOfWeekHeaderRow()
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(7),
+            modifier = Modifier.height(56.dp)
+        ) {
+            items(weekDays) { date ->
+                DayCell(
+                    date = date,
+                    isSelected = date == selectedDate,
+                    isToday = date.isToday(),
+                    onClick = { onDateSelected(date) }
+                )
+            }
+        }
+    }
+}
 @Composable
 private fun CalendarHeader(
     currentMonth: YearMonth,
@@ -140,11 +171,9 @@ private fun MonthGrid(
             if (day != null) {
                 val date = LocalDate.of(currentMonth.year, currentMonth.monthValue, day)
                 DayCell(
-                    day = day,
+                    date = date,
                     isSelected = selectedDates.contains(date),
-                    isHighlighted = highlightedDates.contains(date),
                     isToday = date == today,
-                    isInteractive = isInteractive,
                     onClick = { onDayClick(day) }
                 )
             } else {
@@ -156,31 +185,27 @@ private fun MonthGrid(
 
 @Composable
 fun DayCell(
-    day: Int,
-    isToday: Boolean,
+    date: LocalDate,
     isSelected: Boolean,
-    isHighlighted: Boolean,
-    isInteractive: Boolean,
+    isToday: Boolean,
     onClick: () -> Unit
 ) {
     val bgColor = when {
         isSelected -> MaterialTheme.colorScheme.primary
-        isHighlighted -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
-        isToday -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+        isToday -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
         else -> Color.Transparent
     }
 
     Box(
         modifier = Modifier
             .size(40.dp)
-            .padding(4.dp)
-            .clip(RoundedCornerShape(20))
+            .clip(CircleShape)
             .background(bgColor)
-            .clickable(enabled = isInteractive) { onClick() },
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "$day",
+            text = date.dayOfMonth.toString(),
             color = when {
                 isSelected -> Color.White
                 isToday -> MaterialTheme.colorScheme.primary
@@ -188,4 +213,9 @@ fun DayCell(
             }
         )
     }
+}
+
+fun LocalDate.getWeekDays(): List<LocalDate> {
+    val firstDay = with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    return (0..6).map { firstDay.plusDays(it.toLong()) }
 }

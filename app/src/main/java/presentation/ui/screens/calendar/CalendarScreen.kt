@@ -1,15 +1,19 @@
 package com.elena.autoplanner.presentation.ui.screens.calendar
 
+import android.widget.Space
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,9 +50,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.Task
@@ -57,11 +63,14 @@ import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.intents.TaskIntent
 import com.elena.autoplanner.presentation.ui.screens.tasks.AddEditTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
+import com.elena.autoplanner.presentation.ui.utils.CustomCalendar
+import com.elena.autoplanner.presentation.ui.utils.WeekHeader
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 
@@ -114,7 +123,7 @@ fun CalendarScreen(
             when (calendarState.currentView) {
                 CalendarView.DAY -> taskState?.tasks?.let { tasks ->
                     DailyView(
-                        date = calendarState.currentDate,
+                        selectedDate = calendarState.currentDate,
                         tasks = tasks.filter { it.isDueOn(calendarState.currentDate) },
                         onTaskSelected = onTaskSelected,
                         calendarViewModel = calendarViewModel,
@@ -124,7 +133,7 @@ fun CalendarScreen(
 
                 CalendarView.WEEK -> taskState?.tasks?.let { tasks ->
                     WeeklyView(
-                        weekDate = calendarState.currentDate,
+                        weekStartDate = calendarState.currentDate,
                         tasks = tasks,
                         onTaskSelected = onTaskSelected,
                         calendarViewModel = calendarViewModel
@@ -146,15 +155,39 @@ fun CalendarScreen(
             }
         }
 
+
+
         if (calendarState.showDatePicker) {
-            DateSelectionDialog(
-                initialDate = calendarState.currentDate,
-                onDateSelected = { date ->
-                    calendarViewModel.processIntent(CalendarIntent.ChangeDate(date))
-                    calendarViewModel.processIntent(CalendarIntent.ToggleDatePicker(false))
-                },
-                onDismiss = { calendarViewModel.processIntent(CalendarIntent.ToggleDatePicker(false)) }
-            )
+            Dialog(
+                onDismissRequest = {
+                    calendarViewModel.processIntent(
+                        CalendarIntent.ToggleDatePicker(false)
+                    )
+                }
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = 8.dp
+                ) {
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        CustomCalendar(
+                            currentMonth = YearMonth.from(calendarState.currentDate),
+                            selectedDates = listOf(calendarState.currentDate),
+                            showNavigation = true,
+                            onDateSelected = { selectedDate ->
+                                calendarViewModel.processIntent(
+                                    CalendarIntent.ChangeDate(selectedDate, dismiss = true)
+                                )
+                            },
+                            onMonthChanged = { newMonth ->
+                                calendarViewModel.processIntent(
+                                    CalendarIntent.ChangeDate(newMonth.atDay(1), dismiss = false)
+                                )
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         selectedTaskId?.let { taskId ->
@@ -237,27 +270,28 @@ private fun CalendarTopAppBar(
     onTitleSelected: () -> Unit,
     onViewSelectorClicked: () -> Unit
 ) {
-    val titleText: String = when (currentView) {
-        CalendarView.DAY, CalendarView.WEEK ->
-            if (currentDate.isToday()) "Today"
-            else currentDate.format(DateTimeFormatter.ofPattern("d MMM yyyy"))
+    val titleText = when (currentView) {
+        CalendarView.DAY -> {
+            if (currentDate.isToday()) {
+                "Today"
+            } else {
+                currentDate.format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy"))
+            }
+        }
 
+        CalendarView.WEEK ->
+            "Week of ${currentDate.format(DateTimeFormatter.ofPattern("d MMM"))}"
         CalendarView.MONTH ->
-            currentDate.format(DateTimeFormatter.ofPattern("MMM yyyy"))
-    }
-
-    val titleStyle = when (currentView) {
-        CalendarView.DAY, CalendarView.WEEK ->
-            if (currentDate.isToday()) MaterialTheme.typography.headlineLarge
-            else MaterialTheme.typography.titleLarge
-
-        CalendarView.MONTH ->
-            MaterialTheme.typography.titleLarge
+            currentDate.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
     }
 
     TopAppBar(
         title = {
-            Text(text = titleText, style = titleStyle)
+            Text(
+                text = titleText,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.clickable { onTitleSelected() }
+            )
         },
         actions = {
             IconButton(onClick = onViewSelectorClicked) {
@@ -266,11 +300,7 @@ private fun CalendarTopAppBar(
                     contentDescription = "View Selector"
                 )
             }
-
-            TextButton(onClick = onTitleSelected) {
-                // when title is clic   ked small calendar appears so the user can selected the date for the calendar.
-            }
-        },
+        }
     )
 }
 
@@ -341,7 +371,7 @@ fun CalendarView.getIconRes(): Int = when (this) {
 
 @Composable
 private fun DailyView(
-    date: LocalDate,
+    selectedDate: LocalDate,
     tasks: List<Task>,
     onTaskSelected: (Task) -> Unit,
     calendarViewModel: CalendarViewModel,
@@ -352,12 +382,22 @@ private fun DailyView(
     val totalDayHeight = 24 * 60
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // Week header with selectable days
+        WeekHeader(
+            selectedDate = selectedDate,
+            onDateSelected = { newDate ->
+                calendarViewModel.processIntent(CalendarIntent.ChangeDate(newDate))
+            },
+            modifier = Modifier.padding(8.dp)
+        )
+
+        // Daily timeline view
         Row(modifier = Modifier.fillMaxWidth()) {
-            // Timeline (Fixed Height)
+            // Timeline column
             LazyColumn(
                 modifier = Modifier
                     .width(56.dp)
-                    .height(totalDayHeight.dp) // Fixed height
+                    .height(totalDayHeight.dp)
             ) {
                 items(timeSlots) { time ->
                     Box(
@@ -374,11 +414,11 @@ private fun DailyView(
                 }
             }
 
-            // Tasks Area
+            // Tasks area
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(totalDayHeight.dp) // Same as timeline
+                    .height(totalDayHeight.dp)
                     .background(MaterialTheme.colorScheme.surface)
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -392,26 +432,24 @@ private fun DailyView(
                     }
                 }
 
-                // Tasks
-                tasks
-                    .filter { it.isDueOn(date) }
-                    .forEach { task ->
-                        val startMinutes = task.startTime.toMinutes()
-                        val duration = task.durationConf?.totalMinutes ?: 60
-                        val height = duration.coerceAtLeast(15)
-
-                        DraggableTaskItem(
-                            task = task,
-                            startOffset = startMinutes.toFloat(),
-                            height = height.toFloat(),
-                            onTaskSelected = onTaskSelected,
-                            taskViewModel = taskViewModel
-                        )
-                    }
-
                 // Current time indicator
-                if (date.isToday()) {
+                if (selectedDate.isToday()) {
                     CurrentTimeIndicator()
+                }
+
+                // Draggable tasks
+                tasks.forEach { task ->
+                    val startMinutes = task.startTime.toMinutes()
+                    val duration = task.durationConf?.totalMinutes ?: 60
+                    val height = duration.coerceAtLeast(15)
+
+                    DraggableTaskItem(
+                        task = task,
+                        startOffset = startMinutes.toFloat(),
+                        height = height.toFloat(),
+                        onTaskSelected = onTaskSelected,
+                        taskViewModel = taskViewModel
+                    )
                 }
             }
         }
@@ -485,25 +523,90 @@ private fun DraggableTaskItem(
 }
 
 
-// Extension function to convert LocalTime to minutes
 fun LocalTime.toMinutes(): Int = this.hour * 60 + this.minute
 
 
 @Composable
 private fun WeeklyView(
-    weekDate: LocalDate,
+    weekStartDate: LocalDate,
     tasks: List<Task>,
     onTaskSelected: (Task) -> Unit,
     calendarViewModel: CalendarViewModel
 ) {
-    val daysInWeek = calendarViewModel.getWeekDays(weekDate)
-    LazyVerticalGrid(columns = GridCells.Fixed(7)) {
-        items(daysInWeek) { day ->
-            DayColumn(
-                date = day,
-                tasks = tasks.filter { it.isDueOn(day) },
-                onTaskSelected = onTaskSelected
-            )
+    val weekDays = calendarViewModel.getWeekDays(weekStartDate)
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Week header with selectable days
+        WeekHeader(
+            selectedDate = weekStartDate,
+            onDateSelected = { newDate ->
+                calendarViewModel.processIntent(CalendarIntent.ChangeDate(newDate))
+            },
+            modifier = Modifier.padding(8.dp)
+        )
+
+        // Weekly tasks list
+        LazyColumn(modifier = Modifier.padding(8.dp)) {
+            items(weekDays) { date ->
+                DailyTaskList(
+                    date = date,
+                    tasks = tasks.filter { it.isDueOn(date) },
+                    onTaskSelected = onTaskSelected
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyTaskList(
+    date: LocalDate,
+    tasks: List<Task>,
+    onTaskSelected: (Task) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.padding(vertical = 4.dp),
+        shadowElevation = 2.dp
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Date header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = date.format(DateTimeFormatter.ofPattern("EEE, MMM d")),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = if (date.isToday()) "Today" else "",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Task items
+            if (tasks.isEmpty()) {
+                Text(
+                    text = "No tasks scheduled",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp),
+                )
+            } else {
+                tasks.forEach { task ->
+                    CalendarTaskItem(
+                        task = task,
+                        onTaskSelected = onTaskSelected,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                }
+            }
         }
     }
 }

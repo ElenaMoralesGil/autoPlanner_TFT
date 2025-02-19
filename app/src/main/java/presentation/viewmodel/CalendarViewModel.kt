@@ -5,10 +5,14 @@ import androidx.lifecycle.ViewModel
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.states.CalendarState
+import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarView
+import com.elena.autoplanner.presentation.ui.utils.getWeekDays
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import java.time.DayOfWeek
 import java.time.LocalTime
+import java.time.temporal.TemporalAdjusters
 
 
 class CalendarViewModel : ViewModel() {
@@ -18,8 +22,21 @@ class CalendarViewModel : ViewModel() {
 
     fun processIntent(intent: CalendarIntent) {
         when (intent) {
-            is CalendarIntent.ChangeDate -> _state.value =
-                _state.value.copy(currentDate = intent.date)
+            is CalendarIntent.ChangeDate -> {
+                val newDate = intent.date
+                val currentView = state.value.currentView
+
+                val adjustedDate = when (currentView) {
+                    CalendarView.WEEK -> newDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                    else -> newDate
+                }
+
+                _state.value = _state.value.copy(
+                    currentDate = adjustedDate,
+                    showDatePicker = if (intent.dismiss) false else state.value.showDatePicker
+                )
+            }
+
 
             is CalendarIntent.ChangeView -> _state.value =
                 _state.value.copy(currentView = intent.view)
@@ -29,9 +46,9 @@ class CalendarViewModel : ViewModel() {
         }
     }
 
+    // Add this function
     fun getWeekDays(date: LocalDate): List<LocalDate> {
-        val firstDayOfWeek = date.with(java.time.DayOfWeek.MONDAY)
-        return (0..6).map { firstDayOfWeek.plusDays(it.toLong()) }
+        return date.getWeekDays()
     }
 
     fun getCalendarGrid(date: LocalDate): List<CalendarCell> {
