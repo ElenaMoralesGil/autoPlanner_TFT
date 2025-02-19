@@ -5,7 +5,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,16 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,15 +31,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.TimePlanning
+import com.elena.autoplanner.presentation.ui.utils.CustomCalendar
 import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 import com.elena.autoplanner.presentation.ui.utils.NumberPicker
 import java.time.LocalDate
@@ -68,14 +58,12 @@ fun StartEndDateAlertDialog(
     var dayPeriod by remember { mutableStateOf(existing?.dayPeriod ?: DayPeriod.NONE) }
 
     val selectedDate = selectedDateTime.toLocalDate()
-    val selectedTime = selectedDateTime.toLocalTime()
 
-    var displayYear by remember { mutableStateOf(selectedDate.year) }
-    var displayMonth by remember { mutableStateOf(selectedDate.monthValue) }
+    // Calendar state management
+    val initialDate = selectedDateTime.toLocalDate()
+    var currentMonth by remember { mutableStateOf(YearMonth.from(initialDate)) }
 
     var showHourPicker by remember { mutableStateOf(false) }
-    val today = LocalDate.now()
-
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     GeneralAlertDialog(
@@ -140,122 +128,22 @@ fun StartEndDateAlertDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = monthYearLabel(displayMonth, displayYear),
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier.weight(1f),
-                    )
-                    Row {
-                        IconButton(onClick = {
-                            val newMonth = displayMonth - 1
-                            if (newMonth < 1) {
-                                displayMonth = 12
-                                displayYear--
-                            } else {
-                                displayMonth = newMonth
-                            }
-                        }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Previous Month"
-                            )
-                        }
-
-                        IconButton(onClick = {
-                            val newMonth = displayMonth + 1
-                            if (newMonth > 12) {
-                                displayMonth = 1
-                                displayYear++
-                            } else {
-                                displayMonth = newMonth
-                            }
-                        }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "Next Month"
-                            )
-                        }
+                CustomCalendar(
+                    currentMonth = currentMonth,
+                    selectedDates = listOf(selectedDateTime.toLocalDate()),
+                    highlightedDates = highlightDate?.let { listOf(it) } ?: emptyList(),
+                    onDateSelected = { date ->
+                        selectedDateTime = LocalDateTime.of(date, selectedDateTime.toLocalTime())
+                    },
+                    onMonthChanged = { newMonth ->
+                        currentMonth = newMonth
                     }
-                }
-
-                DayOfWeekHeaderRow()
-
-                CalendarGrid(
-                    displayYear = displayYear,
-                    displayMonth = displayMonth,
-                    selectedDay = selectedDate.dayOfMonth,
-                    todayDay = if (today.year == displayYear && today.monthValue == displayMonth) today.dayOfMonth else null,
-                    highlightDate = highlightDate
-                ) { day ->
-                    val newLocalDate = LocalDate.of(displayYear, displayMonth, day)
-                    selectedDateTime = LocalDateTime.of(newLocalDate, selectedTime)
-                }
+                )
 
                 Spacer(Modifier.height(16.dp))
 
 
-                AnimatedVisibility(
-                    visible = (dayPeriod == DayPeriod.NONE),
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Column {
-                        Spacer(Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 5.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Time",
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Box(
-                                modifier = Modifier,
-                                contentAlignment = Alignment.Center
-                            ) {
-                                val timeLabel by remember {
-                                    derivedStateOf {
-                                        val hour = selectedDateTime.toLocalTime().hour.toString().padStart(2, '0')
-                                        val minute = selectedDateTime.toLocalTime().minute.toString().padStart(2, '0')
-                                        "$hour:$minute"
-                                    }
-                                }
-
-                                TextButton(onClick = { showHourPicker = true }) {
-                                    Text(
-                                        text = timeLabel,
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                        }
-                        if (showHourPicker) {
-                            HourMinutePickerDialog(
-                                initialTime = selectedDateTime.toLocalTime(),
-                                onDismiss = { showHourPicker = false },
-                                onConfirm = { chosenTime ->
-                                    selectedDateTime = LocalDateTime.of(selectedDate, chosenTime)
-                                    showHourPicker = false
-                                }
-                            )
-                        }
-                    }
-                }
+                TimePicker(dayPeriod, selectedDateTime, showHourPicker, selectedDate)
             }
         },
         onDismiss = onDismiss,
@@ -290,104 +178,70 @@ fun StartEndDateAlertDialog(
 }
 
 @Composable
-fun DayCell(
-    day: Int,
-    isToday: Boolean,
-    isSelected: Boolean,
-    isHighlighted: Boolean,
-    onClick: () -> Unit
+private fun TimePicker(
+    dayPeriod: DayPeriod,
+    selectedDateTime: LocalDateTime,
+    showHourPicker: Boolean,
+    selectedDate: LocalDate?
 ) {
-    val bgColor = when {
-        isSelected -> MaterialTheme.colorScheme.primary
-        isHighlighted -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
-        isToday -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-        else -> Color.Transparent
-    }
-
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .padding(4.dp)
-            .clip(RoundedCornerShape(20))
-            .background(bgColor)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
+    var selectedDateTime1 = selectedDateTime
+    var showHourPicker1 = showHourPicker
+    AnimatedVisibility(
+        visible = (dayPeriod == DayPeriod.NONE),
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
     ) {
-        Text(
-            text = "$day",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-@Composable
-fun DayOfWeekHeaderRow() {
-    val dayNames = listOf("mon","tue","wen","thu","fri","sat","sun")
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        dayNames.forEach { label ->
-            Text(
-                label,
-                style = MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(32.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun CalendarGrid(
-    displayYear: Int,
-    displayMonth: Int,
-    selectedDay: Int,
-    highlightDate: LocalDate?,
-    todayDay: Int?,
-    onDayClick: (Int) -> Unit
-) {
-
-    val daysInMonth = YearMonth.of(displayYear, displayMonth).lengthOfMonth()
-    val firstDayOfWeek = LocalDate.of(displayYear, displayMonth, 1).dayOfWeek.value
-    val leadingEmptyDays = (firstDayOfWeek - 1) % 7
-
-    val calendarCells = buildList {
-        repeat(leadingEmptyDays) { add(null) }
-
-        for (day in 1..daysInMonth) add(day)
-    }
-
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(7),
-        modifier = Modifier.height(200.dp),
-        userScrollEnabled = false
-    ) {
-        items(calendarCells) { day ->
-            if (day != null) {
-                val isToday = (day == todayDay)
-                val isSelected = (day == selectedDay)
-                val isHighlighted = highlightDate != null && highlightDate == LocalDate.of(displayYear, displayMonth, day)
-
-                DayCell(
-                    day = day,
-                    isToday = isToday,
-                    isSelected = isSelected,
-                    isHighlighted = isHighlighted,
-                    onClick = { onDayClick(day) }
+        Column {
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 5.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Time",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            } else {
+
                 Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .padding(4.dp)
+                    modifier = Modifier,
+                    contentAlignment = Alignment.Center
+                ) {
+                    val timeLabel by remember {
+                        derivedStateOf {
+                            val hour =
+                                selectedDateTime1.toLocalTime().hour.toString().padStart(2, '0')
+                            val minute =
+                                selectedDateTime1.toLocalTime().minute.toString().padStart(2, '0')
+                            "$hour:$minute"
+                        }
+                    }
+
+                    TextButton(onClick = { showHourPicker1 = true }) {
+                        Text(
+                            text = timeLabel,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+            if (showHourPicker1) {
+                HourMinutePickerDialog(
+                    initialTime = selectedDateTime1.toLocalTime(),
+                    onDismiss = { showHourPicker1 = false },
+                    onConfirm = { chosenTime ->
+                        selectedDateTime1 = LocalDateTime.of(selectedDate, chosenTime)
+                        showHourPicker1 = false
+                    }
                 )
             }
         }
     }
 }
-
 
 @Composable
 fun DayPeriodOption(
@@ -422,26 +276,6 @@ fun DayPeriodOption(
         }
     }
 }
-
-fun monthYearLabel(month: Int, year: Int): String {
-    val monthName = when (month) {
-        1 -> "Jan"
-        2 -> "Feb"
-        3 -> "Mar"
-        4 -> "Apr"
-        5 -> "May"
-        6 -> "Jun"
-        7 -> "Jul"
-        8 -> "Aug"
-        9 -> "Sep"
-        10 -> "Oct"
-        11 -> "Nov"
-        12 -> "Dec"
-        else -> "??"
-    }
-    return "$monthName $year"
-}
-
 @Composable
 fun HourMinutePickerDialog(
     initialTime: LocalTime,

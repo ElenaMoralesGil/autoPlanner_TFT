@@ -87,8 +87,7 @@ fun CalendarScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.surface),
+        modifier = Modifier,
         topBar = {
             CalendarTopAppBar(
                 currentDate = calendarState.currentDate,
@@ -98,8 +97,12 @@ fun CalendarScreen(
                     showViewSelector = false
                 },
                 onViewSelectorClicked = { showViewSelector = !showViewSelector },
-                onTodayClicked = {
-                    calendarViewModel.processIntent(CalendarIntent.ChangeDate(LocalDate.now()))
+                onTitleSelected = {
+                    calendarViewModel.processIntent(
+                        CalendarIntent.ToggleDatePicker(
+                            true
+                        )
+                    )
                 }
             )
         }
@@ -231,8 +234,8 @@ private fun CalendarTopAppBar(
     currentDate: LocalDate,
     currentView: CalendarView,
     onViewChanged: (CalendarView) -> Unit,
-    onViewSelectorClicked: () -> Unit,
-    onTodayClicked: () -> Unit
+    onTitleSelected: () -> Unit,
+    onViewSelectorClicked: () -> Unit
 ) {
     val titleText: String = when (currentView) {
         CalendarView.DAY, CalendarView.WEEK ->
@@ -263,12 +266,11 @@ private fun CalendarTopAppBar(
                     contentDescription = "View Selector"
                 )
             }
-        },
-        navigationIcon = {
-            TextButton(onClick = onTodayClicked) {
-                Text("Today", color = MaterialTheme.colorScheme.primary)
+
+            TextButton(onClick = onTitleSelected) {
+                // when title is clic   ked small calendar appears so the user can selected the date for the calendar.
             }
-        }
+        },
     )
 }
 
