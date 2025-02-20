@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,9 +17,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,8 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.DayPeriod
@@ -66,6 +77,30 @@ fun StartEndDateAlertDialog(
     var showHourPicker by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    val defaultPeriodTimes = mapOf(
+        DayPeriod.MORNING to LocalTime.of(6, 0),
+        DayPeriod.EVENING to LocalTime.of(12, 0),
+        DayPeriod.NIGHT to LocalTime.of(18, 0),
+        DayPeriod.ALLDAY to LocalTime.MIDNIGHT
+    )
+
+    fun handlePeriodSelection(newPeriod: DayPeriod) {
+        val finalPeriod = if (dayPeriod == newPeriod) DayPeriod.NONE else newPeriod
+        dayPeriod = finalPeriod
+
+        if (finalPeriod != DayPeriod.NONE) {
+            val newTime = when (finalPeriod) {
+                DayPeriod.MORNING -> LocalTime.of(6, 0)
+                DayPeriod.EVENING -> LocalTime.of(12, 0)
+                DayPeriod.NIGHT -> LocalTime.of(18, 0)
+                DayPeriod.ALLDAY -> LocalTime.MIDNIGHT
+                else -> selectedDateTime.toLocalTime()
+            }
+            selectedDateTime = LocalDateTime.of(selectedDateTime.toLocalDate(), newTime)
+        }
+    }
+
+
     GeneralAlertDialog(
 
         title = {
@@ -88,10 +123,9 @@ fun StartEndDateAlertDialog(
                         range = "6AM-12PM",
                         isSelected = (dayPeriod == DayPeriod.MORNING)
                     ) {
-                        dayPeriod =
-                            if (dayPeriod == DayPeriod.MORNING) DayPeriod.NONE else DayPeriod.MORNING
-
+                        handlePeriodSelection(DayPeriod.MORNING)
                     }
+
 
                     DayPeriodOption(
                         iconRes = R.drawable.evening,
@@ -99,9 +133,7 @@ fun StartEndDateAlertDialog(
                         range = "12PM-6PM",
                         isSelected = (dayPeriod == DayPeriod.EVENING)
                     ) {
-                        dayPeriod =
-                            if (dayPeriod == DayPeriod.EVENING) DayPeriod.NONE else DayPeriod.EVENING
-
+                        handlePeriodSelection(DayPeriod.EVENING)
                     }
 
                     DayPeriodOption(
@@ -110,8 +142,7 @@ fun StartEndDateAlertDialog(
                         range = "6PM-12AM",
                         isSelected = (dayPeriod == DayPeriod.NIGHT)
                     ) {
-                        dayPeriod =
-                            if (dayPeriod == DayPeriod.NIGHT) DayPeriod.NONE else DayPeriod.NIGHT
+                        handlePeriodSelection(DayPeriod.NIGHT)
                     }
 
                     DayPeriodOption(
@@ -120,9 +151,7 @@ fun StartEndDateAlertDialog(
                         range = "",
                         isSelected = (dayPeriod == DayPeriod.ALLDAY)
                     ) {
-                        dayPeriod =
-                            if (dayPeriod == DayPeriod.ALLDAY) DayPeriod.NONE else DayPeriod.ALLDAY
-
+                        handlePeriodSelection(DayPeriod.ALLDAY)
                     }
                 }
 
@@ -143,7 +172,63 @@ fun StartEndDateAlertDialog(
                 Spacer(Modifier.height(16.dp))
 
 
-                TimePicker(dayPeriod, selectedDateTime, showHourPicker, selectedDate)
+                AnimatedVisibility(
+                    visible = (dayPeriod == DayPeriod.NONE),
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column {
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 5.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Time",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Box(
+                                modifier = Modifier,
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val timeLabel by remember {
+                                    derivedStateOf {
+                                        val hour = selectedDateTime.toLocalTime().hour.toString()
+                                            .padStart(2, '0')
+                                        val minute =
+                                            selectedDateTime.toLocalTime().minute.toString()
+                                                .padStart(2, '0')
+                                        "$hour:$minute"
+                                    }
+                                }
+
+                                TextButton(onClick = { showHourPicker = true }) {
+                                    Text(
+                                        text = timeLabel,
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                        if (showHourPicker) {
+                            HourMinutePickerDialog(
+                                initialTime = selectedDateTime.toLocalTime(),
+                                onDismiss = { showHourPicker = false },
+                                onConfirm = { chosenTime ->
+                                    selectedDateTime = LocalDateTime.of(selectedDate, chosenTime)
+                                    dayPeriod = DayPeriod.NONE
+                                    showHourPicker = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         onDismiss = onDismiss,
@@ -178,72 +263,6 @@ fun StartEndDateAlertDialog(
 }
 
 @Composable
-private fun TimePicker(
-    dayPeriod: DayPeriod,
-    selectedDateTime: LocalDateTime,
-    showHourPicker: Boolean,
-    selectedDate: LocalDate?
-) {
-    var selectedDateTime1 = selectedDateTime
-    var showHourPicker1 = showHourPicker
-    AnimatedVisibility(
-        visible = (dayPeriod == DayPeriod.NONE),
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically()
-    ) {
-        Column {
-            Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 5.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Time",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Box(
-                    modifier = Modifier,
-                    contentAlignment = Alignment.Center
-                ) {
-                    val timeLabel by remember {
-                        derivedStateOf {
-                            val hour =
-                                selectedDateTime1.toLocalTime().hour.toString().padStart(2, '0')
-                            val minute =
-                                selectedDateTime1.toLocalTime().minute.toString().padStart(2, '0')
-                            "$hour:$minute"
-                        }
-                    }
-
-                    TextButton(onClick = { showHourPicker1 = true }) {
-                        Text(
-                            text = timeLabel,
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-            if (showHourPicker1) {
-                HourMinutePickerDialog(
-                    initialTime = selectedDateTime1.toLocalTime(),
-                    onDismiss = { showHourPicker1 = false },
-                    onConfirm = { chosenTime ->
-                        selectedDateTime1 = LocalDateTime.of(selectedDate, chosenTime)
-                        showHourPicker1 = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun DayPeriodOption(
     iconRes: Int,
     iconLabel: String,
@@ -251,6 +270,7 @@ fun DayPeriodOption(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+
     Column(
         modifier = Modifier
             .clickable { onClick() }

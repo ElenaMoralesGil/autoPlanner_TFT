@@ -1,14 +1,11 @@
 package com.elena.autoplanner.presentation.ui.screens.calendar
 
-import android.widget.Space
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,13 +20,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,7 +36,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,11 +46,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.elena.autoplanner.R
@@ -141,16 +144,6 @@ fun CalendarScreen(
                 }
 
                 CalendarView.MONTH -> taskState?.tasks?.let { tasks ->
-                    MonthlyView(
-                        monthDate = calendarState.currentDate,
-                        tasks = tasks,
-                        onDayClicked = { date ->
-                            calendarViewModel.processIntent(CalendarIntent.ChangeDate(date))
-                            calendarViewModel.processIntent(CalendarIntent.ChangeView(CalendarView.DAY))
-                        },
-                        onTaskSelected = onTaskSelected,
-                        calendarViewModel = calendarViewModel
-                    )
                 }
             }
         }
@@ -281,6 +274,7 @@ private fun CalendarTopAppBar(
 
         CalendarView.WEEK ->
             "Week of ${currentDate.format(DateTimeFormatter.ofPattern("d MMM"))}"
+
         CalendarView.MONTH ->
             currentDate.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
     }
@@ -321,7 +315,7 @@ private fun ViewSelector(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            CalendarView.values().forEach { view ->
+            CalendarView.entries.forEach { view ->
                 ViewOption(
                     view = view,
                     isSelected = view == currentView,
@@ -369,158 +363,11 @@ fun CalendarView.getIconRes(): Int = when (this) {
     CalendarView.MONTH -> R.drawable.ic_month_view
 }
 
-@Composable
-private fun DailyView(
-    selectedDate: LocalDate,
-    tasks: List<Task>,
-    onTaskSelected: (Task) -> Unit,
-    calendarViewModel: CalendarViewModel,
-    taskViewModel: TaskViewModel
-) {
-    val timeSlots = calendarViewModel.generateTimeSlots()
-    val currentTime = remember { LocalTime.now() }
-    val totalDayHeight = 24 * 60
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Week header with selectable days
-        WeekHeader(
-            selectedDate = selectedDate,
-            onDateSelected = { newDate ->
-                calendarViewModel.processIntent(CalendarIntent.ChangeDate(newDate))
-            },
-            modifier = Modifier.padding(8.dp)
-        )
-
-        // Daily timeline view
-        Row(modifier = Modifier.fillMaxWidth()) {
-            // Timeline column
-            LazyColumn(
-                modifier = Modifier
-                    .width(56.dp)
-                    .height(totalDayHeight.dp)
-            ) {
-                items(timeSlots) { time ->
-                    Box(
-                        modifier = Modifier
-                            .height(60.dp)
-                            .padding(4.dp),
-                        contentAlignment = Alignment.TopEnd
-                    ) {
-                        Text(
-                            text = time.format(DateTimeFormatter.ofPattern("ha")),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-            }
-
-            // Tasks area
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(totalDayHeight.dp)
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    (0..23).forEach { hour ->
-                        drawLine(
-                            color = Color.LightGray.copy(alpha = 0.3f),
-                            start = Offset(0f, hour * 60.dp.toPx()),
-                            end = Offset(size.width, hour * 60.dp.toPx()),
-                            strokeWidth = 1f
-                        )
-                    }
-                }
-
-                // Current time indicator
-                if (selectedDate.isToday()) {
-                    CurrentTimeIndicator()
-                }
-
-                // Draggable tasks
-                tasks.forEach { task ->
-                    val startMinutes = task.startTime.toMinutes()
-                    val duration = task.durationConf?.totalMinutes ?: 60
-                    val height = duration.coerceAtLeast(15)
-
-                    DraggableTaskItem(
-                        task = task,
-                        startOffset = startMinutes.toFloat(),
-                        height = height.toFloat(),
-                        onTaskSelected = onTaskSelected,
-                        taskViewModel = taskViewModel
-                    )
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun DraggableTaskItem(
-    task: Task,
-    startOffset: Float,
-    height: Float,
-    onTaskSelected: (Task) -> Unit,
-    taskViewModel: TaskViewModel // Add this parameter
-) {
-    var offsetY by remember { mutableStateOf(startOffset) }
-    var isDragging by remember { mutableStateOf(false) }
-
-    Box(
-        modifier = Modifier
-            .offset(y = offsetY.dp)
-            .height(height.dp)
-            .fillMaxWidth()
-            .draggable(
-                orientation = Orientation.Vertical,
-                state = rememberDraggableState { delta ->
-                    offsetY += delta
-                    isDragging = true
-                },
-                onDragStopped = {
-                    isDragging = false
-                    val newMinutes = (offsetY / 60.dp.value).toInt()
-                    val newStartTime = LocalTime.of(newMinutes / 60, newMinutes % 60)
-
-                    // Calculate new end time based on duration
-                    val duration = task.durationConf?.totalMinutes ?: 60
-
-                    val updatedTask = task.copy(
-                        startDateConf = task.startDateConf?.copy(
-                            dateTime = task.startDateConf!!.dateTime
-                                ?.withHour(newStartTime.hour)
-                                ?.withMinute(newStartTime.minute)
-                        ),
-                        endDateConf = task.endDateConf?.copy(
-                            dateTime = task.startDateConf?.dateTime
-                                ?.plusMinutes(duration.toLong())
-                        )
-                    )
-
-
-                    taskViewModel.sendIntent(TaskIntent.UpdateTask(updatedTask))
-                }
-            )
-            .background(
-                color = if (isDragging) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                else MaterialTheme.colorScheme.primaryContainer,
-                shape = RoundedCornerShape(4.dp)
-            )
-            .clickable { onTaskSelected(task) }
-            .padding(4.dp)
-    ) {
-        Column {
-            Text(text = task.name, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = "${task.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - " +
-                        "${task.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
-                style = MaterialTheme.typography.labelSmall
-            )
-        }
-    }
-}
+data class TaskGroup(
+    var endTime: LocalTime,
+    val tasks: MutableList<Task>
+)
 
 
 fun LocalTime.toMinutes(): Int = this.hour * 60 + this.minute
@@ -610,131 +457,6 @@ private fun DailyTaskList(
         }
     }
 }
-
-@Composable
-private fun DayColumn(
-    date: LocalDate,
-    tasks: List<Task>,
-    onTaskSelected: (Task) -> Unit
-) {
-    Column(modifier = Modifier.padding(4.dp)) {
-        Text(
-            text = date.format(DateTimeFormatter.ofPattern("d")),
-            style = MaterialTheme.typography.headlineMedium
-        )
-        if (tasks.isEmpty()) {
-            Text("No tasks", style = MaterialTheme.typography.labelSmall)
-        } else {
-            tasks.groupBy { it.getDayPeriod() }.forEach { (period, tasks) ->
-                if (tasks.isNotEmpty()) {
-                    Text(
-                        text = when (period) {
-                            DayPeriod.MORNING -> "Morning"
-                            DayPeriod.EVENING -> "Evening"
-                            DayPeriod.NIGHT -> "Night"
-                            else -> ""
-                        },
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                    tasks.forEach { task ->
-                        CalendarTaskItem(task, onTaskSelected)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MonthlyView(
-    monthDate: LocalDate,
-    tasks: List<Task>,
-    onDayClicked: (LocalDate) -> Unit,
-    onTaskSelected: (Task) -> Unit,
-    calendarViewModel: CalendarViewModel
-) {
-    val calendarGrid = calendarViewModel.getCalendarGrid(monthDate)
-    LazyVerticalGrid(columns = GridCells.Fixed(7)) {
-        items(calendarGrid) { cell ->
-            val dayTasks = tasks.filter { it.isDueOn(cell.date) }
-            MonthlyDayCell(
-                date = cell.date,
-                isCurrentMonth = cell.isCurrentMonth,
-                tasks = dayTasks,
-                onClick = { onDayClicked(cell.date) },
-                onTaskSelected = onTaskSelected
-            )
-        }
-    }
-}
-
-@Composable
-private fun MonthlyDayCell(
-    date: LocalDate,
-    isCurrentMonth: Boolean,
-    tasks: List<Task>,
-    onClick: () -> Unit,
-    onTaskSelected: (Task) -> Unit
-) {
-    val isToday = date.isToday()
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .background(
-                when {
-                    isToday -> MaterialTheme.colorScheme.primary
-                    !isCurrentMonth -> MaterialTheme.colorScheme.surfaceVariant
-                    else -> MaterialTheme.colorScheme.surface
-                }
-            )
-            .clickable { onClick() }
-    ) {
-        Column(modifier = Modifier.padding(4.dp)) {
-            Text(
-                text = date.dayOfMonth.toString(),
-                color = if (isToday) Color.White
-                else MaterialTheme.colorScheme.onSurface
-            )
-
-            if (tasks.isNotEmpty()) {
-                tasks.take(2).forEach { task ->
-                    Text(
-                        text = task.name,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.clickable { onTaskSelected(task) }
-                    )
-                }
-
-                if (tasks.size > 2) {
-                    Text(
-                        "More...",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            } else {
-                Text("", modifier = Modifier.clickable { onClick() })
-            }
-        }
-    }
-}
-
-@Composable
-private fun CurrentTimeIndicator() {
-    val currentTime = LocalTime.now()
-    val minutes = (currentTime.hour * 60 + currentTime.minute).toFloat()
-    Box(
-        modifier = Modifier
-            .offset(y = minutes.dp)
-            .fillMaxWidth()
-            .height(2.dp)
-            .background(Color.Red)
-    )
-}
-
 @Composable
 private fun CalendarTaskItem(
     task: Task,
@@ -749,7 +471,7 @@ private fun CalendarTaskItem(
                 state = rememberDraggableState { },
                 onDragStarted = { isDragging = true },
                 onDragStopped = { isDragging = false },
-                orientation = androidx.compose.foundation.gestures.Orientation.Vertical
+                orientation = Orientation.Vertical
             )
             .background(
                 color = if (isDragging) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
@@ -773,28 +495,4 @@ private fun CalendarTaskItem(
         }
     }
 }
-
-@Composable
-private fun DateSelectionDialog(
-    initialDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
-    onDismiss: () -> Unit
-) {
-    DropdownMenu(
-        expanded = true,
-        onDismissRequest = onDismiss
-    ) {
-        val dates = generateDates(initialDate)
-        dates.forEach { date ->
-            DropdownMenuItem(
-                text = { Text(date.format(DateTimeFormatter.ofPattern("d MMM yyyy"))) },
-                onClick = { onDateSelected(date) }
-            )
-        }
-    }
-}
-
-private fun generateDates(initialDate: LocalDate): List<LocalDate> =
-    List(31) { initialDate.minusDays(15).plusDays(it.toLong()) }
-
 

@@ -18,6 +18,7 @@ data class Task(
 
     val subtasks: List<Subtask> = emptyList()
 ) {
+    val hasPeriod: Boolean = startDateConf?.dayPeriod != DayPeriod.NONE
     val startTime: LocalTime
         get() = startDateConf?.dateTime?.toLocalTime() ?: LocalTime.MIDNIGHT
 
@@ -26,20 +27,10 @@ data class Task(
 
     fun getDayPeriod(): DayPeriod {
         if (isAllDay()) return DayPeriod.ALLDAY
-        return when {
-            startTime.isBefore(LocalTime.NOON) -> DayPeriod.MORNING
-            startTime.isBefore(LocalTime.of(18, 0)) -> DayPeriod.EVENING
-            else -> DayPeriod.NIGHT
-        }
-    }
-
-    fun isInPeriod(period: DayPeriod): Boolean {
-        return when (period) {
-            DayPeriod.MORNING -> startTime in LocalTime.of(6, 0)..LocalTime.NOON.minusNanos(1)
-            DayPeriod.EVENING -> startTime in LocalTime.NOON..LocalTime.of(18, 0).minusNanos(1)
-            DayPeriod.NIGHT -> startTime >= LocalTime.of(18, 0) || startTime < LocalTime.of(6, 0)
-            DayPeriod.ALLDAY -> isAllDay()
-            else -> false
+        return when (startTime.hour) {
+            in 6..11 -> DayPeriod.MORNING    // 6 AM - 11:59 AM
+            in 12..17 -> DayPeriod.EVENING   // 12 PM - 5:59 PM
+            else -> DayPeriod.NIGHT          // 6 PM - 5:59 AM
         }
     }
 
@@ -61,13 +52,6 @@ data class Task(
 
     fun isDueThisMonth(): Boolean =
         startDateConf?.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } ?: false
-
-    fun matchesTimeSlot(timeSlot: LocalTime): Boolean {
-        val taskStart = startDateConf?.dateTime?.toLocalTime() ?: return false
-        val taskEnd = endDateConf?.dateTime?.toLocalTime() ?: return false
-        return !taskStart.isAfter(timeSlot) &&
-                !taskEnd.isBefore(timeSlot.plusHours(1))
-    }
 
 }
 

@@ -103,7 +103,7 @@ class TaskViewModel(
     }
 
 
-    private fun updateTask(task: Task) {
+    fun updateTask(task: Task) {
         viewModelScope.launch {
             try {
                 setState { copy(uiState = TaskState.UiState.Loading) }
