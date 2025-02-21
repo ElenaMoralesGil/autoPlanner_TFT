@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         lifecycleScope.launch {
-            viewModel.seedTasks(200)
+            viewModel.seedTasks(60)
         }
 
         setContent {
