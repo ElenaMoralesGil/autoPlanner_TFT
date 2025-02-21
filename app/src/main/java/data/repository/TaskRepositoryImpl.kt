@@ -117,6 +117,10 @@ class TaskRepositoryImpl(
 
     }
 
+    override suspend fun deleteAll() {
+        taskDao.deleteAllTasks()
+    }
+
     private fun validateTaskData(task: Task) {
         when {
             task.name.isBlank() ->

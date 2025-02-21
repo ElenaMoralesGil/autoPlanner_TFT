@@ -57,7 +57,7 @@ class TaskViewModelTest {
         Dispatchers.setMain(testDispatcher)
         viewModel = TaskViewModel(
             getTasksUseCase, addTaskUseCase, updateTaskUseCase,
-            deleteTaskUseCase, addSubtaskUseCase, toggleSubtaskUseCase, deleteSubtaskUseCase
+            deleteTaskUseCase, addSubtaskUseCase, toggleSubtaskUseCase, deleteSubtaskUseCase,
         )
     }
 

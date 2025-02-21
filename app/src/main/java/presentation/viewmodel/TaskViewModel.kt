@@ -2,9 +2,15 @@ package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.R
+import com.elena.autoplanner.domain.models.DayPeriod
+import com.elena.autoplanner.domain.models.DurationPlan
+import com.elena.autoplanner.domain.models.Priority
+import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.usecases.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.AddTaskUseCase
+import com.elena.autoplanner.domain.usecases.DeleteAllTasksUseCase
 import com.elena.autoplanner.domain.usecases.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.GetTasksUseCase
@@ -23,6 +29,7 @@ import com.elena.autoplanner.presentation.utils.toTask
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 
 class TaskViewModel(
     private val getTasksUseCase: GetTasksUseCase,
@@ -31,7 +38,8 @@ class TaskViewModel(
     private val deleteTaskUseCase: DeleteTaskUseCase,
     private val addSubtaskUseCase: AddSubtaskUseCase,
     private val toggleSubtaskUseCase: ToggleSubtaskUseCase,
-    private val deleteSubtaskUseCase: DeleteSubtaskUseCase
+    private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
+    private val DeleteAllTasksUseCase: DeleteAllTasksUseCase
 ) : BaseViewModel<TaskIntent, TaskState>() {
 
     override fun createInitialState(): TaskState = TaskState(
@@ -277,4 +285,167 @@ class TaskViewModel(
     private fun clearError() {
         setState { copy(uiState = TaskState.UiState.Idle) }
     }
+
+    fun deleteAllTasks() {
+        viewModelScope.launch {
+            try {
+                setState { copy(uiState = TaskState.UiState.Loading) }
+
+                DeleteAllTasksUseCase()
+
+                setState {
+                    copy(
+                        tasks = emptyList(),
+                        filteredTasks = emptyList(),
+                        uiState = TaskState.UiState.Success("All tasks deleted")
+                    )
+                }
+            } catch (e: Exception) {
+                setState { copy(uiState = TaskState.UiState.Error(e.message)) }
+            }
+        }
+    }
+
+    fun seedTasks(count: Int = 25) {
+        viewModelScope.launch {
+            // 1. Delete all existing tasks (optional if you don't want duplicates)
+            deleteAllTasks()
+
+            // 2. Create multiple tasks in a loop with random attributes
+            repeat(count) { index ->
+                // Day offset between -2 and +14:
+                // meaning up to 2 days in the past, up to 2 weeks in the future.
+                val dayOffset = (-2..14).random()
+
+                // Random hour for the day: 6..21
+                val hour = (6..21).random()
+                val minute = listOf(0, 15, 30, 45).random()
+
+                // Base date/time around the offset
+                val baseDateTime = LocalDateTime.now()
+                    .plusDays(dayOffset.toLong())
+                    .withHour(hour)
+                    .withMinute(minute)
+
+                // Random day period
+                val chosenPeriod = listOf(
+                    DayPeriod.MORNING,
+                    DayPeriod.EVENING,
+                    DayPeriod.NIGHT,
+                    DayPeriod.ALLDAY,
+                    DayPeriod.NONE
+                ).random()
+
+                // Adjust the time if it's MORNING, EVENING, or NIGHT
+                val adjustedDateTime = when (chosenPeriod) {
+                    DayPeriod.MORNING -> baseDateTime.withHour((5..11).random())
+                    DayPeriod.EVENING -> baseDateTime.withHour((12..17).random())
+                    DayPeriod.NIGHT -> baseDateTime.withHour((18..23).random())
+                    DayPeriod.ALLDAY -> baseDateTime.withHour(0).withMinute(0)
+                    else -> baseDateTime
+                }
+
+                // Randomly decide if there's an end date
+                val hasEndDate = (0..1).random() == 0
+                val endDateOffset = (1..3).random()
+                val endDateTime = if (hasEndDate) {
+                    // A few days after the start
+                    adjustedDateTime.plusDays(endDateOffset.toLong())
+                } else null
+
+                // Random duration (some tasks have none, others 30..180)
+                val randomDuration = if ((0..1).random() == 0) {
+                    listOf(30, 60, 90, 120, 150, 180).random()
+                } else null
+
+                // Random priority
+                val priority =
+                    listOf(Priority.HIGH, Priority.MEDIUM, Priority.LOW, Priority.NONE).random()
+
+                // Maybe subtask creation for half of them
+                val subtasks = if ((0..1).random() == 0) {
+                    (1..(1..3).random()).map { subIndex ->
+                        Subtask(
+                            id = 0, // DB will auto-generate
+                            name = "Subtask #$subIndex of Task #$index",
+                            isCompleted = false,
+                            estimatedDurationInMinutes = listOf(15, 30, 45, 60).random()
+                        )
+                    }
+                } else emptyList()
+
+                // More descriptive random name
+                val sampleName = generateConfigBasedTaskName(
+                    index = index,
+                    dayOffset = dayOffset,
+                    chosenPeriod = chosenPeriod,
+                    hasEndDate = hasEndDate,
+                    durationMinutes = randomDuration,
+                    priority = priority,
+                    subtaskCount = subtasks.size
+                )
+
+                // Build the final NewTaskData
+                val sampleTask = NewTaskData(
+                    name = sampleName,
+                    priority = priority,
+                    startDateConf = TimePlanning(
+                        dateTime = adjustedDateTime,
+                        dayPeriod = chosenPeriod
+                    ),
+                    endDateConf = endDateTime?.let {
+                        TimePlanning(it, dayPeriod = DayPeriod.NONE)
+                    },
+                    durationConf = randomDuration?.let { DurationPlan(it) },
+                    subtasks = subtasks
+                )
+
+                // Call your existing function to create the task
+                createTask(sampleTask)
+            }
+        }
+    }
+
+
+    private fun generateConfigBasedTaskName(
+        index: Int,
+        dayOffset: Int,
+        chosenPeriod: DayPeriod,
+        hasEndDate: Boolean,
+        durationMinutes: Int?,
+        priority: Priority,
+        subtaskCount: Int
+    ): String {
+        /*
+         Format suggestions:
+           "Task #3 (Priority=HIGH) [Start in +5 days, Period=EVENING, Duration=60min, EndDate=yes, Subtasks=2]"
+           or
+           "Task #1 (Priority=LOW) [Start in -2 days, Period=NONE, Duration=--, EndDate=no, Subtasks=0]"
+        */
+
+        // "start in +X days" or "start in -X days"
+        val sign = if (dayOffset >= 0) "+" else ""
+        val offsetDescriptor = "start in $sign$dayOffset days"
+
+        // Day period, or "NONE"
+        val periodDescriptor = "Period=${chosenPeriod.name}"
+
+        // Duration, or none
+        val durationDescriptor = durationMinutes?.let { "${it}min" } ?: "--"
+
+        // End date
+        val endDateDescriptor = if (hasEndDate) "yes" else "no"
+
+        // Priority
+        val priorityLabel = "Priority=${priority.name}"
+
+        // Subtasks
+        val subtaskDescriptor = subtaskCount.toString()
+
+        return "Task #$index ($priorityLabel) [$offsetDescriptor, $periodDescriptor, Duration=$durationDescriptor, EndDate=$endDateDescriptor, Subtasks=$subtaskDescriptor]"
+    }
+
+
+
+
 }

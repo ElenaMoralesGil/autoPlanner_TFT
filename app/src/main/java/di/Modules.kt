@@ -19,12 +19,14 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.domain.usecases.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.AddTaskUseCase
+import com.elena.autoplanner.domain.usecases.DeleteAllTasksUseCase
 import com.elena.autoplanner.domain.usecases.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.UpdateTaskUseCase
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.scope.get
 
 
 val appModule = module {
@@ -77,14 +79,16 @@ val useCaseModule = module {
     single { DeleteTaskUseCase(get()) }
     single { AddSubtaskUseCase(get()) }
     single { ToggleSubtaskUseCase(get()) }
+    single { ToggleSubtaskUseCase(get()) }
     single { DeleteSubtaskUseCase(get()) }
+    single { DeleteAllTasksUseCase(get()) }
 }
 
 // Módulo de ViewModels
 val viewModelModule = module {
     viewModel { CalendarViewModel() }
     viewModel {
-        TaskViewModel(get(), get(), get(), get(), get(), get(), get())
+        TaskViewModel(get(), get(), get(), get(), get(), get(), get(), get())
     }
 
 

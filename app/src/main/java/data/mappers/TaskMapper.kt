@@ -69,42 +69,6 @@ fun TaskEntity.toDomain(
     )
 }
 
-private fun calculateExpiration(
-    endDateConf: TimePlanning?,
-    currentDateTime: LocalDateTime
-): Boolean {
-    return when {
-        endDateConf?.dateTime != null ->
-            endDateConf.dateTime.isBefore(currentDateTime)
-
-        endDateConf?.dayPeriod != null -> {
-            val expirationTime = when (endDateConf.dayPeriod) {
-                DayPeriod.MORNING -> currentDateTime
-                    .toLocalDate()
-                    .atTime(12, 0)
-
-                DayPeriod.EVENING -> currentDateTime
-                    .toLocalDate()
-                    .atTime(18, 0)
-
-                DayPeriod.NIGHT -> currentDateTime
-                    .toLocalDate()
-                    .plusDays(1)
-                    .atStartOfDay()
-
-                DayPeriod.ALLDAY -> currentDateTime
-                    .toLocalDate()
-                    .atStartOfDay()
-
-                DayPeriod.NONE -> null
-            }
-            expirationTime?.isBefore(currentDateTime) ?: false
-        }
-
-        else -> false
-    }
-}
-
 fun ReminderEntity.toDomain(): ReminderPlan {
     val modeEnum = try {
         ReminderMode.valueOf(mode)

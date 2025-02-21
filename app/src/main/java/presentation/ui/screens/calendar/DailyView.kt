@@ -190,9 +190,9 @@ private fun EnhancedTimeSchedule(
     // Time blocks for display
     val timeBlocks = listOf(
         TimeBlock("Late Night", 0, 6, null),
-        TimeBlock("Morning Hours", 6, 12, morningTasks),
-        TimeBlock("Afternoon Hours", 12, 18, eveningTasks),
-        TimeBlock("Night Hours", 18, 24, nightTasks)
+        TimeBlock("Morning", 6, 12, morningTasks),
+        TimeBlock("Evening", 12, 18, eveningTasks),
+        TimeBlock("Night", 18, 24, nightTasks)
     )
 
     Box(modifier = Modifier.fillMaxSize()) {

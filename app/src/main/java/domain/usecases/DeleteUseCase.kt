@@ -20,3 +20,9 @@ class DeleteSubtaskUseCase(private val repository: TaskRepository) {
         return updatedTask
     }
 }
+
+class DeleteAllTasksUseCase(private val repository: TaskRepository) {
+    suspend operator fun invoke() {
+        repository.deleteAll()
+    }
+}
