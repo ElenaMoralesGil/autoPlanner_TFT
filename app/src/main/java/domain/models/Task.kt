@@ -18,21 +18,14 @@ data class Task(
 
     val subtasks: List<Subtask> = emptyList()
 ) {
-    val hasPeriod: Boolean = startDateConf?.dayPeriod != DayPeriod.NONE
+    val hasPeriod: Boolean = (startDateConf?.dayPeriod ?: DayPeriod.NONE) != DayPeriod.NONE
+
     val startTime: LocalTime
         get() = startDateConf?.dateTime?.toLocalTime() ?: LocalTime.MIDNIGHT
 
     val endTime: LocalTime
         get() = endDateConf?.dateTime?.toLocalTime() ?: LocalTime.MIDNIGHT
 
-    fun getDayPeriod(): DayPeriod {
-        if (isAllDay()) return DayPeriod.ALLDAY
-        return when (startTime.hour) {
-            in 6..11 -> DayPeriod.MORNING    // 6 AM - 11:59 AM
-            in 12..17 -> DayPeriod.EVENING   // 12 PM - 5:59 PM
-            else -> DayPeriod.NIGHT          // 6 PM - 5:59 AM
-        }
-    }
 
     fun isDueOn(date: LocalDate): Boolean =
         startDateConf?.dateTime?.toLocalDate() == date
@@ -66,7 +59,7 @@ enum class Priority {
 
 data class TimePlanning(
     val dateTime: LocalDateTime?,
-    val dayPeriod: DayPeriod? = null
+    val dayPeriod: DayPeriod? = DayPeriod.NONE
 )
 
 enum class DayPeriod {

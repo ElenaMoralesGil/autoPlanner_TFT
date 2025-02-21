@@ -9,10 +9,6 @@ import androidx.compose.ui.graphics.Color
 
 // Light Theme: Clean and soft with a cute light orange primary and dark grey secondary.
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFFF89A34),       // Primary: Light cute orange for main actions (FAB, checkboxes, etc.).
-    onPrimary = Color(0xFF212121),     // On primary: Dark gray for text/icons on primary surfaces.
-    secondary = Color(0xFF424242),     // Secondary: Dark grey accent (instead of blue or brown).
-    onSecondary = Color(0xFFFFFFFF),   // On secondary: White for contrast on dark grey.
     tertiary = Color(0xFFF8BBD0),      // Tertiary: Pastel pink for subtle highlights or metadata.
     onTertiary = Color(0xFF212121),    // On tertiary: Dark gray for legibility.
     surface = Color(0xFFFFFFFF),       // Surface: White background for screens, cards, and dialogs.
@@ -20,7 +16,17 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = Color(0xFFF5F5F5),// Surface variant: Very light gray for cards/dialogs.
     outline = Color(0xFFBDBDBD),       // Outline: Medium gray for borders and dividers.
     error = Color(0xFFEF9A9A),         // Error: Light red for error messages.
-    errorContainer = Color(0xFFFFCDD2) // Error container: Very light red for error backgrounds.
+    errorContainer = Color(0xFFFFCDD2), // Error container: Very light red for error backgrounds.
+
+    primary = Color(0xFFF89A34),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFFFD8B6),
+    onPrimaryContainer = Color(0xFF212121),
+
+    secondary = Color(0xFF424242),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFBDBDBD),
+    onSecondaryContainer = Color(0xFF212121),
 )
 
 // Dark Theme: Adapted for dark mode with the same primary and a complementary lighter grey secondary.

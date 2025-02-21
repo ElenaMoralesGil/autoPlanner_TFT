@@ -4,12 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,8 +16,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.input.pointer.pointerInput
@@ -79,46 +71,43 @@ fun DailyView(
     val scrollState = rememberScrollState()
     val currentTime = LocalTime.now()
     val currentMinutes = currentTime.hour * 60 + currentTime.minute
-
-    // Sort tasks into categories
+    println("Current time: $currentTime")
+    println("All Tasks: $tasks")
+    val tasks = tasks.filter { it.isDueOn(selectedDate) }
     val allDayTasks = tasks.filter { it.isAllDay() }
-    val scheduledTasks = tasks.filter { !it.isAllDay() && !it.hasPeriod }
+    val scheduledTasks = tasks.filter { !it.hasPeriod }
+    println("Scheduled tasks: $scheduledTasks")
+
     val periodTasks = tasks.filter { it.hasPeriod && !it.isAllDay() }
 
-    // Separate period tasks by their period type
-    val morningTasks = periodTasks.filter { it.getDayPeriod() == DayPeriod.MORNING }
-    val eveningTasks = periodTasks.filter { it.getDayPeriod() == DayPeriod.EVENING }
-    val nightTasks = periodTasks.filter { it.getDayPeriod() == DayPeriod.NIGHT }
 
-    // Non-scheduled tasks - tasks without specific time or period
-    val nonScheduledTasks = tasks.filter {
-        !it.isAllDay() && !it.hasPeriod &&
-                (it.startTime == LocalTime.MIDNIGHT || it.startTime == null)
-    }
+    val morningTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.MORNING }
+    println("Morning tasks: $morningTasks")
+    val eveningTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING }
+    println("Evening tasks: $eveningTasks")
+    val nightTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.NIGHT }
+    println("Night tasks: $nightTasks")
+
 
     LaunchedEffect(selectedDate) {
         if (selectedDate.isToday()) {
-            // Scroll to current time with offset for better visibility
             val scrollToPosition = (currentMinutes / 60f * hourHeightPx).toInt() - 200
             scrollState.animateScrollTo(scrollToPosition.coerceAtLeast(0))
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Week day selector
         WeekHeader(
             selectedDate = selectedDate,
             onDateSelected = { calendarViewModel.processIntent(CalendarIntent.ChangeDate(it)) },
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
 
-        // Main content area with tasks
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            // All-day section with card style
             if (allDayTasks.isNotEmpty()) {
                 Surface(
                     modifier = Modifier
@@ -147,50 +136,6 @@ fun DailyView(
                 }
             }
 
-            // Non-scheduled tasks section (tasks without time that can be dragged to schedule)
-            if (nonScheduledTasks.isNotEmpty()) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    tonalElevation = 1.dp
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Text(
-                            text = "Unscheduled Tasks",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(nonScheduledTasks) { task ->
-                                DraggableTaskItem(
-                                    task = task,
-                                    onTaskSelected = onTaskSelected,
-                                    onTaskScheduled = { updatedTask, time ->
-                                        val taskWithTime = updatedTask.copy(
-                                            startDateConf = TimePlanning(
-                                                dateTime = LocalDateTime.of(selectedDate, time),
-                                                dayPeriod = updatedTask.startDateConf?.dayPeriod
-                                            )
-                                        )
-                                        taskViewModel.updateTask(taskWithTime)
-                                    },
-                                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                                    modifier = Modifier.width(140.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Time schedule with integrated period sections
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -238,12 +183,11 @@ private fun EnhancedTimeSchedule(
 ) {
     val hourHeightPx = with(LocalDensity.current) { hourHeightDp.toPx() }
     val currentMinutes = currentTime.hour * 60 + currentTime.minute
-    val density = LocalDensity.current
 
     var draggedTaskId by remember { mutableStateOf<String?>(null) }
     var dragOffsetY by remember { mutableStateOf(0f) }
 
-    // Corrected time blocks with 0-6 coverage
+    // Time blocks for display
     val timeBlocks = listOf(
         TimeBlock("Late Night", 0, 6, null),
         TimeBlock("Morning Hours", 6, 12, morningTasks),
@@ -251,18 +195,13 @@ private fun EnhancedTimeSchedule(
         TimeBlock("Night Hours", 18, 24, nightTasks)
     )
 
-
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
         ) {
-
-
-            // Time blocks with integrated sections
             timeBlocks.forEach { block ->
-                // Time block header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -272,8 +211,7 @@ private fun EnhancedTimeSchedule(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
-                // Render period-specific tasks if they exist for this block
-                if (block.periodTasks != null && block.periodTasks.isNotEmpty()) {
+                if (!block.periodTasks.isNullOrEmpty()) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -293,19 +231,13 @@ private fun EnhancedTimeSchedule(
                                 TaskItem(
                                     task = task,
                                     onTaskSelected = onTaskSelected,
-                                    color = when {
-                                        block.name.contains("Morning") -> getPeriodColor(DayPeriod.MORNING)
-                                        block.name.contains("Evening") -> getPeriodColor(DayPeriod.EVENING)
-                                        else -> MaterialTheme.colorScheme.secondaryContainer
-                                    }.copy(alpha = 0.7f),
-                                    modifier = Modifier.padding(vertical = 2.dp)
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(vertical = 2.dp),
                                 )
                             }
                         }
                     }
                 }
-
-                // Hourly schedule for this block
                 Row(modifier = Modifier.fillMaxWidth()) {
                     // Time labels column
                     TimeLabelsForBlock(
@@ -313,28 +245,19 @@ private fun EnhancedTimeSchedule(
                         endHour = block.endHour,
                         hourHeightDp = hourHeightDp
                     )
-
-                    // Schedule content for this block
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(hourHeightDp * (block.endHour - block.startHour))
                     ) {
-                        // Draw hour grid lines
+                        var colorScheme = MaterialTheme.colorScheme.surface
+                        // Draw background grid for the block
                         Canvas(modifier = Modifier.fillMaxSize()) {
-                            // Draw background for this time block
                             drawRect(
-                                color = when {
-                                    block.name.contains("Early Morning") -> Color(0xFFF5F5F5)
-                                    block.name.contains("Morning") -> Color(0xFFE3F2FD).copy(alpha = 0.3f)
-                                    block.name.contains("Afternoon") -> Color(0xFFFFF8E1).copy(alpha = 0.3f)
-                                    block.name.contains("Evening") -> Color(0xFFE8EAF6).copy(alpha = 0.3f)
-                                    else -> Color.White
-                                },
+                                color = colorScheme,
                                 size = size
                             )
 
-                            // Draw hour grid lines
                             for (hour in block.startHour until block.endHour) {
                                 val yPos = (hour - block.startHour) * hourHeightPx
                                 drawLine(
@@ -343,8 +266,6 @@ private fun EnhancedTimeSchedule(
                                     end = Offset(size.width, yPos),
                                     strokeWidth = 1f
                                 )
-
-                                // Add half-hour lines
                                 val halfHourYPos = yPos + (hourHeightPx / 2)
                                 drawLine(
                                     color = Color.LightGray.copy(alpha = 0.1f),
@@ -356,23 +277,27 @@ private fun EnhancedTimeSchedule(
                             }
                         }
 
-                        // Filter and position tasks that belong to this time block
+                        // Filter tasks that belong to this block based on their start time
                         val tasksInThisBlock = scheduledTasks.filter { task ->
+                            // This will filter tasks based on the hour in their startDateConf
                             val taskHour = task.startTime.hour
-                            taskHour >= block.startHour && taskHour < block.endHour
+                            taskHour in block.startHour until block.endHour
                         }
 
+                        // Use column positioning to avoid overlaps (if desired)
                         val blockTaskPositions = positionTasks(tasksInThisBlock)
 
-                        // Render scheduled tasks for this block
                         blockTaskPositions.forEach { (task, position) ->
+
+                            // Calculate vertical offset: task appears at its start time
                             val startMinutes = task.startTime.toMinutes()
                             val blockStartMinutes = block.startHour * 60
                             val relativePosition = startMinutes - blockStartMinutes
-                            val duration = task.durationConf?.totalMinutes ?: 60
+                            // Use duration from durationConf or default to 30 minutes
+                            val duration = task.durationConf?.totalMinutes ?: 30
                             val taskHeight = (duration / 60f) * hourHeightPx
                             val isDragging = task.id == draggedTaskId?.toInt()
-
+                            println("Drawing task '${task.name}' at offset = $relativePosition, block = ${block.name} with a height of $taskHeight")
                             val taskModifier = if (isDragging) {
                                 Modifier
                                     .fillMaxWidth(position.width)
@@ -420,12 +345,10 @@ private fun EnhancedTimeSchedule(
                                                         ((newPositionY % hourHeightPx) / hourHeightPx * 60)
                                                             .toInt()
                                                             .coerceIn(0, 59)
-
                                                     // Snap to 15-minute intervals
                                                     val snappedMinute = (newMinute / 15) * 15
                                                     val snappedTime =
                                                         LocalTime.of(newHour, snappedMinute)
-
                                                     onTaskTimeChanged(task, snappedTime)
                                                     draggedTaskId = null
                                                     dragOffsetY = 0f
@@ -476,8 +399,8 @@ private fun EnhancedTimeSchedule(
                                             )
                                         }
                                     }
-
                                     if (taskHeight > 40) {
+                                        // Show start time and duration (ignore end time)
                                         Text(
                                             text = buildString {
                                                 append(
@@ -487,17 +410,7 @@ private fun EnhancedTimeSchedule(
                                                         )
                                                     )
                                                 )
-                                                if (task.durationConf != null) {
-                                                    append(" (${task.durationConf.totalMinutes}min)")
-                                                } else if (task.endTime != LocalTime.MIDNIGHT) {
-                                                    append(
-                                                        " - ${
-                                                            task.endTime.format(
-                                                                DateTimeFormatter.ofPattern("HH:mm")
-                                                            )
-                                                        }"
-                                                    )
-                                                }
+                                                append(" (${task.durationConf?.totalMinutes ?: 30}min)")
                                             },
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -506,28 +419,23 @@ private fun EnhancedTimeSchedule(
                                 }
                             }
                         }
-
-                        // Current time indicator (only if today and time is within this block)
                         if (isToday && currentTime.hour >= block.startHour && currentTime.hour < block.endHour) {
                             val blockStartMinutes = block.startHour * 60
                             val relativeCurrentMinutes = currentMinutes - blockStartMinutes
-
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .offset(y = (relativeCurrentMinutes / 60f * hourHeightPx).dp)
                                     .height(2.dp)
+                                    .background(Color.Yellow.copy(alpha = 0.4f))
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    // Time dot
                                     Box(
                                         modifier = Modifier
                                             .size(8.dp)
                                             .clip(CircleShape)
                                             .background(MaterialTheme.colorScheme.primary)
                                     )
-
-                                    // Time line
                                     Spacer(
                                         modifier = Modifier
                                             .weight(1f)
@@ -544,7 +452,6 @@ private fun EnhancedTimeSchedule(
     }
 }
 
-// New data class for time blocks
 data class TimeBlock(
     val name: String,
     val startHour: Int,
@@ -579,129 +486,6 @@ private fun TimeLabelsForBlock(startHour: Int, endHour: Int, hourHeightDp: Dp) {
 }
 
 @Composable
-private fun DraggableTaskItem(
-    task: Task,
-    onTaskSelected: (Task) -> Unit,
-    onTaskScheduled: (Task, LocalTime) -> Unit,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    var isDragging by remember { mutableStateOf(false) }
-    val density = LocalDensity.current
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(color)
-            .draggable(
-                orientation = Orientation.Vertical,
-                state = rememberDraggableState { delta ->
-                    // Handle dragging state
-                    isDragging = true
-                },
-                onDragStarted = {
-                    isDragging = true
-                },
-                onDragStopped = { velocity ->
-                    isDragging = false
-                    // Calculate drop position when dragging ends
-                    // This is simplified - you'll need to calculate the actual time based on y position
-                }
-            )
-            .clickable { onTaskSelected(task) }
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        Column {
-            if (task.priority != Priority.NONE) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(getPriorityColor(task.priority))
-                        .align(Alignment.Start)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            Text(
-                text = task.name,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            if (task.durationConf != null) {
-                Text(
-                    text = "${task.durationConf.totalMinutes}min",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (task.isCompleted) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_completed),
-                    contentDescription = "Completed",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .align(Alignment.End)
-                )
-            }
-
-            if (isDragging) {
-                Text(
-                    text = "Drag to schedule",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PeriodSection(
-    title: String,
-    tasks: List<Task>,
-    position: Dp,
-    color: Color,
-    onTaskSelected: (Task) -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .offset(y = position)
-            .padding(start = 4.dp, end = 4.dp, bottom = 8.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(color.copy(alpha = 0.3f))
-                .padding(8.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-
-            tasks.forEach { task ->
-                TaskItem(
-                    task = task,
-                    onTaskSelected = onTaskSelected,
-                    color = color.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(vertical = 2.dp)
-                )
-            }
-        }
-    }
-}
-
-
-@Composable
 private fun TaskItem(
     task: Task,
     onTaskSelected: (Task) -> Unit,
@@ -717,7 +501,6 @@ private fun TaskItem(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Priority indicator
         if (task.priority != Priority.NONE) {
             Box(
                 modifier = Modifier
@@ -729,7 +512,6 @@ private fun TaskItem(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        // Task content
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = task.name,
@@ -737,25 +519,15 @@ private fun TaskItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-
-            // Show time for tasks with specific times
             if (!task.isAllDay() && task.startTime != LocalTime.MIDNIGHT) {
                 Text(
-                    text = buildString {
-                        append(task.startTime.format(DateTimeFormatter.ofPattern("HH:mm")))
-                        if (task.durationConf != null) {
-                            append(" (${task.durationConf.totalMinutes}min)")
-                        } else if (task.endTime != LocalTime.MIDNIGHT) {
-                            append(" - ${task.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                        }
-                    },
+                    text = "${task.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} (${task.durationConf?.totalMinutes ?: 30}min)",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        // Completion indicator
         if (task.isCompleted) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_completed),
@@ -767,67 +539,31 @@ private fun TaskItem(
     }
 }
 
-@Composable
-private fun TimeLabels(hourHeightDp: Dp) {
-    Column(modifier = Modifier.width(48.dp)) {
-        (0..23).forEach { hour ->
-            Box(
-                modifier = Modifier
-                    .height(hourHeightDp)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.TopEnd
-            ) {
-                Text(
-                    text = when (hour) {
-                        0 -> "12 AM"
-                        in 1..11 -> "$hour AM"
-                        12 -> "12 PM"
-                        else -> "${hour - 12} PM"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 8.dp, top = 2.dp)
-                )
-            }
-        }
-    }
-}
-
-// Helper functions
-
-// Efficiently position tasks to avoid overlaps
 private fun positionTasks(tasks: List<Task>): Map<Task, TaskPosition> {
     val sortedTasks = tasks.sortedBy { it.startTime }
     val result = mutableMapOf<Task, TaskPosition>()
     val columns = mutableListOf<MutableList<Task>>()
 
     sortedTasks.forEach { task ->
-        // Find a column where this task doesn't overlap with existing tasks
         var placed = false
         for (column in columns) {
             val lastTask = column.last()
-            val lastTaskEndTime = if (lastTask.durationConf != null) {
-                val minutes =
-                    lastTask.startTime.toMinutes() + (lastTask.durationConf.totalMinutes ?: 60)
-                LocalTime.of(minutes / 60, minutes % 60)
-            } else {
-                lastTask.endTime
-            }
-
-            if (task.startTime.isAfter(lastTaskEndTime) || task.startTime == lastTaskEndTime) {
+            // Calculate last task’s end time using its start time plus its duration (default 30 min)
+            val lastTaskEndTime = lastTask.startTime.plusMinutes(
+                ((lastTask.durationConf?.totalMinutes ?: 30).toLong())
+            )
+            if (task.startTime >= lastTaskEndTime) {
                 column.add(task)
                 placed = true
                 break
             }
         }
-
-        // If no suitable column found, create a new one
         if (!placed) {
             columns.add(mutableListOf(task))
         }
     }
 
-    // Calculate positions based on columns
+    // Calculate horizontal position based on the column index
     val columnWidth = 1f / columns.size.coerceAtLeast(1)
     columns.forEachIndexed { colIndex, column ->
         column.forEach { task ->
@@ -851,15 +587,3 @@ private fun getPriorityColor(priority: Priority): Color = when (priority) {
     Priority.NONE -> Color.Gray
 }
 
-// Helper function to get color for different periods
-private fun getPeriodColor(period: DayPeriod): Color = when (period) {
-    DayPeriod.MORNING -> Color(0xFFE3F2FD) // Light blue
-    DayPeriod.EVENING -> Color(0xFFFFF9C4) // Light yellow
-    DayPeriod.NIGHT -> Color(0xFFE1BEE7) // Light purple
-    DayPeriod.ALLDAY -> Color(0xFFE8F5E9) // Light green
-    DayPeriod.NONE -> Color.White
-}
-
-private fun String.capitalize(): String {
-    return this.lowercase().replaceFirstChar { it.uppercase() }
-}

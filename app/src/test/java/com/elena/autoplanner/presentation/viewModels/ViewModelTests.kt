@@ -308,7 +308,7 @@ class TaskViewModelTest {
             val expiredTask = Task(
                 id = 1,
                 name = "Expired Task",
-                isExpired = true
+                startDateConf = TimePlanning(LocalDateTime.now().minusDays(1))
             )
 
             coEvery { getTasksUseCase() } returns flowOf(listOf(expiredTask))
@@ -327,8 +327,7 @@ class TaskViewModelTest {
         val task = Task(
             id = 1,
             name = "Solo Expired",
-            isExpired = true,
-            // No subtasks/dates/duration
+            startDateConf = TimePlanning(LocalDateTime.now().minusDays(1))
         )
 
         coEvery { getTasksUseCase() } returns flowOf(listOf(task))
@@ -337,7 +336,7 @@ class TaskViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Verify task appears in expired section
-        assertTrue(viewModel.state.value!!.filteredTasks.first().isExpired)
+        assertTrue(viewModel.state.value!!.filteredTasks.first().isExpired())
 
         // UI test should verify presence of expired chip
         // even without other metadata
