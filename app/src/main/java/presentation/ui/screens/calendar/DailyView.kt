@@ -145,9 +145,6 @@ private fun EnhancedTimeSchedule(
     val hourHeightPx = with(LocalDensity.current) { hourHeightDp.toPx() }
     val currentMinutes = currentTime.hour * 60 + currentTime.minute
 
-    var draggedTaskId by remember { mutableStateOf<String?>(null) }
-    var dragOffsetY by remember { mutableStateOf(0f) }
-
     val timeBlocks = listOf(
         TimeBlock("Late Night", 0, 6, null),
         TimeBlock("Morning", 6, 12, morningTasks),
@@ -169,13 +166,8 @@ private fun EnhancedTimeSchedule(
                     isToday = isToday,
                     currentMinutes = currentMinutes,
                     hourHeightPx = hourHeightPx,
-                    draggedTaskId = draggedTaskId,
-                    dragOffsetY = dragOffsetY,
                     onTaskSelected = onTaskSelected,
                     onTaskTimeChanged = onTaskTimeChanged,
-                    onDragStart = { draggedTaskId = it },
-                    onDragEnd = { draggedTaskId = null; dragOffsetY = 0f },
-                    onDrag = { dragOffsetY += it },
                     currentTime = currentTime
                 )
             }
@@ -192,13 +184,8 @@ private fun TimeBlockSection(
     isToday: Boolean,
     currentMinutes: Int,
     hourHeightPx: Float,
-    draggedTaskId: String?,
-    dragOffsetY: Float,
     onTaskSelected: (Task) -> Unit,
     onTaskTimeChanged: (Task, LocalTime) -> Unit,
-    onDragStart: (String) -> Unit,
-    onDragEnd: () -> Unit,
-    onDrag: (Float) -> Unit
 ) {
     Column {
         block.periodTasks?.takeIf { it.isNotEmpty() }?.let {
@@ -246,14 +233,10 @@ private fun TimeBlockSection(
                             position = position,
                             block = block,
                             hourHeightPx = hourHeightPx,
-                            isDragging = task.id.toString() == draggedTaskId,
-                            dragOffsetY = dragOffsetY,
                             parentWidth = maxWidth,
                             onTaskSelected = onTaskSelected,
                             onTaskTimeChanged = onTaskTimeChanged,
-                            onDragStart = onDragStart,
-                            onDragEnd = onDragEnd,
-                            onDrag = onDrag
+                            hourHeightDp = hourHeightDp,
                         )
                     }
 
@@ -277,22 +260,21 @@ private fun TaskBox(
     position: TaskPosition,
     block: TimeBlock,
     hourHeightPx: Float,
-    isDragging: Boolean,
-    dragOffsetY: Float,
+    hourHeightDp: Dp,
     parentWidth: Dp,
     onTaskSelected: (Task) -> Unit,
     onTaskTimeChanged: (Task, LocalTime) -> Unit,
-    onDragStart: (String) -> Unit,
-    onDragEnd: () -> Unit,
-    onDrag: (Float) -> Unit
 ) {
-    val startMinutes = task.startTime.toMinutes()
+    // Calculate original position based on task start time relative to block start.
+    val startMinutes = task.startTime.hour * 60 + task.startTime.minute
     val blockStart = block.startHour * 60
     val yPosition = (startMinutes - blockStart) / 60f * hourHeightPx
     val duration = task.durationConf?.totalMinutes ?: 30
-    val taskHeight = (duration / 60f) * hourHeightPx
-
+    val taskHeightDp = (duration / 60f) * hourHeightDp.value
     val xOffset = with(LocalDensity.current) { (parentWidth * position.xFraction).toPx() }
+
+    // Drag state: holds the additional vertical offset during dragging.
+    var dragOffset by remember { mutableStateOf(0f) }
 
     Box(
         modifier = Modifier
@@ -300,29 +282,31 @@ private fun TaskBox(
             .offset {
                 IntOffset(
                     x = xOffset.roundToInt(),
-                    y = (yPosition + dragOffsetY).toInt()
+                    y = (yPosition + dragOffset).toInt()
                 )
             }
-            .height(taskHeight.dp)
-            .padding(end = 2.dp, top = 1.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(
-                if (isDragging) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.secondaryContainer
-            )
+            // Detect drag gestures
             .pointerInput(task.id) {
                 detectDragGestures(
-                    onDragStart = { onDragStart(task.id.toString()) },
-                    onDragEnd = { onDragEnd() },
-                    onDrag = { _, dragAmount ->
-                        val maxY =
-                            hourHeightPx * (block.endHour - block.startHour) - yPosition - taskHeight
-                        val minY = -yPosition
-                        val newOffset = (dragOffsetY + dragAmount.y).coerceIn(minY, maxY)
-                        onDrag(newOffset)
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        dragOffset += dragAmount.y
+                    },
+                    onDragEnd = {
+                        // Calculate the change in minutes based on drag offset and hour height.
+                        val minuteDelta = (dragOffset / hourHeightPx * 60).roundToInt()
+                        val newStartTime = task.startTime.plusMinutes(minuteDelta.toLong())
+                        // Update the task with the new start time.
+                        onTaskTimeChanged(task, newStartTime)
+                        // Reset drag offset.
+                        dragOffset = 0f
                     }
                 )
             }
+            .height(taskHeightDp.dp)
+            .padding(end = 2.dp, top = 1.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
             .clickable { onTaskSelected(task) }
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
@@ -332,7 +316,6 @@ private fun TaskBox(
                     PriorityIndicator(it)
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-
                 Text(
                     text = task.name,
                     style = MaterialTheme.typography.bodySmall,
@@ -340,7 +323,6 @@ private fun TaskBox(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-
                 if (task.isCompleted) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_completed),
@@ -350,10 +332,9 @@ private fun TaskBox(
                     )
                 }
             }
-
-            if (taskHeight > 40) {
+            if (taskHeightDp > 40) {
                 Text(
-                    text = "${task.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} (${task.durationConf?.totalMinutes ?: 30}min)",
+                    text = "${task.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} (${duration}min)",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -361,6 +342,7 @@ private fun TaskBox(
         }
     }
 }
+
 
 @Composable
 private fun PeriodTasksSection(
