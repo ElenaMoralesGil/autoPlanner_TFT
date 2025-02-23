@@ -48,6 +48,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -384,7 +385,10 @@ private fun TaskBox(
                 clip = true
             )
             .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = if (task.isCompleted) 0.6f else 1f))
+            .background(
+                if (task.isCompleted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
+                else MaterialTheme.colorScheme.surface.copy(alpha = 1f)
+            )
             .clickable { onTaskSelected(task) }
             .padding(8.dp)
     ) {
@@ -394,7 +398,8 @@ private fun TaskBox(
                 .width(4.dp)
                 .align(Alignment.CenterStart)
                 .background(
-                    color = getPriorityColor(task.priority),
+                    color = if (task.isCompleted) MaterialTheme.colorScheme.primary
+                    else getPriorityColor(task.priority),
                     shape = RoundedCornerShape(4.dp)
                 )
         )
@@ -413,20 +418,32 @@ private fun TaskBox(
                         text = task.name,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
+                            fontSize = 14.sp,
+                            textDecoration = if (task.isCompleted) TextDecoration.LineThrough
+                            else TextDecoration.None
                         ),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = if (task.isCompleted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        else MaterialTheme.colorScheme.onPrimaryContainer,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
+
                     if (task.isCompleted) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_completed),
-                            contentDescription = "Completed",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_completed),
+                                contentDescription = "Completed",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -444,7 +461,10 @@ private fun TaskBox(
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
+                        color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = 0.6f
+                        )
+                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
                         modifier = Modifier.weight(1f)
                     )
                 } else {
@@ -453,12 +473,18 @@ private fun TaskBox(
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = 0.6f
+                        )
+                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                     Icon(
                         painter = painterResource(id = R.drawable.ic_arrow_right),
                         contentDescription = "to",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                        tint = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = 0.4f
+                        )
+                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
@@ -466,7 +492,10 @@ private fun TaskBox(
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = 0.6f
+                        )
+                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                 }
             }
