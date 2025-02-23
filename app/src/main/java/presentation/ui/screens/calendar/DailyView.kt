@@ -5,11 +5,13 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,12 +38,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -384,43 +388,92 @@ private fun TaskBox(
             }
 
             .height(rectHeightDp.dp)
-            .padding(end = 2.dp, top = 1.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(end = 4.dp, top = 2.dp)
+            .shadow(
+                elevation = if (dragOffset != 0f) 8.dp else 2.dp,
+                shape = RoundedCornerShape(8.dp),
+                clip = true
+            )
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                color = MaterialTheme.colorScheme.surface.copy(
+                    alpha = if (task.isCompleted) 0.6f else 1f
+                )
+            )
             .clickable { onTaskSelected(task) }
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(8.dp)
     ) {
 
         if (showText) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    task.priority.takeIf { it != Priority.NONE }?.let {
-                        PriorityIndicator(it)
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .align(Alignment.CenterStart)
+                    .background(
+                        color = getPriorityColor(task.priority),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .fillMaxSize()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = task.name,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
+
                     if (task.isCompleted) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_completed),
                             contentDescription = "Completed",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
-                Text(
-                    text = "${effectiveStartTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - " +
-                            "${taskEndTime.format(DateTimeFormatter.ofPattern("HH:mm"))} " +
-                            "($taskDuration min)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
+                // Time and duration
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = effectiveStartTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_arrow_right),
+                        contentDescription = "to",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                        modifier = Modifier.size(12.dp)
+                    )
+
+                    Text(
+                        text = taskEndTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
     }
@@ -442,7 +495,9 @@ private fun PeriodTasksSection(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .shadow(1.dp, shape = RoundedCornerShape(8.dp)),
+
         shape = RoundedCornerShape(8.dp),
         tonalElevation = 1.dp
     ) {
@@ -457,8 +512,10 @@ private fun PeriodTasksSection(
                 TaskItem(
                     task = task,
                     onTaskSelected = onTaskSelected,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .padding(vertical = 2.dp)
+                        .shadow(1.dp, shape = RoundedCornerShape(8.dp)),
                 )
             }
         }
@@ -473,7 +530,8 @@ private fun AllDayTasksSection(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .shadow(1.dp, shape = RoundedCornerShape(8.dp)),
         shape = RoundedCornerShape(8.dp),
         tonalElevation = 1.dp
     ) {
@@ -488,8 +546,10 @@ private fun AllDayTasksSection(
                 TaskItem(
                     task = task,
                     onTaskSelected = onTaskSelected,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .padding(vertical = 2.dp)
+                        .shadow(1.dp, shape = RoundedCornerShape(8.dp)),
                 )
             }
         }
