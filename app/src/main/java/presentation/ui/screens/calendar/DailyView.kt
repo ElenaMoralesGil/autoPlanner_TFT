@@ -320,6 +320,7 @@ private fun TaskBox(
     val totalDraggedMinutes = (dragOffset / hourHeightPx * 60).roundToInt()
     val snappedMinutes = (totalDraggedMinutes / 5) * 5L
     val taskDuration = task.durationConf?.totalMinutes ?: 60
+    val isShortTask = taskDuration < 50
     val effectiveStartTime = if (dragOffset != 0f) {
         initialTaskStartTime.plusMinutes(snappedMinutes)
             .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration.toLong()))
@@ -341,9 +342,8 @@ private fun TaskBox(
 
     val visualY = (offsetMinutes / 60f) * hourHeightPx
     val rectHeightDp = (heightMinutes / 60f) * hourHeightDp.value
-    val minVisibleHeight = 40.dp
+    val minVisibleHeight = if (isShortTask) 30.dp else 40.dp
     val adjustedHeight = maxOf(rectHeightDp.dp, minVisibleHeight)
-    val showTime = adjustedHeight >= 48.dp
 
     Box(
         modifier = Modifier
@@ -404,36 +404,50 @@ private fun TaskBox(
                 .padding(start = 12.dp)
                 .fillMaxSize()
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = task.name,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = if (adjustedHeight < 48.dp) 12.sp else 14.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+            if (!isShortTask) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
-                )
-                if (task.isCompleted) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_completed),
-                        contentDescription = "Completed",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
+                ) {
+                    Text(
+                        text = task.name,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+                    if (task.isCompleted) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_completed),
+                            contentDescription = "Completed",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
 
-            if (showTime) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isShortTask) {
+                    Text(
+                        text = "${effectiveStartTime.format(DateTimeFormatter.ofPattern("HH:mm"))}-${
+                            taskEndTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+                        }",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
                     Text(
                         text = effectiveStartTime.format(DateTimeFormatter.ofPattern("HH:mm")),
                         style = MaterialTheme.typography.labelSmall.copy(
