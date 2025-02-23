@@ -308,31 +308,26 @@ class TaskViewModel(
 
     fun seedTasks(count: Int = 25) {
         viewModelScope.launch {
-            // 1. Delete all existing tasks (optional if you don't want duplicates)
             deleteAllTasks()
 
-            // 2. Create multiple tasks in a loop with random attributes
             repeat(count) { index ->
-                // Day offset between -2 and +14:
-                // meaning up to 2 days in the past, up to 2 weeks in the future.
+
                 val dayOffset = (-2..14).random()
 
-                // Random hour for the day: 6..21
                 val hour = (6..21).random()
                 val minute = listOf(0, 15, 30, 45).random()
 
-                // Base date/time around the offset
                 val baseDateTime = LocalDateTime.now()
                     .plusDays(dayOffset.toLong())
                     .withHour(hour)
                     .withMinute(minute)
-
-                // Random day period
                 val chosenPeriod = listOf(
                     DayPeriod.MORNING,
                     DayPeriod.EVENING,
                     DayPeriod.NIGHT,
                     DayPeriod.ALLDAY,
+                    DayPeriod.NONE,
+                    DayPeriod.NONE,
                     DayPeriod.NONE
                 ).random()
 
@@ -344,25 +339,17 @@ class TaskViewModel(
                     DayPeriod.ALLDAY -> baseDateTime.withHour(0).withMinute(0)
                     else -> baseDateTime
                 }
-
-                // Randomly decide if there's an end date
                 val hasEndDate = (0..1).random() == 0
                 val endDateOffset = (1..3).random()
                 val endDateTime = if (hasEndDate) {
-                    // A few days after the start
                     adjustedDateTime.plusDays(endDateOffset.toLong())
                 } else null
-
-                // Random duration (some tasks have none, others 30..180)
                 val randomDuration = if ((0..1).random() == 0) {
                     listOf(30, 60, 90, 120, 150, 180).random()
                 } else null
 
-                // Random priority
                 val priority =
                     listOf(Priority.HIGH, Priority.MEDIUM, Priority.LOW, Priority.NONE).random()
-
-                // Maybe subtask creation for half of them
                 val subtasks = if ((0..1).random() == 0) {
                     (1..(1..3).random()).map { subIndex ->
                         Subtask(
@@ -373,8 +360,6 @@ class TaskViewModel(
                         )
                     }
                 } else emptyList()
-
-                // More descriptive random name
                 val sampleName = generateConfigBasedTaskName(
                     index = index,
                     dayOffset = dayOffset,
@@ -384,8 +369,6 @@ class TaskViewModel(
                     priority = priority,
                     subtaskCount = subtasks.size
                 )
-
-                // Build the final NewTaskData
                 val sampleTask = NewTaskData(
                     name = sampleName,
                     priority = priority,
@@ -399,8 +382,6 @@ class TaskViewModel(
                     durationConf = randomDuration?.let { DurationPlan(it) },
                     subtasks = subtasks
                 )
-
-                // Call your existing function to create the task
                 createTask(sampleTask)
             }
         }

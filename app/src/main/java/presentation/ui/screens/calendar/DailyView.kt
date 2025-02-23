@@ -30,10 +30,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.Priority
@@ -144,13 +147,16 @@ private fun EnhancedTimeSchedule(
 ) {
     val hourHeightPx = with(LocalDensity.current) { hourHeightDp.toPx() }
     val currentMinutes = currentTime.hour * 60 + currentTime.minute
-
+    var draggedTasks by remember { mutableStateOf(emptyMap<Int, TaskDragState>()) }
     val timeBlocks = listOf(
         TimeBlock("Late Night", 0, 6, null),
         TimeBlock("Morning", 6, 12, morningTasks),
         TimeBlock("Afternoon", 12, 18, eveningTasks),
         TimeBlock("Night", 18, 24, nightTasks)
     )
+    fun updateDragState(newState: TaskDragState) {
+        draggedTasks = draggedTasks + (newState.task.id to newState)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -164,11 +170,13 @@ private fun EnhancedTimeSchedule(
                     hourHeightDp = hourHeightDp,
                     scheduledTasks = scheduledTasks,
                     isToday = isToday,
+                    draggedTasks = draggedTasks,
                     currentMinutes = currentMinutes,
                     hourHeightPx = hourHeightPx,
                     onTaskSelected = onTaskSelected,
                     onTaskTimeChanged = onTaskTimeChanged,
-                    currentTime = currentTime
+                    currentTime = currentTime,
+                    updateDragState = ::updateDragState
                 )
             }
         }
@@ -186,6 +194,8 @@ private fun TimeBlockSection(
     hourHeightPx: Float,
     onTaskSelected: (Task) -> Unit,
     onTaskTimeChanged: (Task, LocalTime) -> Unit,
+    draggedTasks: Map<Int, TaskDragState>,
+    updateDragState: (TaskDragState) -> Unit
 ) {
     Column {
         block.periodTasks?.takeIf { it.isNotEmpty() }?.let {
@@ -198,13 +208,37 @@ private fun TimeBlockSection(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(hourHeightDp * (block.endHour - block.startHour))
+                    .height(hourHeightDp * (if (block.endHour == 24) 6 else block.endHour - block.startHour))
+                    .clipToBounds()
             ) {
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val tasksInBlock = scheduledTasks.filter { task ->
-                        task.startTime.hour in block.startHour until block.endHour
+                        val effectiveTaskStart =
+                            draggedTasks[task.id]?.tempStartTime ?: task.startTime
+                        val taskDuration = task.durationConf?.totalMinutes ?: 30
+                        val taskEnd = effectiveTaskStart.plusMinutes(taskDuration.toLong())
+                        val blockStartTime = LocalTime.of(block.startHour, 0)
+                        val blockEndTime = if (block.endHour == 24) LocalTime.MAX else LocalTime.of(
+                            block.endHour,
+                            0
+                        )
+                        effectiveTaskStart < blockEndTime && taskEnd > blockStartTime
                     }
-                    val taskPositions = positionTasks(tasksInBlock)
+
+
+                    val modifiedTasks = tasksInBlock.map { task ->
+                        draggedTasks[task.id]?.tempStartTime?.let { newTime ->
+                            task.copy(
+                                startDateConf = task.startDateConf?.copy(
+                                    dateTime = LocalDateTime.of(
+                                        task.startDateConf!!.dateTime?.toLocalDate(),
+                                        newTime
+                                    )
+                                )
+                            )
+                        } ?: task
+                    }
+                    val taskPositions = positionTasks(modifiedTasks)
 
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         drawRect(color = Color.White)
@@ -237,6 +271,8 @@ private fun TimeBlockSection(
                             onTaskSelected = onTaskSelected,
                             onTaskTimeChanged = onTaskTimeChanged,
                             hourHeightDp = hourHeightDp,
+                            draggedTasks = draggedTasks,
+                            updateDragState = updateDragState
                         )
                     }
 
@@ -264,77 +300,124 @@ private fun TaskBox(
     parentWidth: Dp,
     onTaskSelected: (Task) -> Unit,
     onTaskTimeChanged: (Task, LocalTime) -> Unit,
+    draggedTasks: Map<Int, TaskDragState>,
+    updateDragState: (TaskDragState) -> Unit
 ) {
-    // Calculate original position based on task start time relative to block start.
-    val startMinutes = task.startTime.hour * 60 + task.startTime.minute
-    val blockStart = block.startHour * 60
-    val yPosition = (startMinutes - blockStart) / 60f * hourHeightPx
-    val duration = task.durationConf?.totalMinutes ?: 30
-    val taskHeightDp = (duration / 60f) * hourHeightDp.value
-    val xOffset = with(LocalDensity.current) { (parentWidth * position.xFraction).toPx() }
+    val dayStart = LocalTime.MIDNIGHT
+    val dayEnd = LocalTime.of(23, 59)
 
-    // Drag state: holds the additional vertical offset during dragging.
-    var dragOffset by remember { mutableStateOf(0f) }
+    var localDragOffset by remember { mutableStateOf(0f) }
+    val dragOffset by androidx.compose.animation.core.animateFloatAsState(targetValue = localDragOffset)
+    var initialTaskStartTime by remember { mutableStateOf(task.startTime) }
+
+    val totalDraggedMinutes = (dragOffset / hourHeightPx * 60).roundToInt()
+    val snappedMinutes = (totalDraggedMinutes / 5) * 5L
+    val taskDuration = task.durationConf?.totalMinutes ?: 30
+    val effectiveStartTime = if (dragOffset != 0f) {
+        initialTaskStartTime.plusMinutes(snappedMinutes)
+            .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration.toLong()))
+    } else {
+        draggedTasks[task.id]?.tempStartTime ?: task.startTime
+    }
+
+    val xOffset = with(LocalDensity.current) { (parentWidth * position.xFraction).toPx() }
+    val blockStartTime = LocalTime.of(block.startHour, 0)
+    val blockEndTime = if (block.endHour == 24) LocalTime.MAX else LocalTime.of(block.endHour, 0)
+    val taskEndTime = effectiveStartTime.plusMinutes(taskDuration.toLong())
+    val displayStartTime =
+        if (effectiveStartTime.isBefore(blockStartTime)) blockStartTime else effectiveStartTime
+    val displayEndTime = if (taskEndTime.isAfter(blockEndTime)) blockEndTime else taskEndTime
+    val offsetMinutes =
+        java.time.Duration.between(blockStartTime, displayStartTime).toMinutes().toFloat()
+    val heightMinutes =
+        java.time.Duration.between(displayStartTime, displayEndTime).toMinutes().toFloat()
+
+    val visualY = (offsetMinutes / 60f) * hourHeightPx
+    val rectHeightDp = (heightMinutes / 60f) * hourHeightDp.value
+
+
+    val showText = effectiveStartTime >= blockStartTime && effectiveStartTime < blockEndTime
 
     Box(
         modifier = Modifier
             .fillMaxWidth(position.width)
-            .offset {
-                IntOffset(
-                    x = xOffset.roundToInt(),
-                    y = (yPosition + dragOffset).toInt()
-                )
-            }
-            // Detect drag gestures
+            .offset { IntOffset(x = xOffset.roundToInt(), y = visualY.roundToInt()) }
+            .then(if (dragOffset != 0f) Modifier.zIndex(1f) else Modifier)
             .pointerInput(task.id) {
                 detectDragGestures(
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        dragOffset += dragAmount.y
+                    onDrag = { _, dragAmount ->
+
+                        if (localDragOffset == 0f) {
+                            initialTaskStartTime = task.startTime
+                        }
+                        localDragOffset += dragAmount.y
+                        val totalMinutes = (localDragOffset / hourHeightPx * 60).roundToInt()
+                        val snappedMinutes = (totalMinutes / 5) * 5L
+                        val newTempStartTime = initialTaskStartTime
+                            .plusMinutes(snappedMinutes)
+                            .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration.toLong()))
+                        updateDragState(
+                            TaskDragState(
+                                task = task,
+                                offset = localDragOffset,
+                                tempStartTime = newTempStartTime
+                            )
+                        )
                     },
                     onDragEnd = {
-                        // Calculate the change in minutes based on drag offset and hour height.
-                        val minuteDelta = (dragOffset / hourHeightPx * 60).roundToInt()
-                        val newStartTime = task.startTime.plusMinutes(minuteDelta.toLong())
-                        // Update the task with the new start time.
-                        onTaskTimeChanged(task, newStartTime)
-                        // Reset drag offset.
-                        dragOffset = 0f
+                        val totalMinutes = (localDragOffset / hourHeightPx * 60).roundToInt()
+                        val snappedMinutes = (totalMinutes / 5) * 5L
+                        val newTime = initialTaskStartTime
+                            .plusMinutes(snappedMinutes)
+                            .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration.toLong()))
+                        updateDragState(
+                            TaskDragState(
+                                task = task,
+                                offset = 0f,
+                                tempStartTime = newTime
+                            )
+                        )
+                        onTaskTimeChanged(task, newTime)
+                        localDragOffset = 0f
                     }
                 )
             }
-            .height(taskHeightDp.dp)
+
+            .height(rectHeightDp.dp)
             .padding(end = 2.dp, top = 1.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(MaterialTheme.colorScheme.secondaryContainer)
             .clickable { onTaskSelected(task) }
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                task.priority.takeIf { it != Priority.NONE }?.let {
-                    PriorityIndicator(it)
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-                Text(
-                    text = task.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                if (task.isCompleted) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_completed),
-                        contentDescription = "Completed",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(12.dp)
+
+        if (showText) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    task.priority.takeIf { it != Priority.NONE }?.let {
+                        PriorityIndicator(it)
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    Text(
+                        text = task.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+                    if (task.isCompleted) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_completed),
+                            contentDescription = "Completed",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
                 }
-            }
-            if (taskHeightDp > 40) {
                 Text(
-                    text = "${task.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} (${duration}min)",
+                    text = "${effectiveStartTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - " +
+                            "${taskEndTime.format(DateTimeFormatter.ofPattern("HH:mm"))} " +
+                            "($taskDuration min)",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -343,6 +426,12 @@ private fun TaskBox(
     }
 }
 
+
+data class TaskDragState(
+    val task: Task,
+    val offset: Float = 0f,
+    val tempStartTime: LocalTime? = null
+)
 
 @Composable
 private fun PeriodTasksSection(
@@ -447,7 +536,8 @@ private fun TimeLabelsForBlock(
     hourHeightDp: Dp
 ) {
     Column(modifier = Modifier.width(48.dp)) {
-        for (hour in startHour until endHour) {
+        for (hour in startHour until endHour.coerceAtMost(24)) {
+            if (hour >= 24) return@Column
             Box(
                 modifier = Modifier
                     .height(hourHeightDp)
@@ -461,6 +551,21 @@ private fun TimeLabelsForBlock(
                         12 -> "12 PM"
                         else -> "${hour - 12} PM"
                     },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 8.dp, top = 2.dp)
+                )
+            }
+        }
+        if (endHour == 24) {
+            Box(
+                modifier = Modifier
+                    .height(hourHeightDp)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.TopEnd
+            ) {
+                Text(
+                    text = "12 AM",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(end = 8.dp, top = 2.dp)
