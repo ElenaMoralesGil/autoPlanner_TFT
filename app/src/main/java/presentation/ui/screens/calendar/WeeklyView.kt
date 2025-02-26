@@ -201,7 +201,8 @@ private fun DaysOfWeekHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 48.dp) // Space for time labels
+            .padding(horizontal = 4.dp)
+
     ) {
         weekDays.forEach { date ->
             val isToday = date == currentDate
@@ -211,7 +212,7 @@ private fun DaysOfWeekHeader(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .background(backgroundColor)
+                    .background(backgroundColor, shape = RoundedCornerShape(20.dp))
                     .clickable { onDateSelected(date) }
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
@@ -220,7 +221,8 @@ private fun DaysOfWeekHeader(
                     Text(
                         text = date.format(DateTimeFormatter.ofPattern("EEE")),
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = date.dayOfMonth.toString(),
@@ -252,14 +254,11 @@ private fun AllDayTasksSection(
                 text = "All Day",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 4.dp, start = 40.dp)
+                modifier = Modifier.padding(bottom = 4.dp, start = 2.dp)
             )
 
             Row(modifier = Modifier.fillMaxWidth()) {
-                // Empty space for time label
-                Box(modifier = Modifier.width(48.dp))
 
-                // Tasks by day
                 Row(modifier = Modifier.weight(1f)) {
                     weekDays.forEach { date ->
                         val tasksForDay = allDayTasks.filter {
@@ -305,7 +304,6 @@ private fun TimeGridWithPeriodSections(
     val currentDateIndex = weekDays.indexOfFirst { it.isToday() }
     val hourHeightPx = with(LocalDensity.current) { hourHeightDp.toPx() }
 
-    // State to track dragging tasks
     var draggedTaskState by remember { mutableStateOf<WeeklyTaskDragState?>(null) }
 
     Column(
@@ -314,46 +312,33 @@ private fun TimeGridWithPeriodSections(
             .verticalScroll(scrollState)
     ) {
         hours.forEach { hour ->
-            // Insert Period Sections just before their respective hours
             if (hour == 6 && morningTasks.isNotEmpty()) {
-                // Morning section before 6 AM
                 PeriodSection(
                     title = "Morning (6AM-12PM)",
                     tasks = morningTasks,
                     weekDays = weekDays,
                     onTaskSelected = onTaskSelected,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                    backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
                 )
             } else if (hour == 12 && eveningTasks.isNotEmpty()) {
-                // Evening section before 12 PM
                 PeriodSection(
                     title = "Evening (12PM-6PM)",
                     tasks = eveningTasks,
                     weekDays = weekDays,
                     onTaskSelected = onTaskSelected,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                    backgroundColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
                 )
             } else if (hour == 18 && nightTasks.isNotEmpty()) {
-                // Night section before 6 PM
                 PeriodSection(
                     title = "Night (6PM-12AM)",
                     tasks = nightTasks,
                     weekDays = weekDays,
                     onTaskSelected = onTaskSelected,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                    backgroundColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
                 )
             }
-
-            // Regular hour row with scheduled tasks
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(hourHeightDp)
             ) {
-                // Time label column
                 Box(
                     modifier = Modifier
                         .width(48.dp)
@@ -373,7 +358,6 @@ private fun TimeGridWithPeriodSections(
                     )
                 }
 
-                // Day columns for this hour
                 Row(
                     modifier = Modifier
                         .weight(1f)
@@ -391,7 +375,7 @@ private fun TimeGridWithPeriodSections(
                                 )
                                 .clipToBounds()
                         ) {
-                            // Hour divider line
+
                             Canvas(modifier = Modifier.matchParentSize()) {
                                 drawLine(
                                     color = Color.LightGray.copy(alpha = 0.2f),
@@ -399,8 +383,6 @@ private fun TimeGridWithPeriodSections(
                                     end = Offset(size.width, 0f),
                                     strokeWidth = 1f
                                 )
-
-                                // Half-hour line
                                 val halfHourY = size.height / 2
                                 drawLine(
                                     color = Color.LightGray.copy(alpha = 0.1f),
@@ -411,7 +393,6 @@ private fun TimeGridWithPeriodSections(
                                 )
                             }
 
-                            // Current time indicator for today
                             if (dayIndex == currentDateIndex && hour == currentTime.hour) {
                                 val minuteOffset =
                                     with(LocalDensity.current) { (currentTime.minute / 60f) * hourHeightDp.toPx() }
@@ -425,7 +406,6 @@ private fun TimeGridWithPeriodSections(
                                 )
                             }
 
-                            // Tasks for this hour and day
                             val tasksInHour = scheduledTasks.filter { task ->
                                 val taskDate = task.startDateConf?.dateTime?.toLocalDate()
                                 val taskHour = task.startDateConf?.dateTime?.hour
@@ -433,7 +413,6 @@ private fun TimeGridWithPeriodSections(
                             }
 
                             tasksInHour.forEach { task ->
-                                // Check if this task is being dragged
                                 val isDragging = draggedTaskState?.task?.id == task.id
                                 val effectiveTime = if (isDragging) {
                                     draggedTaskState?.tempTime ?: task.startTime
@@ -446,7 +425,6 @@ private fun TimeGridWithPeriodSections(
                                     dayIndex
                                 }
 
-                                // Only render if this is the effective day for the task
                                 if (effectiveDayIndex == dayIndex) {
                                     val taskMinute = effectiveTime.minute
                                     val verticalOffset =
@@ -493,9 +471,7 @@ private fun TimeGridWithPeriodSections(
                                                                 )
                                                             }
 
-                                                            // Handle horizontal movement (day change)
-                                                            // Using a threshold to prevent accidental day changes
-                                                            val horizontalThreshold = 20f // pixels
+                                                            val horizontalThreshold = 20f
                                                             if (Math.abs(dragAmount.x) > horizontalThreshold) {
                                                                 val direction =
                                                                     if (dragAmount.x > 0) 1 else -1
@@ -549,16 +525,14 @@ private fun PeriodSection(
     tasks: List<Task>,
     weekDays: List<LocalDate>,
     onTaskSelected: (Task) -> Unit,
-    modifier: Modifier = Modifier,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
 ) {
     Surface(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
             .shadow(1.dp, shape = RoundedCornerShape(8.dp)),
         shape = RoundedCornerShape(8.dp),
-        color = backgroundColor
+        tonalElevation = 1.dp
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             Text(
@@ -566,14 +540,12 @@ private fun PeriodSection(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 4.dp, start = 40.dp)
+                modifier = Modifier.padding(bottom = 4.dp, start = 2.dp)
             )
 
             Row(modifier = Modifier.fillMaxWidth()) {
-                // Empty space for time label
                 Box(modifier = Modifier.width(48.dp))
 
-                // Period tasks by day
                 Row(modifier = Modifier.weight(1f)) {
                     weekDays.forEach { date ->
                         val tasksForDay = tasks.filter {
@@ -620,7 +592,6 @@ private fun PeriodTaskItem(
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Priority indicator
         Box(
             modifier = Modifier
                 .size(8.dp)
@@ -629,7 +600,6 @@ private fun PeriodTaskItem(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Task name
         Text(
             text = task.name,
             style = MaterialTheme.typography.bodySmall,
@@ -641,7 +611,6 @@ private fun PeriodTaskItem(
             modifier = Modifier.weight(1f)
         )
 
-        // Completed indicator
         if (task.isCompleted) {
             Spacer(modifier = Modifier.width(4.dp))
             Icon(
@@ -669,7 +638,6 @@ private fun TaskItem(
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Priority indicator
         Box(
             modifier = Modifier
                 .size(8.dp)
@@ -724,7 +692,6 @@ private fun TaskBox(
             .padding(4.dp)
     ) {
         Row(modifier = Modifier.fillMaxSize()) {
-            // Priority indicator
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -770,9 +737,9 @@ private fun TaskBox(
 }
 
 private fun getPriorityColor(priority: Priority): Color = when (priority) {
-    Priority.HIGH -> Color.Red
-    Priority.MEDIUM -> Color(0xFFFFA500) // Orange
-    Priority.LOW -> Color(0xFF4CAF50)    // Green
+    Priority.HIGH -> Color(0xFFEA6C6C)
+    Priority.MEDIUM -> Color(0xFFE0A800)
+    Priority.LOW -> Color(0xFF5DB258)
     Priority.NONE -> Color.Gray
 }
 
