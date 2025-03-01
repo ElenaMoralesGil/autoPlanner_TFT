@@ -446,6 +446,9 @@ private fun TimeGridWithPeriodSections(
             }
 
             // Tasks overlay - placed in the same Box to allow spanning across hour boundaries
+            // Inside the TimeGridWithPeriodSections function, replace the task rendering section with this:
+
+// Tasks overlay - placed in the same Box to allow spanning across hour boundaries
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -488,6 +491,8 @@ private fun TimeGridWithPeriodSections(
                                 if (durationMinutes > 0) {
                                     Box(
                                         modifier = Modifier
+                                            .align(Alignment.TopCenter) // Center horizontally in the column
+                                            .width(IntrinsicSize.Max)
                                             .fillMaxWidth(0.95f)
                                             .height(height)
                                             .offset(y = topOffset)
