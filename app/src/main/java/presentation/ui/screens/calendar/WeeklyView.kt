@@ -286,7 +286,6 @@ private fun AllDayTasksSection(
         }
     }
 }
-
 @Composable
 private fun TimeGridWithPeriodSections(
     weekDays: List<LocalDate>,
@@ -306,209 +305,279 @@ private fun TimeGridWithPeriodSections(
 
     var draggedTaskState by remember { mutableStateOf<WeeklyTaskDragState?>(null) }
 
+    // Preprocess tasks to create a map of continuous tasks per day
+    val continuousTasksMap = weekDays.associateWith { date ->
+        scheduledTasks.filter { task ->
+            task.startDateConf?.dateTime?.toLocalDate() == date
+        }.map { task ->
+            // Calculate start and end datetime for each task
+            val startDateTime = task.startDateConf?.dateTime ?: LocalDateTime.MIN
+            val endDateTime =
+                startDateTime.plusMinutes(task.durationConf?.totalMinutes?.toLong() ?: 60L)
+
+            ContinuousTask(
+                startDateTime = startDateTime,
+                endDateTime = endDateTime,
+                tasks = listOf(task)
+            )
+        }.sortedBy { it.startDateTime }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(scrollState)
     ) {
-        hours.forEach { hour ->
-            if (hour == 6 && morningTasks.isNotEmpty()) {
-                PeriodSection(
-                    title = "Morning (6AM-12PM)",
-                    tasks = morningTasks,
-                    weekDays = weekDays,
-                    onTaskSelected = onTaskSelected,
-                )
-            } else if (hour == 12 && eveningTasks.isNotEmpty()) {
-                PeriodSection(
-                    title = "Evening (12PM-6PM)",
-                    tasks = eveningTasks,
-                    weekDays = weekDays,
-                    onTaskSelected = onTaskSelected,
-                )
-            } else if (hour == 18 && nightTasks.isNotEmpty()) {
-                PeriodSection(
-                    title = "Night (6PM-12AM)",
-                    tasks = nightTasks,
-                    weekDays = weekDays,
-                    onTaskSelected = onTaskSelected,
-                )
+        // Period sections at appropriate positions
+        if (morningTasks.isNotEmpty()) {
+            PeriodSection(
+                title = "Morning (6AM-12PM)",
+                tasks = morningTasks,
+                weekDays = weekDays,
+                onTaskSelected = onTaskSelected,
+            )
+        }
+
+        if (eveningTasks.isNotEmpty()) {
+            PeriodSection(
+                title = "Evening (12PM-6PM)",
+                tasks = eveningTasks,
+                weekDays = weekDays,
+                onTaskSelected = onTaskSelected,
+            )
+        }
+
+        if (nightTasks.isNotEmpty()) {
+            PeriodSection(
+                title = "Night (6PM-12AM)",
+                tasks = nightTasks,
+                weekDays = weekDays,
+                onTaskSelected = onTaskSelected,
+            )
+        }
+
+        // Hours grid with continuous tasks
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Hours grid layer
+            Column {
+                hours.forEach { hour ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(hourHeightDp)
+                    ) {
+                        // Time column
+                        Box(
+                            modifier = Modifier
+                                .width(48.dp)
+                                .fillMaxHeight(),
+                            contentAlignment = Alignment.TopEnd
+                        ) {
+                            Text(
+                                text = when (hour) {
+                                    0 -> "12 AM"
+                                    in 1..11 -> "$hour AM"
+                                    12 -> "12 PM"
+                                    else -> "${hour - 12} PM"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(end = 8.dp, top = 4.dp)
+                            )
+                        }
+
+                        // Days row
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        ) {
+                            weekDays.forEachIndexed { dayIndex, date ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .background(
+                                            if (hour % 2 == 0)
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.05f)
+                                            else Color.Transparent
+                                        )
+                                ) {
+                                    Canvas(modifier = Modifier.matchParentSize()) {
+                                        drawLine(
+                                            color = Color.LightGray.copy(alpha = 0.2f),
+                                            start = Offset(0f, 0f),
+                                            end = Offset(size.width, 0f),
+                                            strokeWidth = 1f
+                                        )
+                                        val halfHourY = size.height / 2
+                                        drawLine(
+                                            color = Color.LightGray.copy(alpha = 0.1f),
+                                            start = Offset(0f, halfHourY),
+                                            end = Offset(size.width, halfHourY),
+                                            strokeWidth = 0.5f,
+                                            pathEffect = PathEffect.dashPathEffect(
+                                                floatArrayOf(
+                                                    5f,
+                                                    5f
+                                                )
+                                            )
+                                        )
+                                    }
+
+                                    // Current time indicator
+                                    if (dayIndex == currentDateIndex && hour == currentTime.hour) {
+                                        val minuteOffset =
+                                            with(LocalDensity.current) { (currentTime.minute / 60f) * hourHeightDp.toPx() }
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(2.dp)
+                                                .offset(y = with(LocalDensity.current) { minuteOffset.toDp() })
+                                                .background(MaterialTheme.colorScheme.primary)
+                                                .zIndex(10f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+            // Tasks overlay - placed in the same Box to allow spanning across hour boundaries
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(hourHeightDp)
+                    .height(24 * hourHeightDp) // Full day height
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(48.dp)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.TopEnd
-                ) {
-                    Text(
-                        text = when (hour) {
-                            0 -> "12 AM"
-                            in 1..11 -> "$hour AM"
-                            12 -> "12 PM"
-                            else -> "${hour - 12} PM"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 8.dp, top = 4.dp)
-                    )
-                }
+                // Spacing for time column
+                Spacer(modifier = Modifier.width(48.dp))
 
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                ) {
+                // Content area for all days
+                Row(modifier = Modifier.weight(1f)) {
+                    // For each day column
                     weekDays.forEachIndexed { dayIndex, date ->
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .background(
-                                    if (hour % 2 == 0)
-                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.05f)
-                                    else Color.Transparent
-                                )
                                 .clipToBounds()
                         ) {
+                            // Render all tasks for this day
+                            continuousTasksMap[date]?.forEach { continuousTask ->
+                                val startDateTime = continuousTask.startDateTime
+                                val endDateTime = continuousTask.endDateTime
 
-                            Canvas(modifier = Modifier.matchParentSize()) {
-                                drawLine(
-                                    color = Color.LightGray.copy(alpha = 0.2f),
-                                    start = Offset(0f, 0f),
-                                    end = Offset(size.width, 0f),
-                                    strokeWidth = 1f
-                                )
-                                val halfHourY = size.height / 2
-                                drawLine(
-                                    color = Color.LightGray.copy(alpha = 0.1f),
-                                    start = Offset(0f, halfHourY),
-                                    end = Offset(size.width, halfHourY),
-                                    strokeWidth = 0.5f,
-                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f))
-                                )
-                            }
+                                val startHourMinutes =
+                                    startDateTime.hour * 60 + startDateTime.minute
+                                val endHourMinutes = endDateTime.hour * 60 + endDateTime.minute
 
-                            if (dayIndex == currentDateIndex && hour == currentTime.hour) {
-                                val minuteOffset =
-                                    with(LocalDensity.current) { (currentTime.minute / 60f) * hourHeightDp.toPx() }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(2.dp)
-                                        .offset(y = with(LocalDensity.current) { minuteOffset.toDp() })
-                                        .background(MaterialTheme.colorScheme.primary)
-                                        .zIndex(10f)
-                                )
-                            }
-
-                            val tasksInHour = scheduledTasks.filter { task ->
-                                val taskDate = task.startDateConf?.dateTime?.toLocalDate()
-                                val taskHour = task.startDateConf?.dateTime?.hour
-                                taskDate == date && taskHour == hour
-                            }
-
-                            tasksInHour.forEach { task ->
-                                val isDragging = draggedTaskState?.task?.id == task.id
-                                val effectiveTime = if (isDragging) {
-                                    draggedTaskState?.tempTime ?: task.startTime
-                                } else {
-                                    task.startTime
-                                }
-                                val effectiveDayIndex = if (isDragging) {
-                                    draggedTaskState?.tempDayIndex ?: dayIndex
-                                } else {
-                                    dayIndex
+                                // Calculate top position based on start time
+                                val topOffset = with(LocalDensity.current) {
+                                    (startHourMinutes / 60f * hourHeightDp.toPx()).toDp()
                                 }
 
-                                if (effectiveDayIndex == dayIndex) {
-                                    val taskMinute = effectiveTime.minute
-                                    val verticalOffset =
-                                        with(LocalDensity.current) { (taskMinute / 60f) * hourHeightDp.toPx() }
-                                    val taskDuration = task.durationConf?.totalMinutes ?: 60
-                                    val taskHeightDp = (taskDuration / 60f) * hourHeightDp
+                                // Calculate height based on duration
+                                val durationMinutes = endHourMinutes - startHourMinutes
+                                val height = with(LocalDensity.current) {
+                                    (durationMinutes / 60f * hourHeightDp.toPx()).toDp()
+                                }
 
-                                    TaskBox(
-                                        task = task,
+                                // Only render if task has positive duration
+                                if (durationMinutes > 0) {
+                                    Box(
                                         modifier = Modifier
                                             .fillMaxWidth(0.95f)
-                                            .height(taskHeightDp.coerceAtLeast(40.dp))
-                                            .offset(y = with(LocalDensity.current) { verticalOffset.toDp() })
-                                            .pointerInput(task.id) {
-                                                detectDragGestures(
-                                                    onDragStart = {
-                                                        draggedTaskState = WeeklyTaskDragState(
-                                                            task = task,
-                                                            originalTime = task.startTime,
-                                                            originalDayIndex = dayIndex,
-                                                            tempTime = task.startTime,
-                                                            tempDayIndex = dayIndex
-                                                        )
-                                                    },
-                                                    onDrag = { change, dragAmount ->
-                                                        change.consume()
-
-                                                        draggedTaskState?.let { state ->
-                                                            // Handle vertical movement (time change)
-                                                            val minuteDelta =
-                                                                (dragAmount.y / hourHeightPx * 60).roundToInt()
-                                                            if (minuteDelta != 0) {
-                                                                val newMinutes =
-                                                                    (state.tempTime.hour * 60 + state.tempTime.minute + minuteDelta)
-                                                                        .coerceIn(0, 24 * 60 - 1)
-                                                                val newHour = newMinutes / 60
-                                                                val newMinute = newMinutes % 60
-
-                                                                draggedTaskState = state.copy(
-                                                                    tempTime = LocalTime.of(
-                                                                        newHour,
-                                                                        newMinute
+                                            .height(height)
+                                            .offset(y = topOffset)
+                                    ) {
+                                        continuousTask.tasks.firstOrNull()?.let { task ->
+                                            TaskBox(
+                                                task = task,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .pointerInput(task.id) {
+                                                        detectDragGestures(
+                                                            onDragStart = {
+                                                                draggedTaskState =
+                                                                    WeeklyTaskDragState(
+                                                                        task = task,
+                                                                        originalTime = task.startTime,
+                                                                        originalDayIndex = dayIndex,
+                                                                        tempTime = task.startTime,
+                                                                        tempDayIndex = dayIndex
                                                                     )
-                                                                )
-                                                            }
+                                                            },
+                                                            onDrag = { change, dragAmount ->
+                                                                change.consume()
 
-                                                            val horizontalThreshold = 20f
-                                                            if (Math.abs(dragAmount.x) > horizontalThreshold) {
-                                                                val direction =
-                                                                    if (dragAmount.x > 0) 1 else -1
-                                                                val newDayIndex =
-                                                                    (state.tempDayIndex + direction)
-                                                                        .coerceIn(
-                                                                            0,
-                                                                            weekDays.size - 1
-                                                                        )
+                                                                draggedTaskState?.let { state ->
+                                                                    // Handle vertical movement (time change)
+                                                                    val minuteDelta =
+                                                                        (dragAmount.y / hourHeightPx * 60).roundToInt()
+                                                                    if (minuteDelta != 0) {
+                                                                        val newMinutes =
+                                                                            (state.tempTime.hour * 60 + state.tempTime.minute + minuteDelta)
+                                                                                .coerceIn(
+                                                                                    0,
+                                                                                    24 * 60 - 1
+                                                                                )
+                                                                        val newHour =
+                                                                            newMinutes / 60
+                                                                        val newMinute =
+                                                                            newMinutes % 60
 
-                                                                if (newDayIndex != state.tempDayIndex) {
-                                                                    draggedTaskState = state.copy(
-                                                                        tempDayIndex = newDayIndex
+                                                                        draggedTaskState =
+                                                                            state.copy(
+                                                                                tempTime = LocalTime.of(
+                                                                                    newHour,
+                                                                                    newMinute
+                                                                                )
+                                                                            )
+                                                                    }
+
+                                                                    val horizontalThreshold = 20f
+                                                                    if (Math.abs(dragAmount.x) > horizontalThreshold) {
+                                                                        val direction =
+                                                                            if (dragAmount.x > 0) 1 else -1
+                                                                        val newDayIndex =
+                                                                            (state.tempDayIndex + direction)
+                                                                                .coerceIn(
+                                                                                    0,
+                                                                                    weekDays.size - 1
+                                                                                )
+
+                                                                        if (newDayIndex != state.tempDayIndex) {
+                                                                            draggedTaskState =
+                                                                                state.copy(
+                                                                                    tempDayIndex = newDayIndex
+                                                                                )
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            onDragEnd = {
+                                                                draggedTaskState?.let { state ->
+                                                                    val dayDiff =
+                                                                        state.tempDayIndex - state.originalDayIndex
+                                                                    onTaskTimeChanged(
+                                                                        task,
+                                                                        state.tempTime,
+                                                                        dayDiff.toLong()
                                                                     )
                                                                 }
+                                                                draggedTaskState = null
+                                                            },
+                                                            onDragCancel = {
+                                                                draggedTaskState = null
                                                             }
-                                                        }
+                                                        )
                                                     },
-                                                    onDragEnd = {
-                                                        draggedTaskState?.let { state ->
-                                                            val dayDiff =
-                                                                state.tempDayIndex - state.originalDayIndex
-                                                            onTaskTimeChanged(
-                                                                task,
-                                                                state.tempTime,
-                                                                dayDiff.toLong()
-                                                            )
-                                                        }
-                                                        draggedTaskState = null
-                                                    },
-                                                    onDragCancel = {
-                                                        draggedTaskState = null
-                                                    }
-                                                )
-                                            },
-                                        onTaskSelected = onTaskSelected
-                                    )
+                                                onTaskSelected = onTaskSelected
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -518,6 +587,12 @@ private fun TimeGridWithPeriodSections(
         }
     }
 }
+
+data class ContinuousTask(
+    val startDateTime: LocalDateTime,
+    val endDateTime: LocalDateTime,
+    val tasks: List<Task>
+)
 
 @Composable
 private fun PeriodSection(
