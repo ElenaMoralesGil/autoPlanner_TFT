@@ -300,7 +300,7 @@ private fun TimeBlockSection(
 }
 
 @Composable
-private fun TaskBox(
+fun TaskBox(
     task: Task,
     position: TaskPosition,
     block: TimeBlock,
@@ -547,7 +547,7 @@ private fun PeriodTasksSection(
 }
 
 @Composable
-private fun AllDayTasksSection(
+fun AllDayTasksSection(
     tasks: List<Task>,
     onTaskSelected: (Task) -> Unit
 ) {
@@ -660,7 +660,7 @@ private fun TimeLabelsForBlock(
 }
 
 @Composable
-private fun TaskItem(
+fun TaskItem(
     task: Task,
     onTaskSelected: (Task) -> Unit,
     color: Color,
@@ -753,7 +753,7 @@ private fun taskOverlaps(prevTask: Task, newTask: Task): Boolean {
     return newTask.startTime.isBefore(prevEnd)
 }
 
-private fun getPriorityColor(priority: Priority): Color = when (priority) {
+fun getPriorityColor(priority: Priority): Color = when (priority) {
     Priority.HIGH -> Color.Red
     Priority.MEDIUM -> Color(0xFFFFA500)
     Priority.LOW -> Color(0xFF4CAF50)
