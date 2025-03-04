@@ -336,12 +336,3 @@ fun CalendarView.getIconRes(): Int = when (this) {
     CalendarView.MONTH -> R.drawable.ic_month_view
 }
 
-
-data class TaskGroup(
-    var endTime: LocalTime,
-    val tasks: MutableList<Task>
-)
-
-
-fun LocalTime.toMinutes(): Int = this.hour * 60 + this.minute
-
