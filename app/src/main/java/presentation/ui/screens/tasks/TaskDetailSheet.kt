@@ -1,7 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
@@ -101,7 +100,3 @@ fun TaskDetailSheet(
         }
     }
 }
-
-
-
-

@@ -3,9 +3,7 @@ package com.elena.autoplanner.presentation.ui.screens.tasks
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -26,7 +24,6 @@ import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatDuratio
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatReminderForDisplay
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters.formatRepeatForDisplay
 import com.elena.autoplanner.presentation.utils.NewTaskData
-import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -152,7 +149,7 @@ fun AddEditTaskSheet(
             ActionButtonsRow(
                 onTimeClick = { showTimeConfigSheet = true },
                 onPriorityClick = { showPriorityDialog = true },
-                onListsClick = { /* si se maneja la pertenencia a listas */ },
+                onListsClick = { },
                 onSubtasksClick = {
                     showSubtasksSection = !showSubtasksSection
                 }
@@ -204,8 +201,8 @@ fun AddEditTaskSheet(
         PrioritySelectDialog(
             currentPriority = priority,
             onDismiss = { showPriorityDialog = false },
-            onSelectPriority = { newPrio ->
-                priority = newPrio
+            onSelectPriority = { newPriority ->
+                priority = newPriority
                 showPriorityDialog = false
             }
         )
@@ -421,9 +418,9 @@ private fun ConfigItemWithPainter(
 
 private fun getPriorityColor(priority: Priority): Color {
     return when (priority) {
-        Priority.HIGH -> Color(0xFFE57373)    // Light Red
-        Priority.MEDIUM -> Color(0xFFFFB74D)  // Light Orange
-        Priority.LOW -> Color(0xFF81C784)     // Light Green
+        Priority.HIGH -> Color(0xFFE57373)
+        Priority.MEDIUM -> Color(0xFFFFB74D)
+        Priority.LOW -> Color(0xFF81C784)
         Priority.NONE -> Color.Unspecified
     }
 }
@@ -438,21 +435,20 @@ fun PrioritySelectDialog(
         title = { Text("Select Priority") },
         text = {
             Column {
-                // Puedes representar las cuatro prioridades como RadioButtons.
-                Priority.entries.forEach { prio ->
+                Priority.entries.forEach { priority ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onSelectPriority(prio) }
+                            .clickable { onSelectPriority(priority) }
                             .padding(vertical = 4.dp)
                     ) {
                         RadioButton(
-                            selected = (prio == currentPriority),
-                            onClick = { onSelectPriority(prio) }
+                            selected = (priority == currentPriority),
+                            onClick = { onSelectPriority(priority) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = prio.name)
+                        Text(text = priority.name)
                     }
                 }
             }
@@ -570,7 +566,6 @@ fun SubtaskItem(
                 .padding(start = 8.dp)
         )
 
-        // Opcionalmente mostramos el botón de eliminar
         if (showDeleteButton) {
             IconButton(onClick = onDelete) {
                 Icon(
@@ -582,4 +577,3 @@ fun SubtaskItem(
         }
     }
 }
-

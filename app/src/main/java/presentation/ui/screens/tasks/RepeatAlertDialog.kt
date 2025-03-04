@@ -196,39 +196,6 @@ private fun IntervalSelector(
 }
 
 @Composable
-private fun FrequencyChip(
-    label: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.secondary,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSecondary),
-        modifier = modifier.clickable(onClick = onClick)
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .fillMaxWidth()
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (selected) MaterialTheme.colorScheme.onSecondary
-                else MaterialTheme.colorScheme.onSurface
-            )
-            trailingIcon?.invoke()
-        }
-    }
-}
-
-@Composable
 private fun DayChip(
     label: String,
     selected: Boolean,

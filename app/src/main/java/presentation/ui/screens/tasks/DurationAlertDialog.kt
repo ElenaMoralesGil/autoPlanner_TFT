@@ -41,13 +41,13 @@ fun DurationAlertDialog(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        val mins = existing?.totalMinutes
-        if (mins != null) {
-            if (mins % 60 == 0) {
+        val minutes = existing?.totalMinutes
+        if (minutes != null) {
+            if (minutes % 60 == 0) {
                 useHours = true
-                numberText = (mins / 60).toString()
+                numberText = (minutes / 60).toString()
             } else {
-                numberText = mins.toString()
+                numberText = minutes.toString()
             }
         }
     }
@@ -87,7 +87,7 @@ fun DurationAlertDialog(
 
             var expanded by remember { mutableStateOf(false) }
             Box {
-                Button(onClick = { expanded = true },) {
+                Button(onClick = { expanded = true }) {
                     Text(if (useHours) "Hours" else "Minutes")
                 }
 
@@ -143,5 +143,3 @@ fun DurationAlertDialog(
         )
     }
 }
-
-

@@ -1,9 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
-
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -213,11 +210,4 @@ fun ScrollingStringPickerColumn(
         )
     }
 }
-
-@Composable
-private fun Modifier.shapeAndBg() = this
-    .background(
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(8.dp)
-    )
 
