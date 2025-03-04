@@ -8,11 +8,11 @@ import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
 import com.elena.autoplanner.domain.models.TimePlanning
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 object DateTimeFormatters {
     private val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
-    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     fun formatDateTime(dateTime: LocalDateTime): String {
         val formatter = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm")

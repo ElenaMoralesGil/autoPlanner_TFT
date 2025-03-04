@@ -1,4 +1,4 @@
-package com.elena.autoplanner.presentation.ui.screens.calendar.WeeklyView.DailyView
+package com.elena.autoplanner.presentation.ui.screens.calendar.DailyView
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

@@ -62,7 +62,7 @@ import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.models.isToday
 import com.elena.autoplanner.presentation.intents.CalendarIntent
-import com.elena.autoplanner.presentation.ui.screens.calendar.WeeklyView.DailyView.DailyNavigationHeader
+import com.elena.autoplanner.presentation.ui.screens.calendar.DailyView.DailyNavigationHeader
 import com.elena.autoplanner.presentation.ui.utils.WeekHeader
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
