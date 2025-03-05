@@ -269,8 +269,3 @@ fun SegmentedControlColumn(
         }
     }
 }
-
-
-
-
-

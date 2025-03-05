@@ -37,14 +37,13 @@ import com.elena.autoplanner.domain.models.isToday
 import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.intents.TaskIntent
 import com.elena.autoplanner.presentation.ui.screens.calendar.WeeklyView.WeeklyView
-import com.elena.autoplanner.presentation.ui.screens.tasks.AddEditTaskSheet
+import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
 import com.elena.autoplanner.presentation.ui.utils.CustomCalendar
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
@@ -204,7 +203,7 @@ fun CalendarScreen(
         }
 
         if (showAddEditSheet) {
-            AddEditTaskSheet(
+            ModificationTaskSheet(
                 taskToEdit = taskToEdit,
                 onClose = {
                     showAddEditSheet = false
@@ -335,4 +334,3 @@ fun CalendarView.getIconRes(): Int = when (this) {
     CalendarView.WEEK -> R.drawable.ic_week_view
     CalendarView.MONTH -> R.drawable.ic_month_view
 }
-

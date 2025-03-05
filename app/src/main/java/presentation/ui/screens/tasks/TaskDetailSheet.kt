@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.presentation.states.TaskState
+import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.SubtasksSection
+import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.TaskConfigDisplay
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -73,7 +75,7 @@ fun TaskDetailSheet(
 
                 )
 
-                SubtaskSection(
+                SubtasksSection(
                     subtasks = task.subtasks,
                     onSubtaskToggled = onSubtaskToggled,
                     onSubtaskAdded = onSubtaskAdded,

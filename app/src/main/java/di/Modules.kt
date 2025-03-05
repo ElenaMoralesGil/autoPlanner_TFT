@@ -26,7 +26,6 @@ import com.elena.autoplanner.domain.usecases.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.UpdateTaskUseCase
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import org.koin.core.module.dsl.viewModel
-import org.koin.core.scope.get
 
 
 val appModule = module {
@@ -54,13 +53,11 @@ val appModule = module {
             .build()
     }
 
-    // Inyectar DAOs individuales
     single<TaskDao> { get<TaskDatabase>().taskDao() }
     single<ReminderDao> { get<TaskDatabase>().reminderDao() }
     single<RepeatConfigDao> { get<TaskDatabase>().repeatConfigDao() }
     single<SubtaskDao> { get<TaskDatabase>().subtaskDao() }
 
-    // Repositorio
     single<TaskRepository> {
         TaskRepositoryImpl(
             taskDao = get(),
@@ -71,14 +68,12 @@ val appModule = module {
     }
 }
 
-// Módulo de casos de uso
 val useCaseModule = module {
     single { GetTasksUseCase(get()) }
     single { AddTaskUseCase(get()) }
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
     single { AddSubtaskUseCase(get()) }
-    single { ToggleSubtaskUseCase(get()) }
     single { ToggleSubtaskUseCase(get()) }
     single { DeleteSubtaskUseCase(get()) }
     single { DeleteAllTasksUseCase(get()) }

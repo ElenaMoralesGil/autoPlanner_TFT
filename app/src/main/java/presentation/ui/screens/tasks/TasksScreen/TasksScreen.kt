@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.intents.TaskIntent
 import com.elena.autoplanner.presentation.states.TaskState
-import com.elena.autoplanner.presentation.ui.screens.tasks.AddEditTaskSheet
+import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
 import com.elena.autoplanner.presentation.ui.utils.ErrorMessage
 import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
@@ -131,7 +131,7 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
     }
 
     if (showAddEditSheet) {
-        AddEditTaskSheet(
+        ModificationTaskSheet(
             taskToEdit = taskToEdit,
             onClose = {
                 showAddEditSheet = false
