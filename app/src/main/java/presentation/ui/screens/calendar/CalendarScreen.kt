@@ -36,6 +36,7 @@ import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.isToday
 import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.intents.TaskIntent
+import com.elena.autoplanner.presentation.ui.screens.calendar.MonthlyView.MonthlyView
 import com.elena.autoplanner.presentation.ui.screens.calendar.WeeklyView.WeeklyView
 import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
@@ -116,6 +117,13 @@ fun CalendarScreen(
                 }
 
                 CalendarView.MONTH -> taskState?.tasks?.let { tasks ->
+                    MonthlyView(
+                        selectedMonth = YearMonth.from(calendarState.currentDate),
+                        tasks = tasks,
+                        onTaskSelected = onTaskSelected,
+                        calendarViewModel = calendarViewModel,
+                        taskViewModel = taskViewModel
+                    )
                 }
             }
         }
