@@ -192,7 +192,6 @@ fun TasksScreen() {
 
         // Show the edit sheet
         ModificationTaskSheet(
-            taskToEdit = taskToEdit,
             taskEditViewModel = editViewModel,
             onClose = {
                 editViewModel.sendIntent(TaskEditIntent.Cancel)

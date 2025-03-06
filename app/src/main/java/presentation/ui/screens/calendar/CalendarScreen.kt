@@ -290,7 +290,6 @@ fun CalendarScreen(
 
             // Show the ModificationTaskSheet
             ModificationTaskSheet(
-                taskToEdit = taskToEdit,
                 taskEditViewModel = editViewModel,
                 onClose = { editViewModel.sendIntent(TaskEditIntent.Cancel) }
             )

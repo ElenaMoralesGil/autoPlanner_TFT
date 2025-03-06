@@ -25,7 +25,7 @@ fun TaskDetailSheet(
     onDismiss: () -> Unit,
     viewModel: TaskDetailViewModel = koinViewModel(parameters = { parametersOf(taskId) })
 ) {
-    // Observe state
+
     val state by viewModel.state.collectAsState()
 
     // Handle side effects
@@ -35,13 +35,10 @@ fun TaskDetailSheet(
                 is com.elena.autoplanner.presentation.effects.TaskDetailEffect.NavigateBack -> {
                     onDismiss()
                 }
-
                 is com.elena.autoplanner.presentation.effects.TaskDetailEffect.NavigateToEdit -> {
-                    // This will be handled by the parent composable
                 }
 
                 is com.elena.autoplanner.presentation.effects.TaskDetailEffect.ShowSnackbar -> {
-                    // Show snackbar handled by parent composable
                 }
             }
         }
@@ -82,7 +79,6 @@ fun TaskDetailSheet(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                // Header section with task name and close button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -96,7 +92,6 @@ fun TaskDetailSheet(
                     }
                 }
 
-                // Display task configuration details
                 TaskConfigDisplay(
                     startDate = task.startDateConf,
                     endDate = task.endDateConf,
@@ -106,7 +101,6 @@ fun TaskDetailSheet(
                     priority = task.priority
                 )
 
-                // Subtasks section
                 SubtasksSection(
                     subtasks = task.subtasks,
                     onSubtaskToggled = { subtaskId, isCompleted ->
@@ -123,7 +117,6 @@ fun TaskDetailSheet(
                     errorMessage = state?.error
                 )
 
-                // Action buttons
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

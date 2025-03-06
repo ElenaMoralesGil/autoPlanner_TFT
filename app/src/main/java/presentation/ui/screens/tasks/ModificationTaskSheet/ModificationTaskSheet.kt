@@ -41,6 +41,7 @@ import com.elena.autoplanner.presentation.ui.screens.tasks.RepeatAlertDialog
 import com.elena.autoplanner.presentation.ui.screens.tasks.ReminderAlertDialog
 import com.elena.autoplanner.presentation.ui.screens.tasks.DurationAlertDialog
 import com.elena.autoplanner.presentation.ui.screens.tasks.StartEndDateAlertDialog
+import com.elena.autoplanner.presentation.ui.screens.tasks.TimeConfigSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TimeDialogType
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import java.time.LocalDate
@@ -53,19 +54,15 @@ import java.time.LocalDateTime
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModificationTaskSheet(
-    taskToEdit: Task? = null,
     taskEditViewModel: TaskEditViewModel,
     onClose: () -> Unit
 ) {
-    // Observe state
+
     val state by taskEditViewModel.state.collectAsState()
 
-    // Local state for dialogs
-    var openDialog by remember { mutableStateOf<TimeDialogType?>(null) }
     var showSubtasksSection by remember { mutableStateOf(false) }
     var showPriorityDialog by remember { mutableStateOf(false) }
-
-    // Determine if we're in edit or create mode
+    var showTimeConfigSheet by remember { mutableStateOf(false) }
     val isEditMode = state?.isNewTask == false
 
     ModalBottomSheet(
@@ -77,7 +74,6 @@ fun ModificationTaskSheet(
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
         ) {
-            // Display error message if any
             state?.error?.let {
                 Text(
                     text = it,
@@ -85,8 +81,6 @@ fun ModificationTaskSheet(
                     modifier = Modifier.padding(16.dp)
                 )
             }
-
-            // Header with title and actions
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -116,7 +110,6 @@ fun ModificationTaskSheet(
                 }
             }
 
-            // Task name field
             OutlinedTextField(
                 value = state?.name ?: "",
                 onValueChange = { taskEditViewModel.sendIntent(TaskEditIntent.UpdateName(it)) },
@@ -128,9 +121,8 @@ fun ModificationTaskSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Configuration options
             ConfigurationOptionsRow(
-                onTimeClick = { openDialog = TimeDialogType.StartDate },
+                onTimeClick = { showTimeConfigSheet = true },
                 onPriorityClick = { showPriorityDialog = true },
                 onListsClick = { /* Show lists dialog */ },
                 onSubtasksClick = { showSubtasksSection = !showSubtasksSection }
@@ -180,81 +172,25 @@ fun ModificationTaskSheet(
         }
     }
 
-    // Display various configuration dialogs
-    when (openDialog) {
-        TimeDialogType.StartDate -> {
-            StartEndDateAlertDialog(
-                label = "Start date",
-                existing = state?.startDateConf,
-                highlightDate = null,
-                onDismiss = { openDialog = null },
-                onReady = { newVal ->
-                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateStartDateConf(newVal))
-                    openDialog = null
+    if (showTimeConfigSheet) {
+        state?.let { currentState ->
+            TimeConfigSheet(
+                onClose = { showTimeConfigSheet = false },
+                currentStart = currentState.startDateConf,
+                currentEnd = currentState.endDateConf,
+                currentDuration = currentState.durationConf,
+                currentReminder = currentState.reminderPlan,
+                currentRepeat = currentState.repeatPlan,
+                onSaveAll = { newStart, newEnd, newDur, newRem, newRep ->
+                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateStartDateConf(newStart))
+                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateEndDateConf(newEnd))
+                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateDuration(newDur))
+                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateReminder(newRem))
+                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateRepeat(newRep))
+                    showTimeConfigSheet = false
                 }
             )
         }
-
-        TimeDialogType.EndDate -> {
-            StartEndDateAlertDialog(
-                label = "End date",
-                existing = state?.endDateConf,
-                highlightDate = state?.startDateConf?.dateTime?.toLocalDate(),
-                onDismiss = { openDialog = null },
-                validator = { planning ->
-                    planning?.let {
-                        if (state?.startDateConf != null) {
-                            if (it.dateTime?.isBefore(state?.startDateConf!!.dateTime) == true)
-                                "End date cannot be before start date."
-                            else null
-                        } else {
-                            if (it.dateTime?.toLocalDate()?.isBefore(LocalDate.now()) == true)
-                                "End date cannot be before today."
-                            else null
-                        }
-                    }
-                },
-                onReady = { newVal ->
-                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateEndDateConf(newVal))
-                    openDialog = null
-                }
-            )
-        }
-
-        TimeDialogType.Duration -> {
-            DurationAlertDialog(
-                existing = state?.durationConf,
-                onDismiss = { openDialog = null },
-                onReady = { newVal ->
-                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateDuration(newVal))
-                    openDialog = null
-                }
-            )
-        }
-
-        TimeDialogType.Reminder -> {
-            ReminderAlertDialog(
-                existing = state?.reminderPlan,
-                onDismiss = { openDialog = null },
-                onReady = { newVal ->
-                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateReminder(newVal))
-                    openDialog = null
-                }
-            )
-        }
-
-        TimeDialogType.Repeat -> {
-            RepeatAlertDialog(
-                existing = state?.repeatPlan,
-                onDismiss = { openDialog = null },
-                onReady = { newVal ->
-                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateRepeat(newVal))
-                    openDialog = null
-                }
-            )
-        }
-
-        else -> {}
     }
 
     // Display priority dialog if needed
