@@ -26,6 +26,7 @@ import com.elena.autoplanner.domain.usecases.tasks.FilterTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.UpdateTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ValidateTaskUseCase
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
@@ -84,6 +85,7 @@ val useCaseModule = module {
     single { AddSubtaskUseCase(get(), get()) }
     single { SaveTaskUseCase(get(), get()) }
     single { ValidateTaskUseCase() }
+    single { ToggleTaskCompletionUseCase(get(), get()) }
     single { ToggleSubtaskUseCase(get(), get()) }
     single { DeleteSubtaskUseCase(get(), get()) }
     single { DeleteAllTasksUseCase(get()) }
@@ -104,7 +106,8 @@ val viewModelModule = module {
             toggleSubtaskUseCase = get(),
             deleteSubtaskUseCase = get(),
             deleteAllTasksUseCase = get(),
-            filterTasksUseCase = get()
+            filterTasksUseCase = get(),
+
         )
     }
 
