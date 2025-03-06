@@ -8,36 +8,27 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.elena.autoplanner.domain.models.Subtask
+import com.elena.autoplanner.presentation.intents.TaskDetailIntent
 import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.SubtasksSection
 import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.TaskConfigDisplay
-import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
-import org.koin.androidx.compose.koinViewModel
+import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDetailSheet(
     taskId: Int,
     onDismiss: () -> Unit,
-    onSubtaskDeleted: (Subtask) -> Unit,
-    onSubtaskAdded: (String) -> Unit,
-    onSubtaskToggled: (Int, Boolean) -> Unit,
-    onDelete: () -> Unit,
-    onEdit: () -> Unit,
-    viewModel: TaskViewModel = koinViewModel()
+    viewModel: TaskDetailViewModel
 ) {
+    // Observe state
     val state by viewModel.state.collectAsState()
-
-    val task = remember(state?.tasks) {
-        state?.tasks?.find { it.id == taskId }
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface
     ) {
-        if (task == null) {
-            // Task not found or still loading
+        if (state?.isLoading == true) {
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -46,8 +37,18 @@ fun TaskDetailSheet(
             ) {
                 CircularProgressIndicator()
             }
+        } else if (state?.task == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Task not found")
+            }
         } else {
-            // Task is loaded
+            val task = state?.task!!
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -70,16 +71,21 @@ fun TaskDetailSheet(
                     reminder = task.reminderPlan,
                     repeat = task.repeatPlan,
                     priority = task.priority,
-                )
-
+                ) // Subtasks section
                 SubtasksSection(
                     subtasks = task.subtasks,
-                    onSubtaskToggled = onSubtaskToggled,
-                    onSubtaskAdded = onSubtaskAdded,
-                    onSubtaskDeleted = onSubtaskDeleted,
+                    onSubtaskToggled = { subtaskId, isCompleted ->
+                        viewModel.sendIntent(TaskDetailIntent.ToggleSubtask(subtaskId, isCompleted))
+                    },
+                    onSubtaskAdded = { subtaskName ->
+                        viewModel.sendIntent(TaskDetailIntent.AddSubtask(subtaskName))
+                    },
+                    onSubtaskDeleted = { subtask ->
+                        viewModel.sendIntent(TaskDetailIntent.DeleteSubtask(subtask.id))
+                    },
                     showDeleteButton = true,
                     showAddButton = true,
-                    errorMessage = (state?.uiState as? com.elena.autoplanner.presentation.states.TaskState.UiState.Error)?.message
+                    errorMessage = state?.error
                 )
 
                 Row(
@@ -88,12 +94,36 @@ fun TaskDetailSheet(
                         .padding(top = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    TextButton(onClick = onDelete) {
+                    TextButton(
+                        onClick = { viewModel.sendIntent(TaskDetailIntent.DeleteTask) }
+                    ) {
                         Text("Delete Task", color = MaterialTheme.colorScheme.error)
                     }
-                    Button(onClick = onEdit) {
+
+                    Button(
+                        onClick = { viewModel.sendIntent(TaskDetailIntent.EditTask) }
+                    ) {
                         Text("Edit Task")
                     }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Mark as completed:",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = task.isCompleted,
+                        onCheckedChange = { isCompleted ->
+                            viewModel.sendIntent(TaskDetailIntent.ToggleCompletion(isCompleted))
+                        }
+                    )
                 }
             }
         }

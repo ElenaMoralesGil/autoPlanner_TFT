@@ -13,12 +13,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.presentation.states.TaskState
+import com.elena.autoplanner.presentation.states.TaskListState
 import com.elena.autoplanner.presentation.states.TaskStatus
 
 @Composable
 fun TasksSectionContent(
-    state: TaskState,
+    state: TaskListState,
     onTaskChecked: (Task, Boolean) -> Unit,
     onTaskSelected: (Task) -> Unit,
     onDelete: (Task) -> Unit,

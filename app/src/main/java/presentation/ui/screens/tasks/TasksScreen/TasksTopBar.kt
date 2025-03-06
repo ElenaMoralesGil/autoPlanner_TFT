@@ -10,6 +10,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.elena.autoplanner.presentation.states.TaskListState
 import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
@@ -18,7 +19,7 @@ import com.elena.autoplanner.presentation.states.TimeFrame
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksTopBar(
-    state: TaskState,
+    state: TaskListState,
     onStatusSelected: (TaskStatus) -> Unit,
     onTimeFrameSelected: (TimeFrame) -> Unit
 ) {

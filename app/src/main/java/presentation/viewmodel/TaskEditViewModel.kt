@@ -3,7 +3,6 @@ package com.elena.autoplanner.presentation.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.presentation.effects.TaskEditEffect
@@ -13,6 +12,10 @@ import com.elena.autoplanner.presentation.utils.BaseViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
+/**
+ * ViewModel for the task edit screen
+ * Handles task creation and modification
+ */
 class TaskEditViewModel(
     private val getTaskUseCase: GetTaskUseCase,
     private val saveTaskUseCase: SaveTaskUseCase
@@ -44,7 +47,7 @@ class TaskEditViewModel(
             setState {
                 copy(
                     isNewTask = true,
-                    startDateConf = TimePlanning(dateTime = LocalDateTime.now())
+                    startDateConf = com.elena.autoplanner.domain.models.TimePlanning(dateTime = LocalDateTime.now())
                 )
             }
             return

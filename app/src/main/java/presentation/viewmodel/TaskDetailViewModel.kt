@@ -13,6 +13,10 @@ import com.elena.autoplanner.presentation.states.TaskDetailState
 import com.elena.autoplanner.presentation.utils.BaseViewModel
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel for the task detail screen
+ * Handles detailed task viewing and modifications
+ */
 class TaskDetailViewModel(
     private val getTaskUseCase: GetTaskUseCase,
     private val toggleTaskCompletionUseCase: ToggleTaskCompletionUseCase,

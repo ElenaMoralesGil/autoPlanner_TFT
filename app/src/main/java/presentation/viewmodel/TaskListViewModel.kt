@@ -13,6 +13,10 @@ import com.elena.autoplanner.presentation.utils.BaseViewModel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel for the task list screen
+ * Handles task listing, filtering, and basic task interactions
+ */
 class TaskListViewModel(
     private val getTasksUseCase: GetTasksUseCase,
     private val filterTasksUseCase: FilterTasksUseCase,
