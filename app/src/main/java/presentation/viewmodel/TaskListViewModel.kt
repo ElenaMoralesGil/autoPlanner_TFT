@@ -1,6 +1,7 @@
 package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.usecases.tasks.FilterTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
@@ -13,10 +14,7 @@ import com.elena.autoplanner.presentation.utils.BaseViewModel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel for the task list screen
- * Handles task listing, filtering, and basic task interactions
- */
+
 class TaskListViewModel(
     private val getTasksUseCase: GetTasksUseCase,
     private val filterTasksUseCase: FilterTasksUseCase,
@@ -35,6 +33,8 @@ class TaskListViewModel(
                 intent.completed
             )
             is TaskListIntent.SelectTask -> setEffect(TaskListEffect.NavigateToTaskDetail(intent.taskId))
+            is TaskListIntent.DeleteTask -> handleDeleteTask(intent.taskId)
+            is TaskListIntent.UpdateTask -> handleUpdateTask(intent.taskId)
         }
     }
 
@@ -135,5 +135,16 @@ class TaskListViewModel(
                 }
             )
         }
+    }
+
+    private fun handleDeleteTask(taskId: Int) {
+        setEffect(TaskListEffect.ShowSnackbar("Delete task functionality not implemented yet"))
+        loadTasks()
+    }
+
+    private fun handleUpdateTask(task: Task) {
+
+        setEffect(TaskListEffect.ShowSnackbar("Update task functionality not implemented yet"))
+        loadTasks()
     }
 }

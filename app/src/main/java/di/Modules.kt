@@ -1,43 +1,70 @@
 package com.elena.autoplanner.di
 
-import androidx.room.Room
-import com.elena.autoplanner.data.local.TaskDatabase
-import com.elena.autoplanner.data.repository.TaskRepositoryImpl
+import android.util.Log
+import org.koin.dsl.module
 import com.elena.autoplanner.domain.repository.TaskRepository
-import com.elena.autoplanner.domain.usecases.*
+import com.elena.autoplanner.data.repository.TaskRepositoryImpl
+
+import com.elena.autoplanner.data.local.dao.TaskDao
+import com.elena.autoplanner.data.local.dao.ReminderDao
+import com.elena.autoplanner.data.local.dao.RepeatConfigDao
+import com.elena.autoplanner.data.local.dao.SubtaskDao
+import com.elena.autoplanner.data.local.TaskDatabase
+import org.koin.android.ext.koin.androidContext
+
+import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
-import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.AddTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.DeleteAllTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
+import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.FilterTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
-import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
+import com.elena.autoplanner.domain.usecases.tasks.UpdateTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ValidateTaskUseCase
+import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
-import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.viewmodel.dsl.viewModel
-import org.koin.dsl.module
+import org.koin.core.module.dsl.viewModel
 
-val databaseModule = module {
+
+val appModule = module {
+
+    val roomCallback = object : RoomDatabase.Callback() {
+        override fun onCreate(db: SupportSQLiteDatabase) {
+            super.onCreate(db)
+            Log.d("RoomCallback", "=== onCreate() called. The database has been created ===")
+        }
+
+        override fun onOpen(db: SupportSQLiteDatabase) {
+            super.onOpen(db)
+            Log.d("RoomCallback", "=== onOpen() called. The database is open and ready ===")
+        }
+    }
+
     single {
         Room.databaseBuilder(
             androidContext(),
             TaskDatabase::class.java,
             "task_database"
-        ).fallbackToDestructiveMigration().build()
+        )
+            .fallbackToDestructiveMigration()
+            .addCallback(roomCallback)
+            .build()
     }
 
-    single { get<TaskDatabase>().taskDao() }
-    single { get<TaskDatabase>().reminderDao() }
-    single { get<TaskDatabase>().repeatConfigDao() }
-    single { get<TaskDatabase>().subtaskDao() }
-}
+    single<TaskDao> { get<TaskDatabase>().taskDao() }
+    single<ReminderDao> { get<TaskDatabase>().reminderDao() }
+    single<RepeatConfigDao> { get<TaskDatabase>().repeatConfigDao() }
+    single<SubtaskDao> { get<TaskDatabase>().subtaskDao() }
 
-val repositoryModule = module {
     single<TaskRepository> {
         TaskRepositoryImpl(
             taskDao = get(),
@@ -49,27 +76,62 @@ val repositoryModule = module {
 }
 
 val useCaseModule = module {
-
-    factory { GetTasksUseCase(get()) }
-    factory { GetTaskUseCase(get()) }
-    factory { ValidateTaskUseCase() }
-    factory { SaveTaskUseCase(get(), get()) }
-    factory { DeleteTaskUseCase(get()) }
-
-
-    factory { FilterTasksUseCase() }
-    factory { ToggleTaskCompletionUseCase(get(), get()) }
-
-
-    factory { AddSubtaskUseCase(get(), get()) }
-    factory { ToggleSubtaskUseCase(get(), get()) }
-    factory { DeleteSubtaskUseCase(get(), get()) }
+    single { GetTasksUseCase(get()) }
+    single { GetTaskUseCase(get()) }
+    single { AddTaskUseCase(get()) }
+    single { UpdateTaskUseCase(get()) }
+    single { DeleteTaskUseCase(get()) }
+    single { AddSubtaskUseCase(get(), get()) }
+    single { SaveTaskUseCase(get(), get()) }
+    single { ValidateTaskUseCase() }
+    single { ToggleSubtaskUseCase(get(), get()) }
+    single { DeleteSubtaskUseCase(get(), get()) }
+    single { DeleteAllTasksUseCase(get()) }
+    single { FilterTasksUseCase() }
 }
 
+// Módulo de ViewModels
+// Módulo de ViewModels
 val viewModelModule = module {
-    viewModel { TaskListViewModel(get(), get(), get()) }
-    viewModel { (taskId: Int) -> TaskDetailViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { (taskId: Int) -> TaskEditViewModel(get(), get()) }
-}
+    viewModel { CalendarViewModel() }
 
-val appModule = listOf(databaseModule, repositoryModule, useCaseModule, viewModelModule)
+    viewModel {
+        TaskViewModel(
+            getTasksUseCase = get(),
+            saveTaskUseCase = get(),
+            deleteTaskUseCase = get(),
+            addSubtaskUseCase = get(),
+            toggleSubtaskUseCase = get(),
+            deleteSubtaskUseCase = get(),
+            deleteAllTasksUseCase = get(),
+            filterTasksUseCase = get()
+        )
+    }
+
+    viewModel {
+        TaskListViewModel(
+            getTasksUseCase = get(),
+            filterTasksUseCase = get(),
+            toggleTaskCompletionUseCase = get()
+        )
+    }
+
+    viewModel { (taskId: Int) ->
+        TaskDetailViewModel(
+            getTaskUseCase = get(),
+            toggleTaskCompletionUseCase = get(),
+            deleteTaskUseCase = get(),
+            addSubtaskUseCase = get(),
+            toggleSubtaskUseCase = get(),
+            deleteSubtaskUseCase = get(),
+            taskId = taskId
+        )
+    }
+
+    viewModel {
+        TaskEditViewModel(
+            getTaskUseCase = get(),
+            saveTaskUseCase = get()
+        )
+    }
+}

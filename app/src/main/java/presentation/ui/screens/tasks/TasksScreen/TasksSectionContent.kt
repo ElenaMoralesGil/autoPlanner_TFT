@@ -29,12 +29,12 @@ fun TasksSectionContent(
     val expiredNotCompletedTasks = tasks.filter { it.isExpired() && !it.isCompleted }
     val completedTasks = tasks.filter { it.isCompleted }
 
-    val showNotDone = when (state.filters.status) {
+    val showNotDone = when (state.statusFilter) {
         TaskStatus.ALL, TaskStatus.UNCOMPLETED -> true
         else -> false
     }
 
-    val showCompleted = when (state.filters.status) {
+    val showCompleted = when (state.statusFilter) {
         TaskStatus.ALL, TaskStatus.COMPLETED -> true
         else -> false
     }
@@ -97,7 +97,7 @@ fun TasksSectionContent(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            items(completedTasks) { task ->
+            items(completedTasks, key = { it.id }) { task ->
                 TaskCard(
                     task = task,
                     onCheckedChange = { checked -> onTaskChecked(task, checked) },

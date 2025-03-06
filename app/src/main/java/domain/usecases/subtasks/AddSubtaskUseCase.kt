@@ -1,9 +1,10 @@
 package com.elena.autoplanner.domain.usecases.subtasks
 
+import com.elena.autoplanner.domain.exceptions.InvalidTaskException
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
-import com.elena.autoplanner.domain.usecases.tasks.InvalidTaskException
+
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 
 class AddSubtaskUseCase(

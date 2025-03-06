@@ -1,7 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.calendar.MonthlyView
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,10 +24,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.elena.autoplanner.R
-import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.isToday
 import com.elena.autoplanner.presentation.intents.CalendarIntent
+import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarView
 import com.elena.autoplanner.presentation.ui.screens.calendar.getPriorityColor
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 
@@ -54,12 +53,12 @@ fun MonthlyView(
         MonthHeader(
             currentMonth = selectedMonth,
             onPreviousMonth = {
-                calendarViewModel.processIntent(
+                calendarViewModel.sendIntent(
                     CalendarIntent.ChangeDate(selectedMonth.atDay(1).minusMonths(1))
                 )
             },
             onNextMonth = {
-                calendarViewModel.processIntent(
+                calendarViewModel.sendIntent(
                     CalendarIntent.ChangeDate(selectedMonth.atDay(1).plusMonths(1))
                 )
             }
@@ -77,9 +76,9 @@ fun MonthlyView(
                     WeekDaysRow(
                         week = week,
                         onDayClick = { date ->
-                            calendarViewModel.processIntent(CalendarIntent.ChangeDate(date))
-                            calendarViewModel.processIntent(
-                                CalendarIntent.ChangeView(com.elena.autoplanner.presentation.ui.screens.calendar.CalendarView.DAY)
+                            calendarViewModel.sendIntent(CalendarIntent.ChangeDate(date))
+                            calendarViewModel.sendIntent(
+                                CalendarIntent.ChangeView(CalendarView.DAY)
                             )
                         }
                     )
@@ -325,7 +324,6 @@ fun TaskCard(
         }
     }
 }
-// This function was replaced with inline code in TaskCard
 
 data class CalendarDay(
     val date: LocalDate,

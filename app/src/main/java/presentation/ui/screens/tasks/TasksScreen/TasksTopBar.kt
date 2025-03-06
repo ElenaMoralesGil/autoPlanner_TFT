@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.presentation.states.TaskListState
-import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
 
@@ -41,17 +40,17 @@ fun TasksTopBar(
             }
         },
         actions = {
-            StatusFilterDropdown(state.filters.status, onStatusSelected)
-            TimeFrameFilterDropdown(state.filters.timeFrame, onTimeFrameSelected)
+            StatusFilterDropdown(state.statusFilter, onStatusSelected)
+            TimeFrameFilterDropdown(state.timeFrameFilter, onTimeFrameSelected)
         }
     )
 }
 
 @Composable
-private fun buildFilterText(state: TaskState): String {
+private fun buildFilterText(state: TaskListState): String {
     val filters = listOfNotNull(
-        state.filters.timeFrame.takeIf { it != TimeFrame.ALL }?.displayName,
-        state.filters.status.takeIf { it != TaskStatus.ALL }?.displayName
+        state.timeFrameFilter.takeIf { it != TimeFrame.ALL }?.displayName,
+        state.statusFilter.takeIf { it != TaskStatus.ALL }?.displayName
     )
     return filters.joinToString(" • ").ifEmpty { "All Tasks" }
 }
