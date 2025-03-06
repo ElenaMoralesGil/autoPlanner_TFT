@@ -23,7 +23,8 @@ class TaskDetailViewModel(
     private val deleteTaskUseCase: DeleteTaskUseCase,
     private val addSubtaskUseCase: AddSubtaskUseCase,
     private val toggleSubtaskUseCase: ToggleSubtaskUseCase,
-    private val deleteSubtaskUseCase: DeleteSubtaskUseCase
+    private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
+    private val taskId: Int // Inject the taskId parameter
 ) : BaseViewModel<TaskDetailIntent, TaskDetailState, TaskDetailEffect>() {
 
     override fun createInitialState(): TaskDetailState = TaskDetailState()
@@ -36,9 +37,14 @@ class TaskDetailViewModel(
             is TaskDetailIntent.AddSubtask -> addSubtask(intent.name)
             is TaskDetailIntent.ToggleSubtask -> toggleSubtask(intent.subtaskId, intent.completed)
             is TaskDetailIntent.DeleteSubtask -> deleteSubtask(intent.subtaskId)
-            is TaskDetailIntent.EditTask -> currentState.task?.let {
-                setEffect(TaskDetailEffect.NavigateToEdit(it.id))
-            }
+            is TaskDetailIntent.EditTask -> navigateToEdit()
+        }
+    }
+
+    // Automatically load task on initialization
+    init {
+        viewModelScope.launch {
+            loadTask(taskId)
         }
     }
 
@@ -150,6 +156,12 @@ class TaskDetailViewModel(
                     setEffect(TaskDetailEffect.ShowSnackbar("Error deleting subtask: ${error.message}"))
                 }
             )
+        }
+    }
+
+    private fun navigateToEdit() {
+        currentState.task?.let {
+            setEffect(TaskDetailEffect.NavigateToEdit(it.id))
         }
     }
 }

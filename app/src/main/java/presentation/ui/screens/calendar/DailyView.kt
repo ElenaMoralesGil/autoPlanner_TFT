@@ -62,10 +62,10 @@ import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.models.isToday
 import com.elena.autoplanner.presentation.intents.CalendarIntent
+import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.ui.screens.calendar.DailyView.DailyNavigationHeader
-import com.elena.autoplanner.presentation.ui.utils.WeekHeader
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
-import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
+import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -78,7 +78,7 @@ fun DailyView(
     tasks: List<Task>,
     onTaskSelected: (Task) -> Unit,
     calendarViewModel: CalendarViewModel,
-    taskViewModel: TaskViewModel,
+    tasksViewModel: TaskListViewModel,
 ) {
     val hourHeightDp = 60.dp
     val hourHeightPx = with(LocalDensity.current) { hourHeightDp.toPx() }
@@ -95,6 +95,23 @@ fun DailyView(
     val eveningTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING }
     val nightTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.NIGHT }
 
+    // Modified to use MVI pattern with intent
+    val onTaskTimeChanged: (Task, LocalTime) -> Unit = { task, newTime ->
+        val updatedTask = task.copy(
+            startDateConf = TimePlanning(
+                dateTime = LocalDateTime.of(selectedDate, newTime),
+                dayPeriod = task.startDateConf?.dayPeriod
+            )
+        )
+        // Send UpdateTask intent instead of directly calling the method
+        tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
+    }
+
+    // Modified to use MVI pattern with intent
+    val onDateSelected: (LocalDate) -> Unit = { date ->
+        calendarViewModel.sendIntent(CalendarIntent.ChangeDate(date))
+    }
+
     LaunchedEffect(selectedDate) {
         if (selectedDate.isToday()) {
             val scrollToPosition = (currentMinutes / 60f * hourHeightPx).toInt() - 200
@@ -105,7 +122,7 @@ fun DailyView(
     Column(modifier = Modifier.fillMaxSize()) {
         DailyNavigationHeader(
             selectedDate = selectedDate,
-            onDateSelected = { calendarViewModel.processIntent(CalendarIntent.ChangeDate(it)) },
+            onDateSelected = onDateSelected,
             modifier = Modifier.padding(vertical = 4.dp)
         )
 
@@ -122,16 +139,7 @@ fun DailyView(
                     nightTasks = nightTasks,
                     hourHeightDp = hourHeightDp,
                     onTaskSelected = onTaskSelected,
-                    onTaskTimeChanged = { task, newTime ->
-                        taskViewModel.updateTask(
-                            task.copy(
-                                startDateConf = TimePlanning(
-                                    dateTime = LocalDateTime.of(selectedDate, newTime),
-                                    dayPeriod = task.startDateConf?.dayPeriod
-                                )
-                            )
-                        )
-                    },
+                    onTaskTimeChanged = onTaskTimeChanged,
                     isToday = selectedDate.isToday(),
                     currentTime = currentTime,
                     scrollState = scrollState
@@ -758,7 +766,6 @@ fun getPriorityColor(priority: Priority): Color = when (priority) {
     Priority.HIGH -> Color.Red
     Priority.MEDIUM -> Color(0xFFFFA500)
     Priority.LOW -> Color(0xFF4CAF50)
-
     Priority.NONE -> Color.Gray
 }
 

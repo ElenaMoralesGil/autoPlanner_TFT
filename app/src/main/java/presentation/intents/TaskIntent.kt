@@ -3,9 +3,10 @@ package com.elena.autoplanner.presentation.intents
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
+import com.elena.autoplanner.presentation.utils.Intent
 import com.elena.autoplanner.presentation.utils.NewTaskData
 
-sealed class TaskIntent : BaseIntent() {
+sealed class TaskIntent : Intent {
     object LoadTasks : TaskIntent()
     data class CreateTask(val newTaskData: NewTaskData) : TaskIntent()
     data class UpdateTask(val task: Task) : TaskIntent()

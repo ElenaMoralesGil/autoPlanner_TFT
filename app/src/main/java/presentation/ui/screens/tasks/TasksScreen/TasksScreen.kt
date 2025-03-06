@@ -32,14 +32,13 @@ import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-
 @Composable
 fun TasksScreen() {
-    // Main ViewModel for task list operations
+    // Use TaskListViewModel as the main ViewModel for this screen
     val listViewModel: TaskListViewModel = koinViewModel()
 
     // State management
-    val listState by listViewModel.state.collectAsState()
+    val state by listViewModel.state.collectAsState()
     var showAddEditSheet by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
@@ -68,7 +67,7 @@ fun TasksScreen() {
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            listState?.let {
+            state?.let {
                 TasksTopBar(
                     state = it,
                     onStatusSelected = { status ->
@@ -87,7 +86,7 @@ fun TasksScreen() {
             }
         },
         content = { innerPadding ->
-            listState?.let { currentState ->
+            state?.let { currentState ->
                 Column(modifier = Modifier.padding(innerPadding)) {
                     when {
                         currentState.isLoading -> LoadingIndicator()
@@ -121,7 +120,7 @@ fun TasksScreen() {
 
     // Task detail bottom sheet
     selectedTaskId?.let { taskId ->
-        // Use Koin's viewModel function with parameters
+        // Use Koin's viewModel function with parameters for the detail view
         val detailViewModel: TaskDetailViewModel =
             koinViewModel(parameters = { parametersOf(taskId) })
 
@@ -134,14 +133,12 @@ fun TasksScreen() {
                         // Refresh task list to reflect changes
                         listViewModel.sendIntent(TaskListIntent.LoadTasks)
                     }
-
                     is TaskDetailEffect.NavigateToEdit -> {
                         // Load task to edit and show edit sheet
-                        taskToEdit = listState?.tasks?.find { it.id == effect.taskId }
+                        taskToEdit = state?.tasks?.find { it.id == effect.taskId }
                         selectedTaskId = null
                         showAddEditSheet = true
                     }
-
                     is TaskDetailEffect.ShowSnackbar -> {
                         snackbarHostState.showSnackbar(effect.message)
                     }
@@ -157,8 +154,8 @@ fun TasksScreen() {
         // Show the detail sheet
         TaskDetailSheet(
             taskId = taskId,
-            viewModel = detailViewModel,
-            onDismiss = { selectedTaskId = null }
+            onDismiss = { selectedTaskId = null },
+            viewModel = detailViewModel
         )
     }
 
@@ -181,7 +178,6 @@ fun TasksScreen() {
                         // Refresh task list to reflect changes
                         listViewModel.sendIntent(TaskListIntent.LoadTasks)
                     }
-
                     is TaskEditEffect.ShowSnackbar -> {
                         snackbarHostState.showSnackbar(effect.message)
                     }

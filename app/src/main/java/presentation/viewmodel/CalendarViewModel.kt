@@ -1,50 +1,45 @@
 package com.elena.autoplanner.presentation.viewmodel
 
-import androidx.lifecycle.ViewModel
+
+import com.elena.autoplanner.presentation.effects.CalendarEffect
 import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.states.CalendarState
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarView
 import com.elena.autoplanner.presentation.ui.utils.getWeekDays
-import java.time.LocalDate
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.elena.autoplanner.presentation.utils.BaseViewModel
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
 
+class CalendarViewModel : BaseViewModel<CalendarIntent, CalendarState, CalendarEffect>() {
 
-class CalendarViewModel : ViewModel() {
+    override fun createInitialState(): CalendarState = CalendarState()
 
-    private val _state = MutableStateFlow(CalendarState())
-    val state: StateFlow<CalendarState> = _state
-
-    fun processIntent(intent: CalendarIntent) {
+    override suspend fun handleIntent(intent: CalendarIntent) {
         when (intent) {
             is CalendarIntent.ChangeDate -> {
                 val newDate = intent.date
-                val currentView = _state.value.currentView
+                val currentView = currentState.currentView
 
                 val adjustedDate = when (currentView) {
                     CalendarView.WEEK -> newDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                     else -> newDate
                 }
 
-                _state.value = _state.value.copy(
-                    currentDate = adjustedDate,
-                    showDatePicker = if (intent.dismiss) false else _state.value.showDatePicker
-                )
+                setState {
+                    copy(
+                        currentDate = adjustedDate,
+                        showDatePicker = if (intent.dismiss) false else showDatePicker
+                    )
+                }
             }
 
-
-            is CalendarIntent.ChangeView -> _state.value =
-                _state.value.copy(currentView = intent.view)
-
-            is CalendarIntent.ToggleDatePicker -> _state.value =
-                _state.value.copy(showDatePicker = intent.show)
+            is CalendarIntent.ChangeView -> setState { copy(currentView = intent.view) }
+            is CalendarIntent.ToggleDatePicker -> setState { copy(showDatePicker = intent.show) }
         }
     }
 
-    // Add this function
     fun getWeekDays(date: LocalDate): List<LocalDate> {
         return date.getWeekDays()
     }
@@ -75,9 +70,8 @@ class CalendarViewModel : ViewModel() {
     fun generateTimeSlots(): List<LocalTime> {
         return (0..23).map { LocalTime.of(it, 0) } // 12 AM to 11 PM
     }
-
-
 }
+
 data class CalendarCell(
     val date: LocalDate,
     val isCurrentMonth: Boolean

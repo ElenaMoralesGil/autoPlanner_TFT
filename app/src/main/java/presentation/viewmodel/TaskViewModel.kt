@@ -3,13 +3,14 @@ package com.elena.autoplanner.presentation.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
+import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteAllTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.FilterTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
-import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
+import com.elena.autoplanner.presentation.effects.TaskEffect
 import com.elena.autoplanner.presentation.intents.TaskIntent
 import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.states.TaskStatus
@@ -21,10 +22,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 
-/**
- * Central ViewModel that serves as a data provider across the app
- * Handles global task operations that don't belong to specific screens
- */
 class TaskViewModel(
     private val getTasksUseCase: GetTasksUseCase,
     private val saveTaskUseCase: SaveTaskUseCase,
@@ -34,7 +31,7 @@ class TaskViewModel(
     private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
     private val deleteAllTasksUseCase: DeleteAllTasksUseCase,
     private val filterTasksUseCase: FilterTasksUseCase
-) : BaseViewModel<TaskIntent, TaskState, TaskState.UiState>() {
+) : BaseViewModel<TaskIntent, TaskState, TaskEffect>() {
 
     override fun createInitialState(): TaskState = TaskState()
 
@@ -53,7 +50,6 @@ class TaskViewModel(
                 intent.subtask,
                 intent.checked
             )
-
             is TaskIntent.DeleteSubtask -> deleteSubtask(intent.task, intent.subtask)
             is TaskIntent.ClearError -> clearError()
         }
@@ -61,10 +57,10 @@ class TaskViewModel(
 
     private fun loadTasks() {
         viewModelScope.launch {
+            setEffect(TaskEffect.ShowLoading(true))
             setState { copy(uiState = TaskState.UiState.Loading) }
 
             getTasksUseCase()
-                .onStart { setState { copy(uiState = TaskState.UiState.Loading) } }
                 .catch { error ->
                     setState {
                         copy(
@@ -73,6 +69,7 @@ class TaskViewModel(
                             filteredTasks = emptyList()
                         )
                     }
+                    setEffect(TaskEffect.Error(error.message ?: "Unknown error"))
                 }
                 .collect { tasks ->
                     // Apply current filters
@@ -89,6 +86,7 @@ class TaskViewModel(
                             uiState = TaskState.UiState.Success()
                         )
                     }
+                    setEffect(TaskEffect.ShowLoading(false))
                 }
         }
     }
@@ -97,25 +95,32 @@ class TaskViewModel(
         viewModelScope.launch {
             if (newTaskData.name.isBlank()) {
                 setState { copy(uiState = TaskState.UiState.Error("Task name cannot be empty")) }
+                setEffect(TaskEffect.Error("Task name cannot be empty"))
                 return@launch
             }
 
             setState { copy(uiState = TaskState.UiState.Loading) }
+            setEffect(TaskEffect.ShowLoading(true))
 
             try {
-                val task = toTask(newTaskData)
+                val task = newTaskData.toTask()
                 saveTaskUseCase(task).fold(
                     onSuccess = { taskId ->
                         // Reload tasks to get the newly created task with its ID
                         loadTasks()
                         setState { copy(uiState = TaskState.UiState.Success("Task created")) }
+                        setEffect(TaskEffect.Success("Task created"))
                     },
                     onFailure = { error ->
                         setState { copy(uiState = TaskState.UiState.Error(error.message)) }
+                        setEffect(TaskEffect.Error(error.message ?: "Unknown error"))
                     }
                 )
             } catch (e: Exception) {
                 setState { copy(uiState = TaskState.UiState.Error(e.message)) }
+                setEffect(TaskEffect.Error(e.message ?: "Unknown error"))
+            } finally {
+                setEffect(TaskEffect.ShowLoading(false))
             }
         }
     }
@@ -123,6 +128,7 @@ class TaskViewModel(
     private fun updateTask(task: Task) {
         viewModelScope.launch {
             setState { copy(uiState = TaskState.UiState.Loading) }
+            setEffect(TaskEffect.ShowLoading(true))
 
             saveTaskUseCase(task).fold(
                 onSuccess = { _ ->
@@ -143,17 +149,21 @@ class TaskViewModel(
                             uiState = TaskState.UiState.Success("Task updated")
                         )
                     }
+                    setEffect(TaskEffect.Success("Task updated"))
                 },
                 onFailure = { error ->
                     setState { copy(uiState = TaskState.UiState.Error(error.message)) }
+                    setEffect(TaskEffect.Error(error.message ?: "Unknown error"))
                 }
             )
+            setEffect(TaskEffect.ShowLoading(false))
         }
     }
 
     private fun deleteTask(taskId: Int) {
         viewModelScope.launch {
             setState { copy(uiState = TaskState.UiState.Loading) }
+            setEffect(TaskEffect.ShowLoading(true))
 
             deleteTaskUseCase(taskId).fold(
                 onSuccess = { _ ->
@@ -171,11 +181,14 @@ class TaskViewModel(
                             uiState = TaskState.UiState.Success("Task deleted")
                         )
                     }
+                    setEffect(TaskEffect.Success("Task deleted"))
                 },
                 onFailure = { error ->
                     setState { copy(uiState = TaskState.UiState.Error(error.message)) }
+                    setEffect(TaskEffect.Error(error.message ?: "Unknown error"))
                 }
             )
+            setEffect(TaskEffect.ShowLoading(false))
         }
     }
 
@@ -224,6 +237,7 @@ class TaskViewModel(
         viewModelScope.launch {
             if (subtaskName.isBlank()) {
                 setState { copy(uiState = TaskState.UiState.Error("Subtask name cannot be empty")) }
+                setEffect(TaskEffect.Error("Subtask name cannot be empty"))
                 return@launch
             }
 
@@ -246,9 +260,11 @@ class TaskViewModel(
                             uiState = TaskState.UiState.Success("Subtask added")
                         )
                     }
+                    setEffect(TaskEffect.Success("Subtask added"))
                 },
                 onFailure = { error ->
                     setState { copy(uiState = TaskState.UiState.Error(error.message)) }
+                    setEffect(TaskEffect.Error(error.message ?: "Unknown error"))
                 }
             )
         }
@@ -277,6 +293,7 @@ class TaskViewModel(
                 },
                 onFailure = { error ->
                     setState { copy(uiState = TaskState.UiState.Error(error.message)) }
+                    setEffect(TaskEffect.Error(error.message ?: "Unknown error"))
                 }
             )
         }
@@ -303,9 +320,11 @@ class TaskViewModel(
                             uiState = TaskState.UiState.Success("Subtask deleted")
                         )
                     }
+                    setEffect(TaskEffect.Success("Subtask deleted"))
                 },
                 onFailure = { error ->
                     setState { copy(uiState = TaskState.UiState.Error(error.message)) }
+                    setEffect(TaskEffect.Error(error.message ?: "Unknown error"))
                 }
             )
         }
@@ -334,9 +353,11 @@ class TaskViewModel(
                             uiState = TaskState.UiState.Success("All tasks deleted")
                         )
                     }
+                    setEffect(TaskEffect.Success("All tasks deleted"))
                 },
                 onFailure = { error ->
                     setState { copy(uiState = TaskState.UiState.Error(error.message)) }
+                    setEffect(TaskEffect.Error(error.message ?: "Unknown error"))
                 }
             )
         }

@@ -11,8 +11,9 @@ import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.models.isToday
 import com.elena.autoplanner.presentation.intents.CalendarIntent
+import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
-import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
+import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -25,7 +26,7 @@ fun WeeklyView(
     tasks: List<Task>,
     onTaskSelected: (Task) -> Unit,
     calendarViewModel: CalendarViewModel,
-    taskViewModel: TaskViewModel
+    tasksViewModel: TaskListViewModel
 ) {
     val hourHeightDp = 60.dp
     val hourHeightPx = with(LocalDensity.current) { hourHeightDp.toPx() }
@@ -63,12 +64,12 @@ fun WeeklyView(
             weekStartDate = weekDays.first(),
             weekEndDate = weekDays.last(),
             onPreviousWeek = {
-                calendarViewModel.processIntent(
+                calendarViewModel.sendIntent(
                     CalendarIntent.ChangeDate(weekStartDate.minusWeeks(1))
                 )
             },
             onNextWeek = {
-                calendarViewModel.processIntent(
+                calendarViewModel.sendIntent(
                     CalendarIntent.ChangeDate(weekStartDate.plusWeeks(1))
                 )
             }
@@ -78,7 +79,7 @@ fun WeeklyView(
             weekDays = weekDays,
             currentDate = LocalDate.now(),
             onDateSelected = { selectedDate ->
-                calendarViewModel.processIntent(CalendarIntent.ChangeDate(selectedDate))
+                calendarViewModel.sendIntent(CalendarIntent.ChangeDate(selectedDate))
             }
         )
 
@@ -109,14 +110,13 @@ fun WeeklyView(
                             task.startDateConf?.dateTime?.toLocalDate() ?: LocalDate.now()
                         val newDate = currentDate.plusDays(dayOffset)
 
-                        taskViewModel.updateTask(
-                            task.copy(
-                                startDateConf = TimePlanning(
-                                    dateTime = LocalDateTime.of(newDate, newTime),
-                                    dayPeriod = task.startDateConf?.dayPeriod
-                                )
+                        val updatedTask = task.copy(
+                            startDateConf = TimePlanning(
+                                dateTime = LocalDateTime.of(newDate, newTime),
+                                dayPeriod = task.startDateConf?.dayPeriod
                             )
                         )
+                        tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
                     },
                     scrollState = scrollState,
                     currentTime = currentTime
@@ -125,12 +125,3 @@ fun WeeklyView(
         }
     }
 }
-
-
-
-
-
-
-
-
-
