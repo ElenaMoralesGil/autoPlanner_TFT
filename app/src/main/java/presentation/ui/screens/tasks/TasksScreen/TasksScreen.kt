@@ -13,24 +13,51 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.presentation.intents.TaskIntent
-import com.elena.autoplanner.presentation.states.TaskState
+import com.elena.autoplanner.presentation.effects.TaskListEffect
+import com.elena.autoplanner.presentation.intents.TaskDetailIntent
+import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
 import com.elena.autoplanner.presentation.ui.utils.ErrorMessage
 import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
+import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
+import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
+import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
+import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Composable
-fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
+fun TasksScreen() {
+    // Main ViewModel for task list operations
+    val viewModel: TaskListViewModel = koinViewModel()
+    // TaskViewModel is still used for operations that cross boundaries between screens
+    val taskViewModel: TaskViewModel = koinViewModel()
+
     val state by viewModel.state.collectAsState()
     var showAddEditSheet by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
 
+    // Handle navigation effects
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collectLatest { effect ->
+            when (effect) {
+                is TaskListEffect.NavigateToTaskDetail -> {
+                    selectedTaskId = effect.taskId
+                }
+
+                is TaskListEffect.ShowSnackbar -> {
+                    // Show snackbar message (not implemented in this snippet)
+                }
+            }
+        }
+    }
+
+    // Initial load of tasks
     LaunchedEffect(Unit) {
-        viewModel.sendIntent(TaskIntent.LoadTasks)
+        viewModel.sendIntent(TaskListIntent.LoadTasks)
     }
 
     Scaffold(
@@ -40,18 +67,10 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
                 TasksTopBar(
                     state = it,
                     onStatusSelected = { status ->
-                        viewModel.sendIntent(
-                            TaskIntent.UpdateStatusFilter(
-                                status
-                            )
-                        )
+                        viewModel.sendIntent(TaskListIntent.UpdateStatusFilter(status))
                     },
-                    onTimeFrameSelected = { tf ->
-                        viewModel.sendIntent(
-                            TaskIntent.UpdateTimeFrameFilter(
-                                tf
-                            )
-                        )
+                    onTimeFrameSelected = { timeFrame ->
+                        viewModel.sendIntent(TaskListIntent.UpdateTimeFrameFilter(timeFrame))
                     }
                 )
             }
@@ -65,35 +84,31 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
         content = { innerPadding ->
             state?.let { currentState ->
                 Column(modifier = Modifier.padding(innerPadding)) {
-                    when (val uiState = currentState.uiState) {
-                        TaskState.UiState.Loading -> LoadingIndicator()
-                        is TaskState.UiState.Error -> uiState.message?.let { ErrorMessage(it) }
+                    when {
+                        currentState.isLoading -> LoadingIndicator()
+                        currentState.error != null -> ErrorMessage(currentState.error)
+                        currentState.filteredTasks.isEmpty() -> EmptyState()
                         else -> {
-                            if (currentState.isEmpty()) {
-                                EmptyState()
-                            } else {
-                                TasksSectionContent(
-                                    state = currentState,
-                                    onTaskChecked = { task, checked ->
-                                        viewModel.sendIntent(
-                                            TaskIntent.ToggleTaskCompletion(
-                                                task,
-                                                checked
-                                            )
-                                        )
-                                    },
-                                    onTaskSelected = { task ->
-                                        selectedTaskId = task.id
-                                    },
-                                    onDelete = { task ->
-                                        viewModel.sendIntent(TaskIntent.DeleteTask(task.id))
-                                    },
-                                    onEdit = { task ->
-                                        taskToEdit = task
-                                        showAddEditSheet = true
-                                    }
-                                )
-                            }
+                            TasksSectionContent(
+                                state = currentState,
+                                onTaskChecked = { task, checked ->
+                                    viewModel.sendIntent(
+                                        TaskListIntent.ToggleTaskCompletion(task.id, checked)
+                                    )
+                                },
+                                onTaskSelected = { task ->
+                                    viewModel.sendIntent(TaskListIntent.SelectTask(task.id))
+                                },
+                                onDelete = { task ->
+                                    taskViewModel.deleteTask(task.id)
+                                    // Refresh task list after deletion
+                                    viewModel.sendIntent(TaskListIntent.LoadTasks)
+                                },
+                                onEdit = { task ->
+                                    taskToEdit = task
+                                    showAddEditSheet = true
+                                }
+                            )
                         }
                     }
                 }
@@ -101,36 +116,49 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
         }
     )
 
+    // Task detail bottom sheet
     selectedTaskId?.let { taskId ->
+        val taskDetailViewModel =
+            getViewModel<TaskDetailViewModel>(parameters = { parametersOf(taskId) })
+
         TaskDetailSheet(
             taskId = taskId,
+            viewModel = taskDetailViewModel,
             onDismiss = {
                 selectedTaskId = null
             },
-            viewModel = viewModel,
             onSubtaskDeleted = { subtask ->
-                viewModel.sendIntent(TaskIntent.DeleteSubtask(taskId, subtask.id))
+                taskDetailViewModel.sendIntent(
+                    TaskDetailIntent.DeleteSubtask(subtask.id)
+                )
             },
             onSubtaskAdded = { subtaskName ->
-                viewModel.sendIntent(TaskIntent.AddSubtask(taskId, subtaskName))
+                taskDetailViewModel.sendIntent(
+                    TaskDetailIntent.AddSubtask(subtaskName)
+                )
             },
             onDelete = {
-                viewModel.sendIntent(TaskIntent.DeleteTask(taskId))
-                selectedTaskId = null
+                taskDetailViewModel.sendIntent(TaskDetailIntent.DeleteTask)
             },
             onSubtaskToggled = { subtaskId, isCompleted ->
-                viewModel.sendIntent(TaskIntent.ToggleSubtask(taskId, subtaskId, isCompleted))
+                taskDetailViewModel.sendIntent(
+                    TaskDetailIntent.ToggleSubtask(subtaskId, isCompleted)
+                )
             },
             onEdit = {
-                val foundTask = state?.tasks?.find { it.id == taskId }
-                taskToEdit = foundTask
-                selectedTaskId = null
-                showAddEditSheet = true
+                taskDetailViewModel.sendIntent(TaskDetailIntent.EditTask)
             }
         )
     }
 
+    // Task add/edit bottom sheet
     if (showAddEditSheet) {
+        val taskEditViewModel = if (taskToEdit != null) {
+            getViewModel<TaskEditViewModel>(parameters = { parametersOf(taskToEdit?.id ?: 0) })
+        } else {
+            getViewModel<TaskEditViewModel>(parameters = { parametersOf(0) })
+        }
+
         ModificationTaskSheet(
             taskToEdit = taskToEdit,
             onClose = {
@@ -141,13 +169,17 @@ fun TasksScreen(viewModel: TaskViewModel = koinViewModel()) {
                 taskToEdit = null
             },
             onCreateTask = { newTaskData ->
-                viewModel.sendIntent(TaskIntent.CreateTask(newTaskData))
+                taskViewModel.createTask(newTaskData)
                 showAddEditSheet = false
+                // Refresh task list after creation
+                viewModel.sendIntent(TaskListIntent.LoadTasks)
             },
             onUpdateTask = { updatedTask ->
-                viewModel.sendIntent(TaskIntent.UpdateTask(updatedTask))
+                taskViewModel.updateTask(updatedTask)
                 showAddEditSheet = false
                 selectedTaskId = updatedTask.id
+                // Refresh task list after update
+                viewModel.sendIntent(TaskListIntent.LoadTasks)
             }
         )
     }

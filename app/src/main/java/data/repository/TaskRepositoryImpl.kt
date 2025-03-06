@@ -6,22 +6,27 @@ import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
-import com.elena.autoplanner.data.local.entities.ReminderEntity
-import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
-import com.elena.autoplanner.data.local.entities.SubtaskEntity
-import com.elena.autoplanner.data.local.entities.TaskEntity
+import com.elena.autoplanner.data.mappers.toDomain
+import com.elena.autoplanner.data.mappers.toEntity
+import com.elena.autoplanner.data.mappers.toTaskEntity
 import com.elena.autoplanner.domain.exceptions.RepositoryException
 import com.elena.autoplanner.domain.exceptions.TaskNotFoundException
-import com.elena.autoplanner.domain.models.*
+import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.repository.TaskRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.time.LocalDateTime
-
 
 class TaskRepositoryImpl(
     private val taskDao: TaskDao,
@@ -44,7 +49,7 @@ class TaskRepositoryImpl(
                             repeatConfigDao.getRepeatConfigsForTask(taskEntity.id),
                             subtaskDao.getSubtasksForTask(taskEntity.id)
                         ) { reminders, repeats, subtasks ->
-                            mapToDomainTask(taskEntity, reminders, repeats, subtasks)
+                            taskEntity.toDomain(reminders, repeats, subtasks)
                         }
                     }
                 ) { tasks -> tasks.toList() }
@@ -66,27 +71,27 @@ class TaskRepositoryImpl(
             val repeatConfigs = repeatConfigDao.getRepeatConfigsForTask(taskId).first()
             val subtasks = subtaskDao.getSubtasksForTask(taskId).first()
 
-            val task = mapToDomainTask(taskEntity, reminders, repeatConfigs, subtasks)
+            val task = taskEntity.toDomain(reminders, repeatConfigs, subtasks)
             Result.success(task)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapException(e))
         }
     }
 
     override suspend fun saveTask(task: Task): Result<Int> = withContext(dispatcher) {
         try {
             // Ensure task has a start date if none is provided
-            val taskToSave = if (task.startDateConf == null) {
-                task.copy(startDateConf = TimePlanning(dateTime = LocalDateTime.now()))
+            val taskToSave = if (task.id == 0 && task.startDateConf == null) {
+                task.copy(startDateConf = com.elena.autoplanner.domain.models.TimePlanning(dateTime = LocalDateTime.now()))
             } else task
 
             val taskId = if (taskToSave.id == 0) {
                 // Insert new task
-                val taskEntity = mapToTaskEntity(taskToSave)
+                val taskEntity = taskToSave.toTaskEntity()
                 taskDao.insertTask(taskEntity).toInt()
             } else {
                 // Update existing task
-                val taskEntity = mapToTaskEntity(taskToSave)
+                val taskEntity = taskToSave.toTaskEntity()
                 taskDao.updateTask(taskEntity)
                 taskToSave.id
             }
@@ -97,7 +102,7 @@ class TaskRepositoryImpl(
             Result.success(taskId)
         } catch (e: Exception) {
             Log.e("TaskRepository", "Error saving task", e)
-            Result.failure(e)
+            Result.failure(mapException(e))
         }
     }
 
@@ -108,13 +113,9 @@ class TaskRepositoryImpl(
             )
 
             taskDao.deleteTask(taskEntity)
-            reminderDao.deleteRemindersForTask(taskId)
-            repeatConfigDao.deleteRepeatConfigsForTask(taskId)
-            subtaskDao.deleteSubtasksForTask(taskId)
-
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapException(e))
         }
     }
 
@@ -123,7 +124,7 @@ class TaskRepositoryImpl(
             taskDao.deleteAllTasks()
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapException(e))
         }
     }
 
@@ -131,146 +132,20 @@ class TaskRepositoryImpl(
         // Update reminders
         reminderDao.deleteRemindersForTask(taskId)
         task.reminderPlan?.let { reminder ->
-            reminderDao.insertReminder(mapToReminderEntity(reminder, taskId))
+            reminderDao.insertReminder(reminder.toEntity(taskId))
         }
 
         // Update repeat configs
         repeatConfigDao.deleteRepeatConfigsForTask(taskId)
         task.repeatPlan?.let { repeatPlan ->
-            repeatConfigDao.insertRepeatConfig(mapToRepeatConfigEntity(repeatPlan, taskId))
+            repeatConfigDao.insertRepeatConfig(repeatPlan.toEntity(taskId))
         }
 
         // Update subtasks
         subtaskDao.deleteSubtasksForTask(taskId)
         if (task.subtasks.isNotEmpty()) {
-            val subtaskEntities = task.subtasks.map { mapToSubtaskEntity(it, taskId) }
+            val subtaskEntities = task.subtasks.map { it.toEntity(taskId) }
             subtaskDao.insertSubtasks(subtaskEntities)
-        }
-    }
-
-    // Mapping functions
-    private fun mapToDomainTask(
-        taskEntity: TaskEntity,
-        reminderEntities: List<ReminderEntity>,
-        repeatConfigEntities: List<RepeatConfigEntity>,
-        subtaskEntities: List<SubtaskEntity>
-    ): Task {
-        return Task(
-            id = taskEntity.id,
-            name = taskEntity.name,
-            isCompleted = taskEntity.isCompleted,
-            priority = mapToPriority(taskEntity.priority),
-            startDateConf = TimePlanning(
-                dateTime = taskEntity.startDateTime,
-                dayPeriod = taskEntity.startDayPeriod?.let { mapToDayPeriod(it) }
-            ),
-            endDateConf = if (taskEntity.endDateTime != null || taskEntity.endDayPeriod != null) {
-                TimePlanning(
-                    dateTime = taskEntity.endDateTime,
-                    dayPeriod = taskEntity.endDayPeriod?.let { mapToDayPeriod(it) }
-                )
-            } else null,
-            durationConf = taskEntity.durationMinutes?.let { DurationPlan(it) },
-            reminderPlan = reminderEntities.firstOrNull()?.let { mapToReminderPlan(it) },
-            repeatPlan = repeatConfigEntities.firstOrNull()?.let { mapToRepeatPlan(it) },
-            subtasks = subtaskEntities.map { mapToSubtask(it) }
-        )
-    }
-
-    private fun mapToTaskEntity(task: Task): TaskEntity {
-        return TaskEntity(
-            id = task.id,
-            name = task.name,
-            isCompleted = task.isCompleted,
-            priority = task.priority.name,
-            startDateTime = task.startDateConf?.dateTime,
-            startDayPeriod = task.startDateConf?.dayPeriod?.name,
-            endDateTime = task.endDateConf?.dateTime,
-            endDayPeriod = task.endDateConf?.dayPeriod?.name,
-            durationMinutes = task.durationConf?.totalMinutes
-        )
-    }
-
-    private fun mapToReminderEntity(reminder: ReminderPlan, taskId: Int): ReminderEntity {
-        return ReminderEntity(
-            taskId = taskId,
-            mode = reminder.mode.name,
-            offsetMinutes = reminder.offsetMinutes,
-            exactDateTime = reminder.exactDateTime
-        )
-    }
-
-    private fun mapToRepeatConfigEntity(repeatPlan: RepeatPlan, taskId: Int): RepeatConfigEntity {
-        return RepeatConfigEntity(
-            taskId = taskId,
-            frequencyType = repeatPlan.frequencyType.name,
-            interval = repeatPlan.interval,
-            intervalUnit = repeatPlan.intervalUnit,
-            selectedDays = repeatPlan.selectedDays
-        )
-    }
-
-    private fun mapToSubtaskEntity(subtask: Subtask, taskId: Int): SubtaskEntity {
-        return SubtaskEntity(
-            id = subtask.id,
-            parentTaskId = taskId,
-            name = subtask.name,
-            isCompleted = subtask.isCompleted,
-            estimatedDurationInMinutes = subtask.estimatedDurationInMinutes
-        )
-    }
-
-    private fun mapToReminderPlan(entity: ReminderEntity): ReminderPlan {
-        val mode = try {
-            ReminderMode.valueOf(entity.mode)
-        } catch (e: Exception) {
-            ReminderMode.NONE
-        }
-
-        return ReminderPlan(
-            mode = mode,
-            offsetMinutes = entity.offsetMinutes,
-            exactDateTime = entity.exactDateTime
-        )
-    }
-
-    private fun mapToRepeatPlan(entity: RepeatConfigEntity): RepeatPlan {
-        val frequencyType = try {
-            FrequencyType.valueOf(entity.frequencyType)
-        } catch (e: Exception) {
-            FrequencyType.NONE
-        }
-
-        return RepeatPlan(
-            frequencyType = frequencyType,
-            interval = entity.interval,
-            intervalUnit = entity.intervalUnit,
-            selectedDays = entity.selectedDays
-        )
-    }
-
-    private fun mapToSubtask(entity: SubtaskEntity): Subtask {
-        return Subtask(
-            id = entity.id,
-            name = entity.name,
-            isCompleted = entity.isCompleted,
-            estimatedDurationInMinutes = entity.estimatedDurationInMinutes
-        )
-    }
-
-    private fun mapToPriority(priorityString: String): Priority {
-        return try {
-            Priority.valueOf(priorityString)
-        } catch (e: Exception) {
-            Priority.NONE
-        }
-    }
-
-    private fun mapToDayPeriod(periodString: String): DayPeriod {
-        return try {
-            DayPeriod.valueOf(periodString)
-        } catch (e: Exception) {
-            DayPeriod.NONE
         }
     }
 

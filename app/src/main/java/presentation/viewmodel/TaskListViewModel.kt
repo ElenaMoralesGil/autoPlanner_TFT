@@ -30,7 +30,6 @@ class TaskListViewModel(
                 intent.taskId,
                 intent.completed
             )
-
             is TaskListIntent.SelectTask -> setEffect(TaskListEffect.NavigateToTaskDetail(intent.taskId))
         }
     }
@@ -42,6 +41,7 @@ class TaskListViewModel(
             getTasksUseCase()
                 .catch { error ->
                     setState { copy(isLoading = false, error = error.message) }
+                    setEffect(TaskListEffect.ShowSnackbar("Error loading tasks: ${error.message}"))
                 }
                 .collect { tasks ->
                     val filteredTasks = filterTasksUseCase(
@@ -127,6 +127,7 @@ class TaskListViewModel(
                 },
                 onFailure = { error ->
                     setState { copy(error = error.message) }
+                    setEffect(TaskListEffect.ShowSnackbar("Error updating task: ${error.message}"))
                 }
             )
         }

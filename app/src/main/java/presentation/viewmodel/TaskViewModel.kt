@@ -1,7 +1,7 @@
 package com.elena.autoplanner.presentation.viewmodel
 
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.Priority
@@ -9,308 +9,246 @@ import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
-import com.elena.autoplanner.domain.usecases.tasks.AddTaskUseCase
+import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteAllTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
-import com.elena.autoplanner.domain.usecases.GetTasksUseCase
-import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
-import com.elena.autoplanner.domain.usecases.tasks.UpdateTaskUseCase
-import com.elena.autoplanner.presentation.intents.TaskIntent
-import com.elena.autoplanner.presentation.states.TaskState
-import com.elena.autoplanner.presentation.states.TaskStatus
-import com.elena.autoplanner.presentation.states.TimeFrame
-import com.elena.autoplanner.presentation.utils.BaseViewModel
+import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
+import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.presentation.utils.NewTaskData
 import com.elena.autoplanner.presentation.utils.toTask
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
+/**
+ * TaskViewModel serves as a data provider for task-related data across the app.
+ * While specialized ViewModels (TaskListViewModel, TaskDetailViewModel, TaskEditViewModel)
+ * handle specific screens, this ViewModel provides data access for components that
+ * don't have a dedicated ViewModel or need broad access to task data.
+ */
 class TaskViewModel(
     private val getTasksUseCase: GetTasksUseCase,
-    private val addTaskUseCase: AddTaskUseCase,
-    private val updateTaskUseCase: UpdateTaskUseCase,
+    private val saveTaskUseCase: SaveTaskUseCase,
     private val deleteTaskUseCase: DeleteTaskUseCase,
     private val addSubtaskUseCase: AddSubtaskUseCase,
     private val toggleSubtaskUseCase: ToggleSubtaskUseCase,
     private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
-    private val DeleteAllTasksUseCase: DeleteAllTasksUseCase
-) : BaseViewModel<TaskIntent, TaskState>() {
+    private val deleteAllTasksUseCase: DeleteAllTasksUseCase
+) : ViewModel() {
 
-    override fun createInitialState(): TaskState = TaskState(
-        filters = TaskState.Filters(timeFrame = TimeFrame.TODAY, status = TaskStatus.ALL)
-    )
+    private val _tasks = MutableStateFlow<List<Task>>(emptyList())
+    val tasks: StateFlow<List<Task>> = _tasks
 
-    override suspend fun handleIntent(intent: TaskIntent) {
-        when (intent) {
-            is TaskIntent.LoadTasks -> loadTasks()
-            is TaskIntent.CreateTask -> createTask(intent.newTaskData)
-            is TaskIntent.UpdateTask -> updateTask(intent.task)
-            is TaskIntent.DeleteTask -> deleteTask(intent.task)
-            is TaskIntent.ToggleTaskCompletion -> toggleTaskCompletion(intent.task, intent.checked)
-            is TaskIntent.UpdateStatusFilter -> updateStatusFilter(intent.status)
-            is TaskIntent.UpdateTimeFrameFilter -> updateTimeFrameFilter(intent.timeFrame)
-            is TaskIntent.AddSubtask -> addSubtask(intent.task, intent.subtaskName)
-            is TaskIntent.ToggleSubtask -> toggleSubtask(
-                intent.task,
-                intent.subtask,
-                intent.checked
-            )
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
 
-            is TaskIntent.DeleteSubtask -> deleteSubtask(intent.task, intent.subtask)
-            TaskIntent.ClearError -> clearError()
-        }
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
+    init {
+        loadTasks()
     }
 
-    private fun loadTasks() {
+    fun loadTasks() {
         viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
             getTasksUseCase()
-                .onStart { setState { copy(uiState = TaskState.UiState.Loading) } }
-                .catch { e -> setState { copy(uiState = TaskState.UiState.Error(e.message)) } }
-                .collect { tasks ->
-                    setState {
-                        copy(
-                            tasks = tasks,
-                            filteredTasks = applyFilters(tasks, filters),
-                            uiState = TaskState.UiState.Idle
-                        )
-                    }
+                .onStart { _isLoading.value = true }
+                .catch { e ->
+                    _error.value = e.message
+                    _isLoading.value = false
+                }
+                .collect { fetchedTasks ->
+                    _tasks.value = fetchedTasks
+                    _isLoading.value = false
                 }
         }
     }
-
-    private fun createTask(newTaskData: NewTaskData) {
-        viewModelScope.launch {
-            try {
-                if (newTaskData.name.isBlank()) {
-                    setState { copy(uiState = TaskState.UiState.Error("Task name cannot be empty")) }
-                    return@launch
-                }
-
-                val task = newTaskData.toTask()
-                val newTaskList = currentState.tasks.toMutableList().apply { add(task) }
-
-                setState {
-                    copy(
-                        tasks = newTaskList,
-                        filteredTasks = applyFilters(newTaskList, filters),
-                        uiState = TaskState.UiState.Success("Task created")
-                    )
-                }
-
-                addTaskUseCase(task)
-            } catch (e: Exception) {
-                setState { copy(uiState = TaskState.UiState.Error(e.message)) }
-            }
-        }
-    }
-
 
     fun updateTask(task: Task) {
         viewModelScope.launch {
             try {
-                setState { copy(uiState = TaskState.UiState.Loading) }
-                updateTaskUseCase(task)
-                setState {
-                    copy(
-                        tasks = currentState.tasks.map { if (it.id == task.id) task else it },
-                        filteredTasks = applyFilters(
-                            currentState.tasks,
-                            currentState.filters
-                        ),
-                        uiState = TaskState.UiState.Success("Task updated")
-                    )
-                }
+                _isLoading.value = true
+                saveTaskUseCase(task).fold(
+                    onSuccess = { _ ->
+                        // Update local tasks list
+                        _tasks.value = _tasks.value.map {
+                            if (it.id == task.id) task else it
+                        }
+                    },
+                    onFailure = { e ->
+                        _error.value = e.message
+                    }
+                )
             } catch (e: Exception) {
-                setState { copy(uiState = TaskState.UiState.Error(e.message)) }
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    private fun deleteTask(taskId: Int) {
+    fun createTask(newTaskData: NewTaskData) {
         viewModelScope.launch {
             try {
-                val task = currentState.tasks.find { it.id == taskId }
-                    ?: throw IllegalArgumentException("Task not found")
-                setState { copy(uiState = TaskState.UiState.Loading) }
-                deleteTaskUseCase(task)
-                setState {
-                    copy(
-                        tasks = currentState.tasks - task,
-                        filteredTasks = applyFilters(
-                            currentState.tasks - task,
-                            currentState.filters
-                        ),
-                        uiState = TaskState.UiState.Success("Task deleted")
-                    )
-                }
-            } catch (e: Exception) {
-                setState { copy(uiState = TaskState.UiState.Error(e.message)) }
-            }
-        }
-    }
-
-    private fun toggleTaskCompletion(task: Task, checked: Boolean) {
-        viewModelScope.launch {
-            try {
-
-                val updatedTask = task.copy(isCompleted = checked)
-                setState {
-                    copy(
-                        tasks = currentState.tasks.map { if (it.id == task.id) updatedTask else it },
-                        filteredTasks = applyFilters(currentState.tasks, currentState.filters),
-                        uiState = TaskState.UiState.Idle
-                    )
-                }
-
-                // Then perform actual update
-                updateTaskUseCase(updatedTask)
-            } catch (e: Exception) {
-                // Rollback UI state on error
-                setState {
-                    copy(
-                        tasks = currentState.tasks.map { if (it.id == task.id) task else it },
-                        uiState = TaskState.UiState.Error(e.message)
-                    )
-                }
-            }
-        }
-    }
-
-    fun addSubtask(task: Int, subtaskName: String) {
-        viewModelScope.launch {
-            try {
-                if (subtaskName.isBlank()) {
-                    setState { copy(uiState = TaskState.UiState.Error(R.string.taskError.toString())) }
+                if (newTaskData.name.isBlank()) {
+                    _error.value = "Task name cannot be empty"
                     return@launch
                 }
 
-                setState { copy(uiState = TaskState.UiState.Loading) }
-                val updatedTask = addSubtaskUseCase(task, subtaskName)
-                setState {
-                    copy(
-                        tasks = currentState.tasks.map { if (it.id == task) updatedTask else it },
-                        filteredTasks = applyFilters(currentState.tasks, currentState.filters),
-                        uiState = TaskState.UiState.Success("Subtask added")
-                    )
-                }
+                _isLoading.value = true
+                val task = newTaskData.toTask()
+
+                saveTaskUseCase(task).fold(
+                    onSuccess = { taskId ->
+                        val savedTask = task.copy(id = taskId)
+                        _tasks.value = _tasks.value + savedTask
+                    },
+                    onFailure = { e ->
+                        _error.value = e.message
+                    }
+                )
             } catch (e: Exception) {
-                setState { copy(uiState = TaskState.UiState.Error(e.message)) }
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    fun toggleSubtask(taskId: Int, subtaskId: Int, checked: Boolean) {
+    fun deleteTask(taskId: Int) {
         viewModelScope.launch {
             try {
-                val updatedTask = toggleSubtaskUseCase(taskId, subtaskId, checked)
-                setState {
-                    copy(
-                        tasks = currentState.tasks.map { if (it.id == taskId) updatedTask else it },
-                        filteredTasks = applyFilters(currentState.tasks, currentState.filters),
-                        uiState = TaskState.UiState.Idle
-                    )
-                }
+                _isLoading.value = true
+
+                deleteTaskUseCase(taskId).fold(
+                    onSuccess = {
+                        _tasks.value = _tasks.value.filter { it.id != taskId }
+                    },
+                    onFailure = { e ->
+                        _error.value = e.message
+                    }
+                )
             } catch (e: Exception) {
-                setState { copy(uiState = TaskState.UiState.Error(e.message)) }
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    fun deleteSubtask(task: Int, subtask: Int) {
+    fun addSubtask(taskId: Int, subtaskName: String) {
         viewModelScope.launch {
             try {
-                setState { copy(uiState = TaskState.UiState.Loading) }
-                val updatedTask = deleteSubtaskUseCase(task, subtask)
-                setState {
-                    copy(
-                        tasks = currentState.tasks.map { if (it.id == task) updatedTask else it },
-                        filteredTasks = applyFilters(currentState.tasks, currentState.filters),
-                        uiState = TaskState.UiState.Success("Subtask deleted")
-                    )
+                if (subtaskName.isBlank()) {
+                    _error.value = "Subtask name cannot be empty"
+                    return@launch
                 }
+
+                _isLoading.value = true
+
+                addSubtaskUseCase(taskId, subtaskName).fold(
+                    onSuccess = { updatedTask ->
+                        _tasks.value = _tasks.value.map {
+                            if (it.id == taskId) updatedTask else it
+                        }
+                    },
+                    onFailure = { e ->
+                        _error.value = e.message
+                    }
+                )
             } catch (e: Exception) {
-                setState { copy(uiState = TaskState.UiState.Error(e.message)) }
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    private fun updateStatusFilter(status: TaskStatus) {
-        setState {
-            val newFilters = filters.copy(status = status)
-            copy(
-                filters = newFilters,
-                filteredTasks = applyFilters(tasks, newFilters)
-            )
-        }
-    }
+    fun toggleSubtask(taskId: Int, subtaskId: Int, isCompleted: Boolean) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
 
-    private fun updateTimeFrameFilter(timeFrame: TimeFrame) {
-        setState {
-            val newFilters = filters.copy(timeFrame = timeFrame)
-            copy(
-                filters = newFilters,
-                filteredTasks = applyFilters(tasks, newFilters)
-            )
-        }
-    }
-
-    private fun applyFilters(tasks: List<Task>, filters: TaskState.Filters): List<Task> {
-        val expiredTasks = tasks.filter { it.isExpired() }
-        val nonExpiredTasks = tasks.filter { !it.isExpired() }
-
-        val timeFilteredTasks = when (filters.timeFrame) {
-            TimeFrame.TODAY -> nonExpiredTasks.filter { it.isDueToday() }
-            TimeFrame.WEEK -> nonExpiredTasks.filter { it.isDueThisWeek() }
-            TimeFrame.MONTH -> nonExpiredTasks.filter { it.isDueThisMonth() }
-            TimeFrame.ALL -> nonExpiredTasks
-            TimeFrame.EXPIRED -> expiredTasks
-        }
-
-        return (timeFilteredTasks + expiredTasks).filter { task ->
-            when (filters.status) {
-                TaskStatus.COMPLETED -> task.isCompleted
-                TaskStatus.UNCOMPLETED -> !task.isCompleted
-                TaskStatus.ALL -> true
+                toggleSubtaskUseCase(taskId, subtaskId, isCompleted).fold(
+                    onSuccess = { updatedTask ->
+                        _tasks.value = _tasks.value.map {
+                            if (it.id == taskId) updatedTask else it
+                        }
+                    },
+                    onFailure = { e ->
+                        _error.value = e.message
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
+    fun deleteSubtask(taskId: Int, subtaskId: Int) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
 
-    private fun clearError() {
-        setState { copy(uiState = TaskState.UiState.Idle) }
+                deleteSubtaskUseCase(taskId, subtaskId).fold(
+                    onSuccess = { updatedTask ->
+                        _tasks.value = _tasks.value.map {
+                            if (it.id == taskId) updatedTask else it
+                        }
+                    },
+                    onFailure = { e ->
+                        _error.value = e.message
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 
     fun deleteAllTasks() {
         viewModelScope.launch {
             try {
-                setState { copy(uiState = TaskState.UiState.Loading) }
+                _isLoading.value = true
 
-                DeleteAllTasksUseCase()
-
-                setState {
-                    copy(
-                        tasks = emptyList(),
-                        filteredTasks = emptyList(),
-                        uiState = TaskState.UiState.Success("All tasks deleted")
-                    )
-                }
+                deleteAllTasksUseCase().fold(
+                    onSuccess = {
+                        _tasks.value = emptyList()
+                    },
+                    onFailure = { e ->
+                        _error.value = e.message
+                    }
+                )
             } catch (e: Exception) {
-                setState { copy(uiState = TaskState.UiState.Error(e.message)) }
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
+    // Development utility function to generate sample tasks
     fun seedTasks(count: Int = 25) {
         viewModelScope.launch {
             deleteAllTasks()
 
             repeat(count) { index ->
-
                 val dayOffset = (-2..14).random()
-
                 val hour = (6..21).random()
                 val minute = listOf(0, 15, 30, 45).random()
 
@@ -318,6 +256,7 @@ class TaskViewModel(
                     .plusDays(dayOffset.toLong())
                     .withHour(hour)
                     .withMinute(minute)
+
                 val chosenPeriod = listOf(
                     DayPeriod.MORNING,
                     DayPeriod.EVENING,
@@ -336,17 +275,20 @@ class TaskViewModel(
                     DayPeriod.ALLDAY -> baseDateTime.withHour(0).withMinute(0)
                     else -> baseDateTime
                 }
+
                 val hasEndDate = (0..1).random() == 0
                 val endDateOffset = (1..3).random()
                 val endDateTime = if (hasEndDate) {
                     adjustedDateTime.plusDays(endDateOffset.toLong())
                 } else null
+
                 val randomDuration = if ((0..1).random() == 0) {
                     listOf(30, 60, 90, 120, 150, 180).random()
                 } else null
 
                 val priority =
                     listOf(Priority.HIGH, Priority.MEDIUM, Priority.LOW, Priority.NONE).random()
+
                 val subtasks = if ((0..1).random() == 0) {
                     (1..(1..3).random()).map { subIndex ->
                         Subtask(
@@ -357,6 +299,7 @@ class TaskViewModel(
                         )
                     }
                 } else emptyList()
+
                 val sampleName = generateConfigBasedTaskName(
                     index = index,
                     dayOffset = dayOffset,
@@ -366,6 +309,7 @@ class TaskViewModel(
                     priority = priority,
                     subtaskCount = subtasks.size
                 )
+
                 val sampleTask = NewTaskData(
                     name = sampleName,
                     priority = priority,
@@ -379,11 +323,11 @@ class TaskViewModel(
                     durationConf = randomDuration?.let { DurationPlan(it) },
                     subtasks = subtasks
                 )
+
                 createTask(sampleTask)
             }
         }
     }
-
 
     private fun generateConfigBasedTaskName(
         index: Int,
@@ -394,12 +338,7 @@ class TaskViewModel(
         priority: Priority,
         subtaskCount: Int
     ): String {
-        /*
-         Format suggestions:
-           "Task #3 (Priority=HIGH) [Start in +5 days, Period=EVENING, Duration=60min, EndDate=yes, Subtasks=2]"
-           or
-           "Task #1 (Priority=LOW) [Start in -2 days, Period=NONE, Duration=--, EndDate=no, Subtasks=0]"
-        */
+        // Format: "Task #3 (Priority=HIGH) [Start in +5 days, Period=EVENING, Duration=60min, EndDate=yes, Subtasks=2]"
 
         // "start in +X days" or "start in -X days"
         val sign = if (dayOffset >= 0) "+" else ""
@@ -422,8 +361,4 @@ class TaskViewModel(
 
         return "Task #$index ($priorityLabel) [$offsetDescriptor, $periodDescriptor, Duration=$durationDescriptor, EndDate=$endDateDescriptor, Subtasks=$subtaskDescriptor]"
     }
-
-
-
-
 }

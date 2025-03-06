@@ -237,6 +237,7 @@ fun ModificationTaskSheet(
         )
     }
 }
+
 private fun hasAnyConfig(
     start: TimePlanning?,
     end: TimePlanning?,

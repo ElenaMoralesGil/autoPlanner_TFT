@@ -14,7 +14,6 @@ import com.elena.autoplanner.domain.models.RepeatPlan
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
-import java.time.LocalDateTime
 
 /* ------------------- Entities -> Domain ------------------- */
 
@@ -57,9 +56,7 @@ fun TaskEntity.toDomain(
         id = id,
         name = name,
         isCompleted = isCompleted,
-
         priority = priorityEnum,
-
         startDateConf = startConf,
         endDateConf = endConf,
         durationConf = durConf,
@@ -108,27 +105,16 @@ fun SubtaskEntity.toDomain(): Subtask {
 /* ------------------- Domain -> Entities ------------------- */
 
 fun Task.toTaskEntity(): TaskEntity {
-
-    val startDateTime = startDateConf?.dateTime
-    val startDayPeriod = startDateConf?.dayPeriod?.name
-
-    val endDateTime = endDateConf?.dateTime
-    val endDayPeriod = endDateConf?.dayPeriod?.name
-
-    val durMin = durationConf?.totalMinutes
-
     return TaskEntity(
         id = id,
         name = name,
         isCompleted = isCompleted,
         priority = priority.name,
-
-        startDateTime = startDateTime,
-        startDayPeriod = startDayPeriod,
-        endDateTime = endDateTime,
-        endDayPeriod = endDayPeriod,
-
-        durationMinutes = durMin
+        startDateTime = startDateConf?.dateTime,
+        startDayPeriod = startDateConf?.dayPeriod?.name,
+        endDateTime = endDateConf?.dateTime,
+        endDayPeriod = endDateConf?.dayPeriod?.name,
+        durationMinutes = durationConf?.totalMinutes
     )
 }
 

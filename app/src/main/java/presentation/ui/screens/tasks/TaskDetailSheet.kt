@@ -9,12 +9,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.Subtask
-import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.SubtasksSection
 import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.TaskConfigDisplay
 import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import org.koin.androidx.compose.koinViewModel
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +37,7 @@ fun TaskDetailSheet(
         containerColor = MaterialTheme.colorScheme.surface
     ) {
         if (task == null) {
-
+            // Task not found or still loading
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -49,7 +47,7 @@ fun TaskDetailSheet(
                 CircularProgressIndicator()
             }
         } else {
-
+            // Task is loaded
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -72,7 +70,6 @@ fun TaskDetailSheet(
                     reminder = task.reminderPlan,
                     repeat = task.repeatPlan,
                     priority = task.priority,
-
                 )
 
                 SubtasksSection(
@@ -81,8 +78,8 @@ fun TaskDetailSheet(
                     onSubtaskAdded = onSubtaskAdded,
                     onSubtaskDeleted = onSubtaskDeleted,
                     showDeleteButton = true,
-                    showAddButton = false,
-                    errorMessage = (state?.uiState as? TaskState.UiState.Error)?.message
+                    showAddButton = true,
+                    errorMessage = (state?.uiState as? com.elena.autoplanner.presentation.states.TaskState.UiState.Error)?.message
                 )
 
                 Row(

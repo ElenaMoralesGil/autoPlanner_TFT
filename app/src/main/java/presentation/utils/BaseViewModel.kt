@@ -30,6 +30,8 @@ abstract class BaseViewModel<I : Intent, S, E : UiEffect> : ViewModel() {
 
     init {
         viewModelScope.launch {
+            _state.value = createInitialState()
+
             _intent.collect { intent ->
                 handleIntent(intent)
             }
@@ -48,6 +50,47 @@ abstract class BaseViewModel<I : Intent, S, E : UiEffect> : ViewModel() {
 
     protected fun setEffect(effect: E) {
         viewModelScope.launch { _effect.emit(effect) }
+    }
+
+    abstract fun createInitialState(): S
+    abstract suspend fun handleIntent(intent: I)
+}
+
+abstract class BaseTaskViewModel<I : Intent, S> : ViewModel() {
+
+    private val _state = MutableStateFlow<S?>(null)
+    val state: StateFlow<S?> = _state.asStateFlow()
+
+    private val _effect = MutableStateFlow<Any?>(null)
+    val effect: StateFlow<Any?> = _effect.asStateFlow()
+
+    private val _intent = MutableSharedFlow<I>()
+
+    val currentState: S
+        get() = _state.value ?: createInitialState()
+
+    init {
+        viewModelScope.launch {
+            _state.value = createInitialState()
+
+            _intent.collect { intent ->
+                handleIntent(intent)
+            }
+        }
+    }
+
+    fun sendIntent(intent: I) {
+        viewModelScope.launch { _intent.emit(intent) }
+    }
+
+    protected fun setState(reducer: S.() -> S) {
+        viewModelScope.launch {
+            _state.update { (it ?: createInitialState()).reducer() }
+        }
+    }
+
+    protected fun setEffect(effect: Any?) {
+        viewModelScope.launch { _effect.value = effect }
     }
 
     abstract fun createInitialState(): S

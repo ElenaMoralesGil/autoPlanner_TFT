@@ -1,8 +1,6 @@
 package com.elena.autoplanner.presentation.viewmodel
 
-
 import androidx.lifecycle.ViewModel
-import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.states.CalendarState
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarView
@@ -24,7 +22,7 @@ class CalendarViewModel : ViewModel() {
         when (intent) {
             is CalendarIntent.ChangeDate -> {
                 val newDate = intent.date
-                val currentView = state.value.currentView
+                val currentView = _state.value.currentView
 
                 val adjustedDate = when (currentView) {
                     CalendarView.WEEK -> newDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
@@ -33,7 +31,7 @@ class CalendarViewModel : ViewModel() {
 
                 _state.value = _state.value.copy(
                     currentDate = adjustedDate,
-                    showDatePicker = if (intent.dismiss) false else state.value.showDatePicker
+                    showDatePicker = if (intent.dismiss) false else _state.value.showDatePicker
                 )
             }
 
@@ -80,8 +78,6 @@ class CalendarViewModel : ViewModel() {
 
 
 }
-
-
 data class CalendarCell(
     val date: LocalDate,
     val isCurrentMonth: Boolean
