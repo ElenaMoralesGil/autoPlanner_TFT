@@ -76,10 +76,6 @@ fun CalendarScreen(
             CalendarTopAppBar(
                 currentDate = calendarState.currentDate,
                 currentView = calendarState.currentView,
-                onViewChanged = {
-                    calendarViewModel.processIntent(CalendarIntent.ChangeView(it))
-                    showViewSelector = false
-                },
                 onViewSelectorClicked = { showViewSelector = !showViewSelector },
                 onTitleSelected = {
                     calendarViewModel.processIntent(
@@ -122,7 +118,6 @@ fun CalendarScreen(
                         tasks = tasks,
                         onTaskSelected = onTaskSelected,
                         calendarViewModel = calendarViewModel,
-                        taskViewModel = taskViewModel
                     )
                 }
             }
@@ -239,7 +234,6 @@ fun CalendarScreen(
 private fun CalendarTopAppBar(
     currentDate: LocalDate,
     currentView: CalendarView,
-    onViewChanged: (CalendarView) -> Unit,
     onTitleSelected: () -> Unit,
     onViewSelectorClicked: () -> Unit
 ) {

@@ -1,6 +1,7 @@
 package com.elena.autoplanner.presentation.ui.screens.calendar.MonthlyView
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,12 +11,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -25,19 +26,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.DayPeriod
-import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.isToday
 import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.ui.screens.calendar.getPriorityColor
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
-import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
+
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
-import java.util.*
 
 @Composable
 fun MonthlyView(
@@ -45,9 +44,8 @@ fun MonthlyView(
     tasks: List<Task>,
     onTaskSelected: (Task) -> Unit,
     calendarViewModel: CalendarViewModel,
-    taskViewModel: TaskViewModel
 ) {
-    val currentDate = LocalDate.now()
+
     val weeksInMonth = remember(selectedMonth) {
         generateCalendarDays(selectedMonth)
     }
@@ -78,7 +76,6 @@ fun MonthlyView(
                 item {
                     WeekDaysRow(
                         week = week,
-                        currentDate = currentDate,
                         onDayClick = { date ->
                             calendarViewModel.processIntent(CalendarIntent.ChangeDate(date))
                             calendarViewModel.processIntent(
@@ -165,7 +162,6 @@ fun DaysOfWeekHeader() {
 @Composable
 fun WeekDaysRow(
     week: List<CalendarDay>,
-    currentDate: LocalDate,
     onDayClick: (LocalDate) -> Unit
 ) {
     Row(
@@ -197,9 +193,11 @@ fun DayCell(
         else -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
     }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = modifier
+            .height(40.dp)
+            .padding(2.dp)
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -270,22 +268,21 @@ fun TaskCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = when (task.startDateConf?.dayPeriod) {
-        DayPeriod.MORNING -> Color(0xFF4FC3F7) // Light Blue
-        DayPeriod.EVENING -> Color(0xFFFFB74D) // Orange
-        DayPeriod.NIGHT -> Color(0xFF9575CD)   // Purple
-        DayPeriod.ALLDAY -> Color(0xFFFFF176)  // Yellow
-        else -> getPriorityColor(task.priority)
-    }
-
     Card(
         modifier = modifier
             .padding(vertical = 1.dp, horizontal = 2.dp)
             .height(24.dp)
+            .shadow(
+                elevation = 1.dp,
+                shape = RoundedCornerShape(4.dp)
+            )
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        shape = RoundedCornerShape(4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = if (task.isCompleted)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
+            else MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(4.dp)
     ) {
         Row(
             modifier = Modifier
@@ -293,14 +290,13 @@ fun TaskCard(
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Left indicator showing priority or day period color
             Box(
                 modifier = Modifier
                     .width(2.dp)
                     .height(16.dp)
                     .background(
-                        color = if (task.isCompleted)
-                            MaterialTheme.colorScheme.primary
-                        else Color.White.copy(alpha = 0.7f),
+                        color = getPriorityColor(task.priority),
                         shape = RoundedCornerShape(1.dp)
                     )
             )
@@ -310,7 +306,9 @@ fun TaskCard(
             Text(
                 text = task.name,
                 fontSize = 10.sp,
-                color = Color.Black.copy(alpha = 0.8f),
+                color = if (task.isCompleted)
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -320,13 +318,14 @@ fun TaskCard(
                 Icon(
                     painter = painterResource(id = R.drawable.ic_completed),
                     contentDescription = "Completed",
-                    tint = Color.Black.copy(alpha = 0.7f),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(12.dp)
                 )
             }
         }
     }
 }
+// This function was replaced with inline code in TaskCard
 
 data class CalendarDay(
     val date: LocalDate,
@@ -345,7 +344,6 @@ fun generateCalendarDays(yearMonth: YearMonth): List<List<CalendarDay>> {
             today.dayOfMonth >= yearMonth.lengthOfMonth() - 7 ->
                 yearMonth.atEndOfMonth().minusWeeks(3)
                     .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-
             else -> today.minusWeeks(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         }
     } else {
