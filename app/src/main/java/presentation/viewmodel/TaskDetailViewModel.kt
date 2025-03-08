@@ -66,20 +66,24 @@ class TaskDetailViewModel(
 
     private fun toggleTaskCompletion(completed: Boolean) {
         viewModelScope.launch {
-            val taskId = currentState.task?.id ?: return@launch
 
-            toggleTaskCompletionUseCase(taskId, completed).fold(
-                onSuccess = { updatedTask ->
-                    setState { copy(task = updatedTask) }
-                    setEffect(
-                        TaskDetailEffect.ShowSnackbar(
-                            if (completed) "Task marked as completed"
-                            else "Task marked as not completed"
-                        )
-                    )
+            val currentTask = currentState.task ?: return@launch
+
+            setState {
+                copy(task = currentTask.copy(isCompleted = completed))
+            }
+
+            toggleTaskCompletionUseCase(currentTask.id, completed).fold(
+                onSuccess = {
+                    setState { copy(task = it) }
                 },
                 onFailure = { error ->
-                    setState { copy(error = error.message) }
+                    setState {
+                        copy(
+                            task = currentTask,
+                            error = error.message
+                        )
+                    }
                     setEffect(TaskDetailEffect.ShowSnackbar("Error updating task: ${error.message}"))
                 }
             )
@@ -158,6 +162,7 @@ class TaskDetailViewModel(
             )
         }
     }
+
 
     private fun navigateToEdit() {
         currentState.task?.let {

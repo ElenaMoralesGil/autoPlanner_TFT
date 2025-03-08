@@ -90,10 +90,9 @@ val useCaseModule = module {
     single { DeleteSubtaskUseCase(get(), get()) }
     single { DeleteAllTasksUseCase(get()) }
     single { FilterTasksUseCase() }
+
 }
 
-// Módulo de ViewModels
-// Módulo de ViewModels
 val viewModelModule = module {
     viewModel { CalendarViewModel() }
 
@@ -107,7 +106,7 @@ val viewModelModule = module {
             deleteSubtaskUseCase = get(),
             deleteAllTasksUseCase = get(),
             filterTasksUseCase = get(),
-
+            toggleTaskCompletionUseCase = get()
         )
     }
 

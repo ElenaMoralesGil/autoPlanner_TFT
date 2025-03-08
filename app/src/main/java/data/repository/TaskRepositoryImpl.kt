@@ -96,7 +96,6 @@ class TaskRepositoryImpl(
                 taskToSave.id
             }
 
-            // Handle related entities
             updateRelatedEntities(taskId, taskToSave)
 
             Result.success(taskId)
@@ -129,19 +128,19 @@ class TaskRepositoryImpl(
     }
 
     private suspend fun updateRelatedEntities(taskId: Int, task: Task) {
-        // Update reminders
+
         reminderDao.deleteRemindersForTask(taskId)
         task.reminderPlan?.let { reminder ->
             reminderDao.insertReminder(reminder.toEntity(taskId))
         }
 
-        // Update repeat configs
+
         repeatConfigDao.deleteRepeatConfigsForTask(taskId)
         task.repeatPlan?.let { repeatPlan ->
             repeatConfigDao.insertRepeatConfig(repeatPlan.toEntity(taskId))
         }
 
-        // Update subtasks
+
         subtaskDao.deleteSubtasksForTask(taskId)
         if (task.subtasks.isNotEmpty()) {
             val subtaskEntities = task.subtasks.map { it.toEntity(taskId) }
@@ -156,4 +155,15 @@ class TaskRepositoryImpl(
             else -> e
         }
     }
+
+    override suspend fun updateTaskCompletion(taskId: Int, isCompleted: Boolean): Result<Unit> =
+        withContext(dispatcher) {
+            try {
+                taskDao.updateTaskCompletion(taskId, isCompleted)
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e("TaskRepository", "Error updating task completion", e)
+                Result.failure(mapException(e))
+            }
+        }
 }

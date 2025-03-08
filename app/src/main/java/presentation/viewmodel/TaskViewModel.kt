@@ -15,7 +15,9 @@ import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.FilterTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.presentation.effects.TaskEffect
+import com.elena.autoplanner.presentation.effects.TaskListEffect
 import com.elena.autoplanner.presentation.intents.TaskIntent
 import com.elena.autoplanner.presentation.states.TaskState
 import com.elena.autoplanner.presentation.states.TaskStatus
@@ -36,7 +38,8 @@ class TaskViewModel(
     private val toggleSubtaskUseCase: ToggleSubtaskUseCase,
     private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
     private val deleteAllTasksUseCase: DeleteAllTasksUseCase,
-    private val filterTasksUseCase: FilterTasksUseCase
+    private val filterTasksUseCase: FilterTasksUseCase,
+    private val toggleTaskCompletionUseCase: ToggleTaskCompletionUseCase
 ) : BaseViewModel<TaskIntent, TaskState, TaskEffect>() {
 
     override fun createInitialState(): TaskState = TaskState()
@@ -47,7 +50,10 @@ class TaskViewModel(
             is TaskIntent.CreateTask -> createTask(intent.newTaskData)
             is TaskIntent.UpdateTask -> updateTask(intent.task)
             is TaskIntent.DeleteTask -> deleteTask(intent.task)
-            is TaskIntent.ToggleTaskCompletion -> toggleTaskCompletion(intent.task, intent.checked)
+            is TaskIntent.ToggleTaskCompletion -> toggleTaskCompletion(
+                intent.task.id,
+                intent.checked
+            )
             is TaskIntent.UpdateStatusFilter -> updateStatusFilter(intent.status)
             is TaskIntent.UpdateTimeFrameFilter -> updateTimeFrameFilter(intent.timeFrame)
             is TaskIntent.AddSubtask -> addSubtask(intent.task, intent.subtaskName)
@@ -131,6 +137,54 @@ class TaskViewModel(
         }
     }
 
+
+    private fun toggleTaskCompletion(taskId: Int, completed: Boolean) {
+        viewModelScope.launch {
+            val currentTasks = currentState.tasks
+
+            val updatedTasksList = currentTasks.map {
+                if (it.id == taskId) it.copy(isCompleted = completed) else it
+            }
+            val filteredTasks = filterTasksUseCase(
+                updatedTasksList,
+                currentState.filters.status,
+                currentState.filters.timeFrame
+            )
+
+            setState {
+                copy(
+                    tasks = updatedTasksList,
+                    filteredTasks = filteredTasks,
+                    uiState = TaskState.UiState.Loading
+                )
+            }
+
+            toggleTaskCompletionUseCase(taskId, completed).fold(
+                onSuccess = {
+                    // Update the state to indicate success
+                    setState {
+                        copy(uiState = TaskState.UiState.Success("Task updated"))
+                    }
+                    setEffect(TaskEffect.Success("Task updated"))
+                },
+                onFailure = { error ->
+                    setState {
+                        copy(
+                            tasks = currentTasks,
+                            filteredTasks = filterTasksUseCase(
+                                currentTasks,
+                                currentState.filters.status,
+                                currentState.filters.timeFrame
+                            ),
+                            uiState = TaskState.UiState.Error(error.message)
+                        )
+                    }
+                    setEffect(TaskEffect.Error(error.message ?: "Unknown error"))
+                }
+            )
+        }
+    }
+
     private fun updateTask(task: Task) {
         viewModelScope.launch {
             setState { copy(uiState = TaskState.UiState.Loading) }
@@ -195,13 +249,6 @@ class TaskViewModel(
                 }
             )
             setEffect(TaskEffect.ShowLoading(false))
-        }
-    }
-
-    private fun toggleTaskCompletion(task: Task, checked: Boolean) {
-        viewModelScope.launch {
-            val updatedTask = task.copy(isCompleted = checked)
-            updateTask(updatedTask)
         }
     }
 
