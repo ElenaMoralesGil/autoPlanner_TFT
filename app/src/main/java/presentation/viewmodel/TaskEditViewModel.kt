@@ -8,7 +8,6 @@ import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.presentation.effects.TaskEditEffect
 import com.elena.autoplanner.presentation.intents.TaskEditIntent
 import com.elena.autoplanner.presentation.states.TaskEditState
-import com.elena.autoplanner.presentation.utils.BaseViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -19,7 +18,7 @@ import java.time.LocalDateTime
 class TaskEditViewModel(
     private val getTaskUseCase: GetTaskUseCase,
     private val saveTaskUseCase: SaveTaskUseCase
-) : BaseViewModel<TaskEditIntent, TaskEditState, TaskEditEffect>() {
+) : BaseTaskViewModel<TaskEditIntent, TaskEditState, TaskEditEffect>() {
 
     override fun createInitialState(): TaskEditState = TaskEditState()
 
@@ -43,7 +42,6 @@ class TaskEditViewModel(
 
     private fun loadTask(taskId: Int) {
         if (taskId == 0) {
-            // New task
             setState {
                 copy(
                     isNewTask = true,
@@ -56,7 +54,9 @@ class TaskEditViewModel(
         viewModelScope.launch {
             setState { copy(isLoading = true) }
 
-            getTaskUseCase(taskId).fold(
+            executeTaskOperation(
+                setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                operation = { getTaskUseCase(taskId) },
                 onSuccess = { task ->
                     setState {
                         copy(
@@ -75,9 +75,9 @@ class TaskEditViewModel(
                         )
                     }
                 },
-                onFailure = { error ->
-                    setState { copy(isLoading = false, error = error.message) }
-                    setEffect(TaskEditEffect.ShowSnackbar("Error loading task: ${error.message}"))
+                onError = { errorMessage ->
+                    setState { copy(isLoading = false, error = errorMessage) }
+                    setEffect(TaskEditEffect.ShowSnackbar("Error loading task: $errorMessage"))
                 }
             )
         }
@@ -133,18 +133,17 @@ class TaskEditViewModel(
                 subtasks = state.subtasks
             )
 
-            saveTaskUseCase(task).fold(
+            executeTaskOperation(
+                setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                operation = { saveTaskUseCase(task) },
                 onSuccess = { _ ->
+                    val message = if (state.isNewTask) "Task created" else "Task updated"
                     setEffect(TaskEditEffect.NavigateBack)
-                    setEffect(
-                        TaskEditEffect.ShowSnackbar(
-                            if (state.isNewTask) "Task created" else "Task updated"
-                        )
-                    )
+                    setEffect(TaskEditEffect.ShowSnackbar(message))
                 },
-                onFailure = { error ->
-                    setState { copy(isLoading = false, error = error.message) }
-                    setEffect(TaskEditEffect.ShowSnackbar("Error saving task: ${error.message}"))
+                onError = { errorMessage ->
+                    setState { copy(isLoading = false, error = errorMessage) }
+                    setEffect(TaskEditEffect.ShowSnackbar("Error saving task: $errorMessage"))
                 }
             )
         }

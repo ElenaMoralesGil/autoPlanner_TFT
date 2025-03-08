@@ -1,4 +1,4 @@
-package com.elena.autoplanner.presentation.utils
+package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -47,6 +47,7 @@ abstract class BaseViewModel<I : Intent, S, E : UiEffect> : ViewModel() {
             _state.update { (it ?: createInitialState()).reducer() }
         }
     }
+
 
     protected fun setEffect(effect: E) {
         viewModelScope.launch { _effect.emit(effect) }

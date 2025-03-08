@@ -1,6 +1,6 @@
 package com.elena.autoplanner.presentation.intents
 
-import com.elena.autoplanner.presentation.utils.Intent
+import com.elena.autoplanner.presentation.viewmodel.Intent
 
 sealed class TaskDetailIntent : Intent {
     data class LoadTask(val taskId: Int) : TaskDetailIntent()

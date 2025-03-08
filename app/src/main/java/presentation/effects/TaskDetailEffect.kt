@@ -1,6 +1,6 @@
 package com.elena.autoplanner.presentation.effects
 
-import com.elena.autoplanner.presentation.utils.UiEffect
+import com.elena.autoplanner.presentation.viewmodel.UiEffect
 
 sealed class TaskDetailEffect : UiEffect {
     object NavigateBack : TaskDetailEffect()

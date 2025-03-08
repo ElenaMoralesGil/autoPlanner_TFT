@@ -6,7 +6,7 @@ import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.TimePlanning
-import com.elena.autoplanner.presentation.utils.Intent
+import com.elena.autoplanner.presentation.viewmodel.Intent
 
 sealed class TaskEditIntent : Intent {
     data class LoadTask(val taskId: Int) : TaskEditIntent()

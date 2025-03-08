@@ -3,7 +3,7 @@ package com.elena.autoplanner.presentation.intents
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
-import com.elena.autoplanner.presentation.utils.Intent
+import com.elena.autoplanner.presentation.viewmodel.Intent
 
 sealed class TaskListIntent : Intent {
     object LoadTasks : TaskListIntent()

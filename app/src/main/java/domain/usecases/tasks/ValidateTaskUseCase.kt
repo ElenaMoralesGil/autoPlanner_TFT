@@ -2,24 +2,25 @@ package com.elena.autoplanner.domain.usecases.tasks
 
 import com.elena.autoplanner.domain.exceptions.TaskValidationException
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.repository.TaskResult
 
 
 class ValidateTaskUseCase {
-    operator fun invoke(task: Task): Result<Task> {
+    operator fun invoke(task: Task): TaskResult<Task> {
         return when {
             task.name.isBlank() ->
-                Result.failure(TaskValidationException("Task name cannot be empty"))
+                TaskResult.Error("Task name cannot be empty")
 
             task.endDateConf != null && task.startDateConf?.dateTime?.isAfter(task.endDateConf.dateTime) == true ->
-                Result.failure(TaskValidationException("Start date must be before end date"))
+                TaskResult.Error("Start date must be before end date")
 
             task.startDateConf == null && task.endDateConf != null ->
-                Result.failure(TaskValidationException("End date requires start date"))
+                TaskResult.Error("End date requires start date")
 
             task.durationConf?.totalMinutes != null && task.durationConf.totalMinutes < 0 ->
-                Result.failure(TaskValidationException("Duration cannot be negative"))
+                TaskResult.Error("Duration cannot be negative")
 
-            else -> Result.success(task)
+            else -> TaskResult.Success(task)
         }
     }
 }

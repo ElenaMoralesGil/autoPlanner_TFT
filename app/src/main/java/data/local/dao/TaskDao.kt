@@ -2,6 +2,7 @@ package com.elena.autoplanner.data.local.dao
 
 import androidx.room.*
 import com.elena.autoplanner.data.local.entities.TaskEntity
+import com.elena.autoplanner.data.repository.TaskWithRelations
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -28,4 +29,14 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks")
     suspend fun deleteAllTasks()
+
+    @Transaction
+    @Query("SELECT * FROM tasks")
+    fun getTasksWithRelations(): Flow<List<TaskWithRelations>>
+
+    @Transaction
+    @Query("SELECT * FROM tasks WHERE id = :taskId")
+    suspend fun getTaskWithRelations(taskId: Int): TaskWithRelations?
+
+
 }

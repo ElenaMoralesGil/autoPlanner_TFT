@@ -8,16 +8,10 @@ import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.presentation.effects.TaskDetailEffect
-import com.elena.autoplanner.presentation.effects.TaskListEffect
 import com.elena.autoplanner.presentation.intents.TaskDetailIntent
 import com.elena.autoplanner.presentation.states.TaskDetailState
-import com.elena.autoplanner.presentation.utils.BaseViewModel
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel for the task detail screen
- * Handles detailed task viewing and modifications
- */
 class TaskDetailViewModel(
     private val getTaskUseCase: GetTaskUseCase,
     private val toggleTaskCompletionUseCase: ToggleTaskCompletionUseCase,
@@ -26,7 +20,7 @@ class TaskDetailViewModel(
     private val toggleSubtaskUseCase: ToggleSubtaskUseCase,
     private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
     private val taskId: Int // Inject the taskId parameter
-) : BaseViewModel<TaskDetailIntent, TaskDetailState, TaskDetailEffect>() {
+) : BaseTaskViewModel<TaskDetailIntent, TaskDetailState, TaskDetailEffect>() {
 
     override fun createInitialState(): TaskDetailState = TaskDetailState()
 
@@ -42,7 +36,6 @@ class TaskDetailViewModel(
         }
     }
 
-    // Automatically load task on initialization
     init {
         viewModelScope.launch {
             loadTask(taskId)
@@ -53,13 +46,15 @@ class TaskDetailViewModel(
         viewModelScope.launch {
             setState { copy(isLoading = true, error = null) }
 
-            getTaskUseCase(taskId).fold(
+            executeTaskOperation(
+                setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                operation = { getTaskUseCase(taskId) },
                 onSuccess = { task ->
-                    setState { copy(isLoading = false, task = task, error = null) }
+                    setState { copy(task = task, error = null) }
                 },
-                onFailure = { error ->
-                    setState { copy(isLoading = false, error = error.message) }
-                    setEffect(TaskDetailEffect.ShowSnackbar("Error loading task: ${error.message}"))
+                onError = { errorMessage ->
+                    setState { copy(error = errorMessage) }
+                    setEffect(TaskDetailEffect.ShowSnackbar("Error loading task: $errorMessage"))
                 }
             )
         }
@@ -67,30 +62,24 @@ class TaskDetailViewModel(
 
     private fun toggleTaskCompletion(completed: Boolean) {
         viewModelScope.launch {
-
             val currentTask = currentState.task ?: return@launch
 
+            // Optimistic update
             setState {
                 copy(task = currentTask.copy(isCompleted = completed))
             }
 
-            toggleTaskCompletionUseCase(currentTask.id, completed).fold(
+            executeTaskOperation(
+                setLoadingState = { /* No loading indicator for quick operations */ },
+                operation = { toggleTaskCompletionUseCase(currentTask.id, completed) },
                 onSuccess = {
-                    if (completed) {
-                        setEffect(TaskDetailEffect.ShowSnackbar("Task completed"))
-                    } else {
-                        setEffect(TaskDetailEffect.ShowSnackbar("Task marked as incomplete"))
-                    }
-
+                    val message = if (completed) "Task completed" else "Task marked as incomplete"
+                    setEffect(TaskDetailEffect.ShowSnackbar(message))
                 },
-                onFailure = { error ->
-                    setState {
-                        copy(
-                            task = currentTask,
-                            error = error.message
-                        )
-                    }
-                    setEffect(TaskDetailEffect.ShowSnackbar("Error updating task: ${error.message}"))
+                onError = { errorMessage ->
+                    // Revert optimistic update
+                    setState { copy(task = currentTask, error = errorMessage) }
+                    setEffect(TaskDetailEffect.ShowSnackbar("Error updating task: $errorMessage"))
                 }
             )
         }
@@ -101,14 +90,16 @@ class TaskDetailViewModel(
             val taskId = currentState.task?.id ?: return@launch
             setState { copy(isLoading = true) }
 
-            deleteTaskUseCase(taskId).fold(
+            executeTaskOperation(
+                setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                operation = { deleteTaskUseCase(taskId) },
                 onSuccess = {
                     setEffect(TaskDetailEffect.NavigateBack)
                     setEffect(TaskDetailEffect.ShowSnackbar("Task deleted"))
                 },
-                onFailure = { error ->
-                    setState { copy(isLoading = false, error = error.message) }
-                    setEffect(TaskDetailEffect.ShowSnackbar("Error deleting task: ${error.message}"))
+                onError = { errorMessage ->
+                    setState { copy(error = errorMessage) }
+                    setEffect(TaskDetailEffect.ShowSnackbar("Error deleting task: $errorMessage"))
                 }
             )
         }
@@ -123,30 +114,35 @@ class TaskDetailViewModel(
 
             val taskId = currentState.task?.id ?: return@launch
 
-            addSubtaskUseCase(taskId, name).fold(
+            executeTaskOperation(
+                setLoadingState = { },
+                operation = { addSubtaskUseCase(taskId, name) },
                 onSuccess = { updatedTask ->
                     setState { copy(task = updatedTask) }
                     setEffect(TaskDetailEffect.ShowSnackbar("Subtask added"))
                 },
-                onFailure = { error ->
-                    setState { copy(error = error.message) }
-                    setEffect(TaskDetailEffect.ShowSnackbar("Error adding subtask: ${error.message}"))
+                onError = { errorMessage ->
+                    setState { copy(error = errorMessage) }
+                    setEffect(TaskDetailEffect.ShowSnackbar("Error adding subtask: $errorMessage"))
                 }
             )
         }
     }
 
+
     private fun toggleSubtask(subtaskId: Int, completed: Boolean) {
         viewModelScope.launch {
             val taskId = currentState.task?.id ?: return@launch
 
-            toggleSubtaskUseCase(taskId, subtaskId, completed).fold(
+            executeTaskOperation(
+                setLoadingState = { },
+                operation = { toggleSubtaskUseCase(taskId, subtaskId, completed) },
                 onSuccess = { updatedTask ->
                     setState { copy(task = updatedTask) }
                 },
-                onFailure = { error ->
-                    setState { copy(error = error.message) }
-                    setEffect(TaskDetailEffect.ShowSnackbar("Error updating subtask: ${error.message}"))
+                onError = { errorMessage ->
+                    setState { copy(error = errorMessage) }
+                    setEffect(TaskDetailEffect.ShowSnackbar("Error updating subtask: $errorMessage"))
                 }
             )
         }
@@ -156,14 +152,16 @@ class TaskDetailViewModel(
         viewModelScope.launch {
             val taskId = currentState.task?.id ?: return@launch
 
-            deleteSubtaskUseCase(taskId, subtaskId).fold(
+            executeTaskOperation(
+                setLoadingState = { },
+                operation = { deleteSubtaskUseCase(taskId, subtaskId) },
                 onSuccess = { updatedTask ->
                     setState { copy(task = updatedTask) }
                     setEffect(TaskDetailEffect.ShowSnackbar("Subtask deleted"))
                 },
-                onFailure = { error ->
-                    setState { copy(error = error.message) }
-                    setEffect(TaskDetailEffect.ShowSnackbar("Error deleting subtask: ${error.message}"))
+                onError = { errorMessage ->
+                    setState { copy(error = errorMessage) }
+                    setEffect(TaskDetailEffect.ShowSnackbar("Error deleting subtask: $errorMessage"))
                 }
             )
         }

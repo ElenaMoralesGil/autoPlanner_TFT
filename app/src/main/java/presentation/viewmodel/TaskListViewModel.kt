@@ -2,15 +2,16 @@ package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.FilterTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
+import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.presentation.effects.TaskListEffect
 import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.states.TaskListState
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
-import com.elena.autoplanner.presentation.utils.BaseViewModel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
@@ -18,8 +19,10 @@ import kotlinx.coroutines.launch
 class TaskListViewModel(
     private val getTasksUseCase: GetTasksUseCase,
     private val filterTasksUseCase: FilterTasksUseCase,
-    private val toggleTaskCompletionUseCase: ToggleTaskCompletionUseCase
-) : BaseViewModel<TaskListIntent, TaskListState, TaskListEffect>() {
+    private val toggleTaskCompletionUseCase: ToggleTaskCompletionUseCase,
+    private val deleteTaskUseCase: DeleteTaskUseCase,
+    private val saveTaskUseCase: SaveTaskUseCase
+) : BaseTaskViewModel<TaskListIntent, TaskListState, TaskListEffect>() {
 
     override fun createInitialState(): TaskListState = TaskListState()
 
@@ -39,30 +42,35 @@ class TaskListViewModel(
     }
 
     private fun loadTasks() {
-        viewModelScope.launch {
-            setState { copy(isLoading = true, error = null) }
+        super.loadTasks(
+            getTasksUseCase = getTasksUseCase,
+            setLoadingState = { isLoading ->
+                setState { copy(isLoading = isLoading) }
+            },
+            processResult = { tasks ->
+                applyFilters(tasks)
+            },
+            handleError = { error ->
+                setState { copy(isLoading = false, error = error.message) }
+                setEffect(TaskListEffect.ShowSnackbar("Error loading tasks: ${error.message}"))
+            }
+        )
+    }
 
-            getTasksUseCase()
-                .catch { error ->
-                    setState { copy(isLoading = false, error = error.message) }
-                    setEffect(TaskListEffect.ShowSnackbar("Error loading tasks: ${error.message}"))
-                }
-                .collect { tasks ->
-                    val filteredTasks = filterTasksUseCase(
-                        tasks,
-                        currentState.statusFilter,
-                        currentState.timeFrameFilter
-                    )
+    private fun applyFilters(tasks: List<Task>) {
+        val filteredTasks = filterTasksUseCase(
+            tasks,
+            currentState.statusFilter,
+            currentState.timeFrameFilter
+        )
 
-                    setState {
-                        copy(
-                            isLoading = false,
-                            tasks = tasks,
-                            filteredTasks = filteredTasks,
-                            error = null
-                        )
-                    }
-                }
+        setState {
+            copy(
+                isLoading = false,
+                tasks = tasks,
+                filteredTasks = filteredTasks,
+                error = null
+            )
         }
     }
 
@@ -102,27 +110,11 @@ class TaskListViewModel(
 
     private fun toggleTaskCompletion(taskId: Int, completed: Boolean) {
         viewModelScope.launch {
-            val currentTasks = currentState.tasks
-            val updatedTasksList = currentTasks.map {
-                if (it.id == taskId) it.copy(isCompleted = completed) else it
-            }
+            updateTaskCompletionInState(taskId, completed)
 
-            val filteredTasks = filterTasksUseCase(
-                updatedTasksList,
-                currentState.statusFilter,
-                currentState.timeFrameFilter
-            )
-
-
-            setState {
-                copy(
-                    tasks = updatedTasksList,
-                    filteredTasks = filteredTasks
-                )
-            }
-
-
-            toggleTaskCompletionUseCase(taskId, completed).fold(
+            executeTaskOperation(
+                setLoadingState = { },
+                operation = { toggleTaskCompletionUseCase(taskId, completed) },
                 onSuccess = {
                     if (completed) {
                         setEffect(TaskListEffect.ShowSnackbar("Task completed"))
@@ -130,33 +122,124 @@ class TaskListViewModel(
                         setEffect(TaskListEffect.ShowSnackbar("Task marked as incomplete"))
                     }
                 },
-                onFailure = { error ->
-
-                    setState {
-                        copy(
-                            tasks = currentTasks,
-                            filteredTasks = filterTasksUseCase(
-                                currentTasks,
-                                currentState.statusFilter,
-                                currentState.timeFrameFilter
-                            ),
-                            error = error.message
-                        )
-                    }
-                    setEffect(TaskListEffect.ShowSnackbar("Error updating task: ${error.message}"))
+                onError = { errorMessage ->
+                    updateTaskCompletionInState(taskId, !completed)
+                    setState { copy(error = errorMessage) }
+                    setEffect(TaskListEffect.ShowSnackbar(errorMessage))
                 }
             )
         }
     }
 
+    private fun updateTaskCompletionInState(taskId: Int, completed: Boolean) {
+        val currentTasks = currentState.tasks
+        val updatedTasksList = currentTasks.map {
+            if (it.id == taskId) it.copy(isCompleted = completed) else it
+        }
+
+        val filteredTasks = filterTasksUseCase(
+            updatedTasksList,
+            currentState.statusFilter,
+            currentState.timeFrameFilter
+        )
+
+        setState {
+            copy(
+                tasks = updatedTasksList,
+                filteredTasks = filteredTasks
+            )
+        }
+    }
+
     private fun handleDeleteTask(taskId: Int) {
-        setEffect(TaskListEffect.ShowSnackbar("Delete task functionality not implemented yet"))
-        loadTasks()
+        viewModelScope.launch {
+            setState { copy(isLoading = true) }
+
+            val taskToDelete = currentState.tasks.find { it.id == taskId }
+            val updatedTasks = currentState.tasks.filter { it.id != taskId }
+
+            setState {
+                copy(
+                    tasks = updatedTasks,
+                    filteredTasks = filterTasksUseCase(
+                        updatedTasks,
+                        statusFilter,
+                        timeFrameFilter
+                    )
+                )
+            }
+
+            executeTaskOperation(
+                setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                operation = { deleteTaskUseCase(taskId) },
+                onSuccess = {
+                    setEffect(TaskListEffect.ShowSnackbar("Task deleted successfully"))
+                },
+                onError = { errorMessage ->
+                    taskToDelete?.let {
+                        val restoredTasks = currentState.tasks + it
+                        setState {
+                            copy(
+                                tasks = restoredTasks,
+                                filteredTasks = filterTasksUseCase(
+                                    restoredTasks,
+                                    statusFilter,
+                                    timeFrameFilter
+                                ),
+                                error = errorMessage
+                            )
+                        }
+                    }
+                    setEffect(TaskListEffect.ShowSnackbar("Error deleting task: $errorMessage"))
+                }
+            )
+        }
     }
 
     private fun handleUpdateTask(task: Task) {
+        viewModelScope.launch {
+            val updatedTasks = currentState.tasks.map {
+                if (it.id == task.id) task else it
+            }
 
-        setEffect(TaskListEffect.ShowSnackbar("Update task functionality not implemented yet"))
-        loadTasks()
+            setState {
+                copy(
+                    tasks = updatedTasks,
+                    filteredTasks = filterTasksUseCase(
+                        updatedTasks,
+                        statusFilter,
+                        timeFrameFilter
+                    )
+                )
+            }
+
+            executeTaskOperation(
+                setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                operation = { saveTaskUseCase(task) },
+                onSuccess = { _ ->
+                    setEffect(TaskListEffect.ShowSnackbar("Task updated successfully"))
+                },
+                onError = { errorMessage ->
+                    val originalTask = currentState.tasks.find { it.id == task.id }
+                    originalTask?.let {
+                        val restoredTasks = currentState.tasks.map { t ->
+                            if (t.id == task.id) originalTask else t
+                        }
+                        setState {
+                            copy(
+                                tasks = restoredTasks,
+                                filteredTasks = filterTasksUseCase(
+                                    restoredTasks,
+                                    statusFilter,
+                                    timeFrameFilter
+                                ),
+                                error = errorMessage
+                            )
+                        }
+                    }
+                    setEffect(TaskListEffect.ShowSnackbar("Error updating task: $errorMessage"))
+                }
+            )
+        }
     }
 }

@@ -6,24 +6,22 @@ import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
+import com.elena.autoplanner.data.local.entities.ReminderEntity
+import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
+import com.elena.autoplanner.data.local.entities.SubtaskEntity
+import com.elena.autoplanner.data.local.entities.TaskEntity
+
 import com.elena.autoplanner.data.mappers.toDomain
 import com.elena.autoplanner.data.mappers.toEntity
 import com.elena.autoplanner.data.mappers.toTaskEntity
-import com.elena.autoplanner.domain.exceptions.RepositoryException
-import com.elena.autoplanner.domain.exceptions.TaskNotFoundException
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.repository.TaskRepository
+import com.elena.autoplanner.domain.repository.TaskResult
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.time.LocalDateTime
@@ -36,134 +34,134 @@ class TaskRepositoryImpl(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : TaskRepository {
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    override fun getTasks(): Flow<List<Task>> = taskDao.getAllTasks()
-        .flatMapLatest { taskEntities ->
-            if (taskEntities.isEmpty()) {
-                flowOf(emptyList())
-            } else {
-                combine(
-                    taskEntities.map { taskEntity ->
-                        combine(
-                            reminderDao.getRemindersForTask(taskEntity.id),
-                            repeatConfigDao.getRepeatConfigsForTask(taskEntity.id),
-                            subtaskDao.getSubtasksForTask(taskEntity.id)
-                        ) { reminders, repeats, subtasks ->
-                            taskEntity.toDomain(reminders, repeats, subtasks)
-                        }
-                    }
-                ) { tasks -> tasks.toList() }
-            }
-        }
+
+    override fun getTasks(): Flow<List<Task>> = taskDao.getTasksWithRelations()
+        .map { taskRelations -> taskRelations.map { it.toDomainTask() } }
         .catch { error ->
-            Log.e("TaskRepository", "Error fetching tasks", error)
+            Log.e(TAG, "Error fetching tasks", error)
             emit(emptyList())
         }
-        .flowOn(dispatcher)
 
-    override suspend fun getTask(taskId: Int): Result<Task> = withContext(dispatcher) {
+
+    override suspend fun getTask(taskId: Int): TaskResult<Task> = withContext(dispatcher) {
         try {
-            val taskEntity = taskDao.getTask(taskId) ?: return@withContext Result.failure(
-                TaskNotFoundException(taskId)
-            )
+            val taskWithRelations = taskDao.getTaskWithRelations(taskId)
+                ?: return@withContext TaskResult.Error("Task with id $taskId not found")
 
-            val reminders = reminderDao.getRemindersForTask(taskId).first()
-            val repeatConfigs = repeatConfigDao.getRepeatConfigsForTask(taskId).first()
-            val subtasks = subtaskDao.getSubtasksForTask(taskId).first()
-
-            val task = taskEntity.toDomain(reminders, repeatConfigs, subtasks)
-            Result.success(task)
+            TaskResult.Success(taskWithRelations.toDomainTask())
         } catch (e: Exception) {
-            Result.failure(mapException(e))
+            Log.e(TAG, "Error getting task $taskId", e)
+            TaskResult.Error(mapExceptionMessage(e), e)
         }
     }
 
-    override suspend fun saveTask(task: Task): Result<Int> = withContext(dispatcher) {
+
+    override suspend fun saveTask(task: Task): TaskResult<Int> = withContext(dispatcher) {
         try {
             // Ensure task has a start date if none is provided
-            val taskToSave = if (task.id == 0 && task.startDateConf == null) {
-                task.copy(startDateConf = com.elena.autoplanner.domain.models.TimePlanning(dateTime = LocalDateTime.now()))
-            } else task
+            val taskToSave = ensureTaskHasStartDate(task)
 
             val taskId = if (taskToSave.id == 0) {
-                // Insert new task
-                val taskEntity = taskToSave.toTaskEntity()
-                taskDao.insertTask(taskEntity).toInt()
+                insertNewTask(taskToSave)
             } else {
-                // Update existing task
-                val taskEntity = taskToSave.toTaskEntity()
-                taskDao.updateTask(taskEntity)
+                updateExistingTask(taskToSave)
                 taskToSave.id
             }
 
-            updateRelatedEntities(taskId, taskToSave)
-
-            Result.success(taskId)
+            TaskResult.Success(taskId)
         } catch (e: Exception) {
-            Log.e("TaskRepository", "Error saving task", e)
-            Result.failure(mapException(e))
+            Log.e(TAG, "Error saving task", e)
+            TaskResult.Error(mapExceptionMessage(e), e)
         }
     }
 
-    override suspend fun deleteTask(taskId: Int): Result<Unit> = withContext(dispatcher) {
+    override suspend fun deleteTask(taskId: Int): TaskResult<Unit> = withContext(dispatcher) {
         try {
-            val taskEntity = taskDao.getTask(taskId) ?: return@withContext Result.failure(
-                TaskNotFoundException(taskId)
-            )
+            val taskEntity = taskDao.getTask(taskId)
+                ?: return@withContext TaskResult.Error("Task with id $taskId not found")
 
             taskDao.deleteTask(taskEntity)
-            Result.success(Unit)
+            TaskResult.Success(Unit)
         } catch (e: Exception) {
-            Result.failure(mapException(e))
+            Log.e(TAG, "Error deleting task $taskId", e)
+            TaskResult.Error(mapExceptionMessage(e), e)
         }
     }
 
-    override suspend fun deleteAll(): Result<Unit> = withContext(dispatcher) {
+    override suspend fun deleteAll(): TaskResult<Unit> = withContext(dispatcher) {
         try {
             taskDao.deleteAllTasks()
-            Result.success(Unit)
+            TaskResult.Success(Unit)
         } catch (e: Exception) {
-            Result.failure(mapException(e))
+            Log.e(TAG, "Error deleting all tasks", e)
+            TaskResult.Error(mapExceptionMessage(e), e)
         }
+    }
+
+    override suspend fun updateTaskCompletion(taskId: Int, isCompleted: Boolean): TaskResult<Unit> =
+        withContext(dispatcher) {
+            try {
+                taskDao.updateTaskCompletion(taskId, isCompleted)
+                TaskResult.Success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating task completion", e)
+                TaskResult.Error(mapExceptionMessage(e), e)
+            }
+        }
+
+    private fun ensureTaskHasStartDate(task: Task): Task {
+        return if (task.id == 0 && task.startDateConf == null) {
+            task.copy(startDateConf = com.elena.autoplanner.domain.models.TimePlanning(dateTime = LocalDateTime.now()))
+        } else task
+    }
+
+    private suspend fun insertNewTask(task: Task): Int {
+        val taskEntity = task.toTaskEntity()
+        val taskId = taskDao.insertTask(taskEntity).toInt()
+        updateRelatedEntities(taskId, task)
+        return taskId
+    }
+
+    private suspend fun updateExistingTask(task: Task) {
+        val taskEntity = task.toTaskEntity()
+        taskDao.updateTask(taskEntity)
+        updateRelatedEntities(task.id, task)
     }
 
     private suspend fun updateRelatedEntities(taskId: Int, task: Task) {
 
         reminderDao.deleteRemindersForTask(taskId)
-        task.reminderPlan?.let { reminder ->
-            reminderDao.insertReminder(reminder.toEntity(taskId))
-        }
-
+        task.reminderPlan?.let { reminderDao.insertReminder(it.toEntity(taskId)) }
 
         repeatConfigDao.deleteRepeatConfigsForTask(taskId)
-        task.repeatPlan?.let { repeatPlan ->
-            repeatConfigDao.insertRepeatConfig(repeatPlan.toEntity(taskId))
-        }
-
+        task.repeatPlan?.let { repeatConfigDao.insertRepeatConfig(it.toEntity(taskId)) }
 
         subtaskDao.deleteSubtasksForTask(taskId)
         if (task.subtasks.isNotEmpty()) {
-            val subtaskEntities = task.subtasks.map { it.toEntity(taskId) }
-            subtaskDao.insertSubtasks(subtaskEntities)
+            subtaskDao.insertSubtasks(task.subtasks.map { it.toEntity(taskId) })
         }
     }
 
-    private fun mapException(e: Exception): Exception {
+    private fun mapExceptionMessage(e: Exception): String {
         return when (e) {
-            is SQLiteException -> RepositoryException("Database error", e)
-            is IOException -> RepositoryException("Network error", e)
-            else -> e
+            is SQLiteException -> "Database error: ${e.message}"
+            is IOException -> "Network error: ${e.message}"
+            else -> e.message ?: "Unknown error occurred"
         }
     }
 
-    override suspend fun updateTaskCompletion(taskId: Int, isCompleted: Boolean): Result<Unit> =
-        withContext(dispatcher) {
-            try {
-                taskDao.updateTaskCompletion(taskId, isCompleted)
-                Result.success(Unit)
-            } catch (e: Exception) {
-                Log.e("TaskRepository", "Error updating task completion", e)
-                Result.failure(mapException(e))
-            }
-        }
+    private fun TaskWithRelations.toDomainTask(): Task {
+        return task.toDomain(reminders, repeatConfigs, subtasks)
+    }
+
+    companion object {
+        private const val TAG = "TaskRepository"
+    }
 }
+
+data class TaskWithRelations(
+    val task: TaskEntity,
+    val reminders: List<ReminderEntity> = emptyList(),
+    val repeatConfigs: List<RepeatConfigEntity> = emptyList(),
+    val subtasks: List<SubtaskEntity> = emptyList()
+)
