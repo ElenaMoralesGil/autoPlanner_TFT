@@ -8,6 +8,7 @@ import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.presentation.effects.TaskDetailEffect
+import com.elena.autoplanner.presentation.effects.TaskListEffect
 import com.elena.autoplanner.presentation.intents.TaskDetailIntent
 import com.elena.autoplanner.presentation.states.TaskDetailState
 import com.elena.autoplanner.presentation.utils.BaseViewModel
@@ -75,7 +76,12 @@ class TaskDetailViewModel(
 
             toggleTaskCompletionUseCase(currentTask.id, completed).fold(
                 onSuccess = {
-                    setState { copy(task = it) }
+                    if (completed) {
+                        setEffect(TaskDetailEffect.ShowSnackbar("Task completed"))
+                    } else {
+                        setEffect(TaskDetailEffect.ShowSnackbar("Task marked as incomplete"))
+                    }
+
                 },
                 onFailure = { error ->
                     setState {

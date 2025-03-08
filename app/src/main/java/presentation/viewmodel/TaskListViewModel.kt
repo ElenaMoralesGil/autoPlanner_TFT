@@ -102,35 +102,47 @@ class TaskListViewModel(
 
     private fun toggleTaskCompletion(taskId: Int, completed: Boolean) {
         viewModelScope.launch {
-            toggleTaskCompletionUseCase(taskId, completed).fold(
-                onSuccess = { updatedTask ->
-                    // Update local state immediately
-                    val updatedTasksList = currentState.tasks.map {
-                        if (it.id == taskId) updatedTask else it
-                    }
+            val currentTasks = currentState.tasks
+            val updatedTasksList = currentTasks.map {
+                if (it.id == taskId) it.copy(isCompleted = completed) else it
+            }
 
-                    val filteredTasks = filterTasksUseCase(
-                        updatedTasksList,
-                        currentState.statusFilter,
-                        currentState.timeFrameFilter
-                    )
+            val filteredTasks = filterTasksUseCase(
+                updatedTasksList,
+                currentState.statusFilter,
+                currentState.timeFrameFilter
+            )
+
+
+            setState {
+                copy(
+                    tasks = updatedTasksList,
+                    filteredTasks = filteredTasks
+                )
+            }
+
+
+            toggleTaskCompletionUseCase(taskId, completed).fold(
+                onSuccess = {
+                    if (completed) {
+                        setEffect(TaskListEffect.ShowSnackbar("Task completed"))
+                    } else {
+                        setEffect(TaskListEffect.ShowSnackbar("Task marked as incomplete"))
+                    }
+                },
+                onFailure = { error ->
 
                     setState {
                         copy(
-                            tasks = updatedTasksList,
-                            filteredTasks = filteredTasks
+                            tasks = currentTasks,
+                            filteredTasks = filterTasksUseCase(
+                                currentTasks,
+                                currentState.statusFilter,
+                                currentState.timeFrameFilter
+                            ),
+                            error = error.message
                         )
                     }
-
-                    setEffect(
-                        TaskListEffect.ShowSnackbar(
-                            if (completed) "Task marked as completed"
-                            else "Task marked as not completed"
-                        )
-                    )
-                },
-                onFailure = { error ->
-                    setState { copy(error = error.message) }
                     setEffect(TaskListEffect.ShowSnackbar("Error updating task: ${error.message}"))
                 }
             )

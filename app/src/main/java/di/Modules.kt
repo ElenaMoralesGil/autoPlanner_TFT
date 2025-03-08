@@ -85,7 +85,7 @@ val useCaseModule = module {
     single { AddSubtaskUseCase(get(), get()) }
     single { SaveTaskUseCase(get(), get()) }
     single { ValidateTaskUseCase() }
-    single { ToggleTaskCompletionUseCase(get(), get()) }
+    single { ToggleTaskCompletionUseCase(get()) }
     single { ToggleSubtaskUseCase(get(), get()) }
     single { DeleteSubtaskUseCase(get(), get()) }
     single { DeleteAllTasksUseCase(get()) }
