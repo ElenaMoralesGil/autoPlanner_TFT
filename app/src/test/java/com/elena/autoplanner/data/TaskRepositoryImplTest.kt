@@ -10,9 +10,8 @@ import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
 import com.elena.autoplanner.data.local.entities.SubtaskEntity
 import com.elena.autoplanner.data.local.entities.TaskEntity
 import com.elena.autoplanner.data.mappers.toDomain
-import com.elena.autoplanner.data.repository.DatabaseException
-import com.elena.autoplanner.data.repository.TaskNotFoundException
 import com.elena.autoplanner.data.repository.TaskRepositoryImpl
+import com.elena.autoplanner.domain.exceptions.TaskNotFoundException
 import com.elena.autoplanner.domain.models.DayOfWeek
 import com.elena.autoplanner.domain.models.IntervalUnit
 import io.mockk.Runs
@@ -446,7 +445,6 @@ class TaskRepositoryImplTest {
         id = id,
         name = name,
         isCompleted = isCompleted,
-        isExpired = isExpired,
         priority = priority,
         startDateTime = startDateTime,
         startDayPeriod = startDayPeriod,
