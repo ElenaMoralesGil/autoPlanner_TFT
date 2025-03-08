@@ -2,7 +2,6 @@ package com.elena.autoplanner.data.local.dao
 
 import androidx.room.*
 import com.elena.autoplanner.data.local.entities.TaskEntity
-import com.elena.autoplanner.data.repository.TaskWithRelations
 import kotlinx.coroutines.flow.Flow
 
 @Dao
