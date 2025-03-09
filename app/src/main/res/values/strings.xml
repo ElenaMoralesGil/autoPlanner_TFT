@@ -18,7 +18,23 @@
     <string name="low_priority">Low Priority</string>
     <string name="save">Save</string>
 
+
     // Error messages
-    <string name="taskError"> Task needs a name</string>
+    <string name="task_has_no_name"> Task needs a name</string>
+    <string name="task_not_found">Task not found with id: %d</string>
+    <string name="task_not_updated">Task not updated with id: %d</string>
+    <string name="task_not_deleted">Task not deleted with id: %d</string>
+    <string name="task_not_added">Task not added</string>
+    <string name="task_not_completed">Task not completed with id: %d</string>
+    <string name="database_error">Database error: %s</string>/string>
+    <string name="DATABASE_ERROR"> Database error: %s </string>
+    <string name="network_error">Network error: %s</string>
+    <string name="unknown_error">An unknown error occurred</string>
+    <string name="task_name_empty">Task name cannot be empty</string>
+    <string name="start_after_end">Start date must be before end date</string>
+    <string name="end_without_start">End date requires start date</string>
+    <string name="negative_duration">Duration cannot be negative</string>
+    <string name="subtask_name_empty">Subtask name cannot be empty</string>
+
 
 </resources>

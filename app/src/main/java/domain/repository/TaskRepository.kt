@@ -4,7 +4,7 @@ import com.elena.autoplanner.domain.models.Task
 import kotlinx.coroutines.flow.Flow
 
 interface TaskRepository {
-    fun getTasks(): Flow<List<Task>>
+    fun getTasks(): Flow<TaskResult<List<Task>>>
     suspend fun getTask(taskId: Int): TaskResult<Task>
     suspend fun saveTask(task: Task): TaskResult<Int>
     suspend fun deleteTask(taskId: Int): TaskResult<Unit>

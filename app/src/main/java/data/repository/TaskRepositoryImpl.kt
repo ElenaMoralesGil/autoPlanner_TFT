@@ -59,7 +59,6 @@ class TaskRepositoryImpl(
 
     override suspend fun saveTask(task: Task): TaskResult<Int> = withContext(dispatcher) {
         try {
-            // Ensure task has a start date if none is provided
             val taskToSave = ensureTaskHasStartDate(task)
 
             val taskId = if (taskToSave.id == 0) {
