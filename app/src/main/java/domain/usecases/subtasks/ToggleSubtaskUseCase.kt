@@ -22,7 +22,7 @@ class ToggleSubtaskUseCase(
                     if (it.id == subtaskId) it.copy(isCompleted = isCompleted) else it
                 }
 
-                val updatedTask = task.copy(subtasks = updatedSubtasks)
+                val updatedTask = Task.from(task).subtasks(updatedSubtasks).build()
 
                 when (val saveResult = saveTaskUseCase(updatedTask)) {
                     is TaskResult.Success -> TaskResult.Success(updatedTask)

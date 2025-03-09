@@ -25,7 +25,7 @@ class AddSubtaskUseCase(
                 else task.subtasks.maxOf { it.id } + 1
 
                 val newSubtask = Subtask(id = nextId, name = name)
-                val updatedTask = task.copy(subtasks = task.subtasks + newSubtask)
+                val updatedTask = Task.from(task).subtasks(task.subtasks + newSubtask).build()
 
                 when (val saveResult = saveTaskUseCase(updatedTask)) {
                     is TaskResult.Success -> TaskResult.Success(updatedTask)

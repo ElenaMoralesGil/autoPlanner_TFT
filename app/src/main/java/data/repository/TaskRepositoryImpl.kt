@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import java.io.IOException
-import java.time.LocalDateTime
 
 class TaskRepositoryImpl(
     private val context: Context,
@@ -67,15 +66,12 @@ class TaskRepositoryImpl(
 
     override suspend fun saveTask(task: Task): TaskResult<Int> = withContext(dispatcher) {
         try {
-            val taskToSave = ensureTaskHasStartDate(task)
-
-            val taskId = if (taskToSave.id == 0) {
-                insertNewTask(taskToSave)
+            val taskId = if (task.id == 0) {
+                insertNewTask(task)
             } else {
-                updateExistingTask(taskToSave)
-                taskToSave.id
+                updateExistingTask(task)
+                task.id
             }
-
             TaskResult.Success(taskId)
         } catch (e: Exception) {
             TaskResult.Error(mapExceptionMessage(e), e)
@@ -116,12 +112,6 @@ class TaskRepositoryImpl(
                 TaskResult.Error(mapExceptionMessage(e), e)
             }
         }
-
-    private fun ensureTaskHasStartDate(task: Task): Task {
-        return if (task.id == 0 && task.startDateConf == null) {
-            task.copy(startDateConf = com.elena.autoplanner.domain.models.TimePlanning(dateTime = LocalDateTime.now()))
-        } else task
-    }
 
     private suspend fun insertNewTask(task: Task): Int {
         val taskEntity = taskMapper.mapToEntity(task)

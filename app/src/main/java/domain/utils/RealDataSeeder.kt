@@ -5,6 +5,7 @@ import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Subtask
+import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.repository.TaskRepository
 import com.elena.autoplanner.presentation.utils.NewTaskData
@@ -83,21 +84,16 @@ class RealDataSeeder(
                 subtaskCount = subtasks.size
             )
 
-            val sampleTask = NewTaskData(
-                name = sampleName,
-                priority = priority,
-                startDateConf = TimePlanning(
-                    dateTime = adjustedDateTime,
-                    dayPeriod = chosenPeriod
-                ),
-                endDateConf = endDateTime?.let {
-                    TimePlanning(it, dayPeriod = DayPeriod.NONE)
-                },
-                durationConf = randomDuration?.let { DurationPlan(it) },
-                subtasks = subtasks
-            )
+            val sampleTask = Task.Builder()
+                .name(sampleName)
+                .priority(priority)
+                .startDateConf(TimePlanning(dateTime = adjustedDateTime, dayPeriod = chosenPeriod))
+                .endDateConf(endDateTime?.let { TimePlanning(it, dayPeriod = DayPeriod.NONE) })
+                .durationConf(randomDuration?.let { DurationPlan(it) })
+                .subtasks(subtasks)
+                .build()
 
-            taskRepository.saveTask(sampleTask.toTask())
+            taskRepository.saveTask(sampleTask)
         }
     }
 

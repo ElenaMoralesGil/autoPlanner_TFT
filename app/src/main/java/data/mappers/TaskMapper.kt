@@ -31,32 +31,36 @@ class TaskMapper {
         val repeatConfigMapper = RepeatConfigMapper()
         val subtaskMapper = SubtaskMapper()
 
-        return Task(
-            id = taskEntity.id,
-            name = taskEntity.name,
-            isCompleted = taskEntity.isCompleted,
-            priority = mapPriority(taskEntity.priority),
-            startDateConf = taskEntity.startDateTime?.let {
-                TimePlanning(
-                    dateTime = it,
-                    dayPeriod = taskEntity.startDayPeriod?.let { period ->
-                        DayPeriod.valueOf(period)
-                    }
-                )
-            },
-            endDateConf = taskEntity.endDateTime?.let {
-                TimePlanning(
-                    dateTime = it,
-                    dayPeriod = taskEntity.endDayPeriod?.let { period ->
-                        DayPeriod.valueOf(period)
-                    }
-                )
-            },
-            durationConf = taskEntity.durationMinutes?.let { DurationPlan(it) },
-            reminderPlan = reminders.firstOrNull()?.let { reminderMapper.mapToDomain(it) },
-            repeatPlan = repeatConfigs.firstOrNull()?.let { repeatConfigMapper.mapToDomain(it) },
-            subtasks = subtasks.map { subtaskMapper.mapToDomain(it) }
-        )
+        return Task.Builder()
+            .id(taskEntity.id)
+            .name(taskEntity.name)
+            .isCompleted(taskEntity.isCompleted)
+            .priority(mapPriority(taskEntity.priority))
+            .startDateConf(taskEntity.startDateTime?.let {
+                taskEntity.startDayPeriod?.let { period ->
+                    DayPeriod.valueOf(period)
+                }?.let { it1 ->
+                    TimePlanning(
+                        dateTime = it,
+                        dayPeriod = it1
+                    )
+                }
+            })
+            .endDateConf(taskEntity.endDateTime?.let {
+                taskEntity.endDayPeriod?.let { period ->
+                    DayPeriod.valueOf(period)
+                }?.let { it1 ->
+                    TimePlanning(
+                        dateTime = it,
+                        dayPeriod = it1
+                    )
+                }
+            })
+            .durationConf(taskEntity.durationMinutes?.let { DurationPlan(it) })
+            .reminderPlan(reminders.firstOrNull()?.let { reminderMapper.mapToDomain(it) })
+            .repeatPlan(repeatConfigs.firstOrNull()?.let { repeatConfigMapper.mapToDomain(it) })
+            .subtasks(subtasks.map { subtaskMapper.mapToDomain(it) })
+            .build()
     }
 
     fun mapToEntity(domain: Task): TaskEntity {
@@ -65,8 +69,8 @@ class TaskMapper {
             name = domain.name,
             isCompleted = domain.isCompleted,
             priority = domain.priority.name,
-            startDateTime = domain.startDateConf?.dateTime,
-            startDayPeriod = domain.startDateConf?.dayPeriod?.name,
+            startDateTime = domain.startDateConf.dateTime,
+            startDayPeriod = domain.startDateConf.dayPeriod.name,
             endDateTime = domain.endDateConf?.dateTime,
             endDayPeriod = domain.endDateConf?.dayPeriod?.name,
             durationMinutes = domain.durationConf?.totalMinutes

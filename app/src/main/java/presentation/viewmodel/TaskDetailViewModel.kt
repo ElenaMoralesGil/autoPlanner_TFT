@@ -1,6 +1,7 @@
 package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
@@ -64,9 +65,13 @@ class TaskDetailViewModel(
         viewModelScope.launch {
             val currentTask = currentState.task ?: return@launch
 
-            // Optimistic update
+            val updatedTask = Task.from(currentTask)
+                .isCompleted(completed)
+                .build()
+
             setState {
-                copy(task = currentTask.copy(isCompleted = completed))
+                copy(task = updatedTask)
+
             }
 
             executeTaskOperation(

@@ -1,72 +1,147 @@
 package com.elena.autoplanner.domain.models
 
+import com.elena.autoplanner.domain.exceptions.TaskValidationException
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 
-data class Task(
-    val id: Int = 0,
-    val name: String = "",
-    val isCompleted: Boolean = false,
-    val priority: Priority = Priority.NONE,
-    val startDateConf: TimePlanning? = null,
-    val endDateConf: TimePlanning? = null,
-    val durationConf: DurationPlan? = null,
-    val reminderPlan: ReminderPlan? = null,
-    val repeatPlan: RepeatPlan? = null,
-    val subtasks: List<Subtask> = emptyList()
+enum class ErrorCode {
+    TASK_NAME_EMPTY,
+    START_AFTER_END,
+    NEGATIVE_DURATION,
+}
+
+data class Task private constructor(
+    val id: Int,
+    val name: String,
+    val isCompleted: Boolean,
+    val priority: Priority,
+    val startDateConf: TimePlanning,
+    val endDateConf: TimePlanning?,
+    val durationConf: DurationPlan?,
+    val reminderPlan: ReminderPlan?,
+    val repeatPlan: RepeatPlan?,
+    val subtasks: List<Subtask>
 ) {
-    // Core business logic
+    fun validate() {
+        if (name.isBlank()) {
+            throw TaskValidationException(ErrorCode.TASK_NAME_EMPTY)
+        }
+
+        if (endDateConf != null && startDateConf.dateTime?.isAfter(endDateConf.dateTime) == true) {
+            throw TaskValidationException(ErrorCode.START_AFTER_END)
+        }
+
+        durationConf?.let {
+            if (it.totalMinutes != null && it.totalMinutes < 0) {
+                throw TaskValidationException(ErrorCode.NEGATIVE_DURATION)
+            }
+        }
+    }
     fun isExpired(): Boolean =
-        startDateConf?.dateTime?.toLocalDate()?.isBefore(LocalDate.now()) ?: false
+        startDateConf.dateTime?.toLocalDate()?.isBefore(LocalDate.now()) ?: false
 
     fun isDueOn(date: LocalDate): Boolean =
-        startDateConf?.dateTime?.toLocalDate() == date
+        startDateConf.dateTime?.toLocalDate() == date
 
     fun isAllDay(): Boolean =
-        startDateConf?.dayPeriod == DayPeriod.ALLDAY
+        startDateConf.dayPeriod == DayPeriod.ALLDAY
 
     fun isDueToday(): Boolean =
-        startDateConf?.dateTime?.toLocalDate() == LocalDate.now()
+        startDateConf.dateTime?.toLocalDate() == LocalDate.now()
 
     fun isDueThisWeek(): Boolean {
         val today = LocalDate.now()
         val startOfWeek = today.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
         val endOfWeek = startOfWeek.plusDays(6)
-        return startDateConf?.dateTime?.toLocalDate()?.let {
+        return startDateConf.dateTime?.toLocalDate()?.let {
             !it.isBefore(startOfWeek) && !it.isAfter(endOfWeek)
         } ?: false
     }
 
     fun isDueThisMonth(): Boolean =
-        startDateConf?.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } ?: false
+        startDateConf.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } ?: false
+
+    val hasPeriod: Boolean = startDateConf.dayPeriod != DayPeriod.NONE
 
     val startTime: LocalTime
-        get() = startDateConf?.dateTime?.toLocalTime() ?: LocalTime.MIDNIGHT
+        get() = startDateConf.dateTime?.toLocalTime() ?: LocalTime.MIDNIGHT
 
-    val endTime: LocalTime
-        get() = endDateConf?.dateTime?.toLocalTime() ?: (startDateConf?.dateTime?.toLocalTime()
-            ?.plusMinutes(
-                durationConf?.totalMinutes?.toLong() ?: 60L
-            ) ?: LocalTime.MIDNIGHT)
 
-    val hasPeriod: Boolean = (startDateConf?.dayPeriod ?: DayPeriod.NONE) != DayPeriod.NONE
+    class Builder {
+        private var id: Int = 0
+        private var name: String = ""
+        private var isCompleted: Boolean = false
+        private var priority: Priority = Priority.NONE
+        private var startDateConf: TimePlanning? = null
+        private var endDateConf: TimePlanning? = null
+        private var durationConf: DurationPlan? = null
+        private var reminderPlan: ReminderPlan? = null
+        private var repeatPlan: RepeatPlan? = null
+        private var subtasks: List<Subtask> = emptyList()
 
-    val Task.startTimeFormatted: String
-        get() {
-            return startDateConf?.dateTime?.let {
-                DateTimeFormatter.ofPattern("h:mm a").format(it)
-            } ?: "No time set"
+        fun id(id: Int) = apply { this.id = id }
+        fun name(name: String) = apply { this.name = name }
+        fun isCompleted(isCompleted: Boolean) = apply { this.isCompleted = isCompleted }
+        fun priority(priority: Priority) = apply { this.priority = priority }
+        fun startDateConf(startDateConf: TimePlanning?) =
+            apply { this.startDateConf = startDateConf }
+
+        fun endDateConf(endDateConf: TimePlanning?) = apply { this.endDateConf = endDateConf }
+        fun durationConf(durationConf: DurationPlan?) = apply { this.durationConf = durationConf }
+        fun reminderPlan(reminderPlan: ReminderPlan?) = apply { this.reminderPlan = reminderPlan }
+        fun repeatPlan(repeatPlan: RepeatPlan?) = apply { this.repeatPlan = repeatPlan }
+        fun subtasks(subtasks: List<Subtask>) = apply { this.subtasks = subtasks }
+
+        fun build(): Task {
+            val effectiveStartDate = startDateConf ?: TimePlanning(
+                dateTime = LocalDateTime.now(),
+                dayPeriod = DayPeriod.NONE
+            )
+
+            val task = Task(
+                id = id,
+                name = name,
+                isCompleted = isCompleted,
+                priority = priority,
+                startDateConf = effectiveStartDate,
+                endDateConf = endDateConf,
+                durationConf = durationConf,
+                reminderPlan = reminderPlan,
+                repeatPlan = repeatPlan,
+                subtasks = subtasks
+            )
+            task.validate()
+            return task
         }
+    }
+
+    companion object {
+        fun create(name: String, startDateTime: LocalDateTime? = LocalDateTime.now()): Task {
+            return Builder()
+                .name(name)
+                .startDateConf(TimePlanning(dateTime = startDateTime))
+                .build()
+        }
+
+        fun from(task: Task): Builder {
+            return Builder()
+                .id(task.id)
+                .name(task.name)
+                .isCompleted(task.isCompleted)
+                .priority(task.priority)
+                .startDateConf(task.startDateConf)
+                .endDateConf(task.endDateConf)
+                .durationConf(task.durationConf)
+                .reminderPlan(task.reminderPlan)
+                .repeatPlan(task.repeatPlan)
+                .subtasks(task.subtasks)
+        }
+    }
 }
 
-
 fun LocalDate.isToday(): Boolean = this == LocalDate.now()
-fun LocalDate.getWeekNumber(): Int = this.dayOfYear / 7
-
-
 
 enum class Priority {
     HIGH, MEDIUM, LOW, NONE
@@ -74,13 +149,18 @@ enum class Priority {
 
 data class TimePlanning(
     val dateTime: LocalDateTime?,
-    val dayPeriod: DayPeriod? = DayPeriod.NONE
-)
+    val dayPeriod: DayPeriod = DayPeriod.NONE
+) {
+    init {
+        if (dayPeriod == DayPeriod.ALLDAY && dateTime != null) {
+            dateTime.withHour(0).withMinute(0).withSecond(0).withNano(0)
+        }
+    }
+}
 
 enum class DayPeriod {
     MORNING, EVENING, NIGHT, ALLDAY, NONE
 }
-
 
 data class DurationPlan(
     val totalMinutes: Int?

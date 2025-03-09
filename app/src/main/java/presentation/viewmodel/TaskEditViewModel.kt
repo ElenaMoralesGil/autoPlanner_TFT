@@ -121,17 +121,17 @@ class TaskEditViewModel(
 
             setState { copy(isLoading = true) }
 
-            val task = Task(
-                id = state.taskId,
-                name = state.name,
-                priority = state.priority,
-                startDateConf = state.startDateConf,
-                endDateConf = state.endDateConf,
-                durationConf = state.durationConf,
-                reminderPlan = state.reminderPlan,
-                repeatPlan = state.repeatPlan,
-                subtasks = state.subtasks
-            )
+            val task = Task.Builder()
+                .id(state.taskId)
+                .name(state.name)
+                .priority(state.priority)
+                .startDateConf(state.startDateConf)
+                .endDateConf(state.endDateConf)
+                .durationConf(state.durationConf)
+                .reminderPlan(state.reminderPlan)
+                .repeatPlan(state.repeatPlan)
+                .subtasks(state.subtasks)
+                .build()
 
             executeTaskOperation(
                 setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },

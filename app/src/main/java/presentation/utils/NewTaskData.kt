@@ -21,14 +21,14 @@ data class NewTaskData(
 )
 
 fun NewTaskData.toTask(): Task {
-    return Task(
-        name = this.name,
-        priority = this.priority,
-        startDateConf = this.startDateConf,
-        endDateConf = this.endDateConf,
-        durationConf = this.durationConf,
-        reminderPlan = this.reminderPlan,
-        repeatPlan = this.repeatPlan,
-        subtasks = this.subtasks
-    )
+    return Task.Builder()
+        .name(this.name)
+        .priority(this.priority)
+        .startDateConf(this.startDateConf)
+        .endDateConf(this.endDateConf)
+        .durationConf(this.durationConf)
+        .reminderPlan(this.reminderPlan)
+        .repeatPlan(this.repeatPlan)
+        .subtasks(this.subtasks)
+        .build()
 }

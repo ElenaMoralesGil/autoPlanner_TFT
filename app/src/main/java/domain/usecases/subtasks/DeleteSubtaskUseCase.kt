@@ -15,8 +15,7 @@ class DeleteSubtaskUseCase(
                 val task = taskResult.data
 
                 val updatedSubtasks = task.subtasks.filter { it.id != subtaskId }
-                val updatedTask = task.copy(subtasks = updatedSubtasks)
-
+                val updatedTask = Task.from(task).subtasks(updatedSubtasks).build()
                 when (val saveResult = saveTaskUseCase(updatedTask)) {
                     is TaskResult.Success -> TaskResult.Success(updatedTask)
                     is TaskResult.Error -> saveResult

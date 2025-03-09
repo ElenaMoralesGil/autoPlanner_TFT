@@ -107,15 +107,17 @@ fun WeeklyView(
                     onTaskSelected = onTaskSelected,
                     onTaskTimeChanged = { task, newTime, dayOffset ->
                         val currentDate =
-                            task.startDateConf?.dateTime?.toLocalDate() ?: LocalDate.now()
+                            task.startDateConf.dateTime?.toLocalDate() ?: LocalDate.now()
                         val newDate = currentDate.plusDays(dayOffset)
 
-                        val updatedTask = task.copy(
-                            startDateConf = TimePlanning(
+                        val updatedTask = task.startDateConf.dayPeriod.let {
+                            TimePlanning(
                                 dateTime = LocalDateTime.of(newDate, newTime),
-                                dayPeriod = task.startDateConf?.dayPeriod
+                                dayPeriod = it
                             )
-                        )
+                        }.let {
+                            Task.from(task).startDateConf(it).build()
+                        }
                         tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
                     },
                     scrollState = scrollState,

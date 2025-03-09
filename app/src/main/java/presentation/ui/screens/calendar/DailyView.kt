@@ -95,19 +95,21 @@ fun DailyView(
     val eveningTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING }
     val nightTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.NIGHT }
 
-    // Modified to use MVI pattern with intent
     val onTaskTimeChanged: (Task, LocalTime) -> Unit = { task, newTime ->
-        val updatedTask = task.copy(
-            startDateConf = TimePlanning(
-                dateTime = LocalDateTime.of(selectedDate, newTime),
-                dayPeriod = task.startDateConf?.dayPeriod
-            )
+        val currentDayPeriod = task.startDateConf.dayPeriod
+
+        val newTimePlanning = TimePlanning(
+            dateTime = LocalDateTime.of(selectedDate, newTime),
+            dayPeriod = currentDayPeriod
         )
-        // Send UpdateTask intent instead of directly calling the method
+
+        val updatedTask = Task.from(task)
+            .startDateConf(newTimePlanning)
+            .build()
+
         tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
     }
 
-    // Modified to use MVI pattern with intent
     val onDateSelected: (LocalDate) -> Unit = { date ->
         calendarViewModel.sendIntent(CalendarIntent.ChangeDate(date))
     }
@@ -246,14 +248,14 @@ private fun TimeBlockSection(
 
                     val modifiedTasks = tasksInBlock.map { task ->
                         draggedTasks[task.id]?.tempStartTime?.let { newTime ->
-                            task.copy(
-                                startDateConf = task.startDateConf?.copy(
-                                    dateTime = LocalDateTime.of(
-                                        task.startDateConf!!.dateTime?.toLocalDate(),
-                                        newTime
-                                    )
+                            task.startDateConf.copy(
+                                dateTime = LocalDateTime.of(
+                                    task.startDateConf.dateTime?.toLocalDate(),
+                                    newTime
                                 )
-                            )
+                            ).let {
+                                Task.from(task).startDateConf(it).build()
+                            }
                         } ?: task
                     }
                     val taskPositions = positionTasks(modifiedTasks)
