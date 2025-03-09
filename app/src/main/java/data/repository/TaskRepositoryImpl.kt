@@ -8,9 +8,10 @@ import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
 import com.elena.autoplanner.data.local.dao.TaskWithRelations
-import com.elena.autoplanner.data.mappers.toDomain
-import com.elena.autoplanner.data.mappers.toEntity
-import com.elena.autoplanner.data.mappers.toTaskEntity
+import com.elena.autoplanner.data.mappers.ReminderMapper
+import com.elena.autoplanner.data.mappers.RepeatConfigMapper
+import com.elena.autoplanner.data.mappers.SubtaskMapper
+import com.elena.autoplanner.data.mappers.TaskMapper
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.repository.TaskRepository
 import com.elena.autoplanner.domain.repository.TaskResult
@@ -31,6 +32,10 @@ class TaskRepositoryImpl(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : TaskRepository {
 
+    private val taskMapper = TaskMapper()
+    private val reminderMapper = ReminderMapper()
+    private val repeatConfigMapper = RepeatConfigMapper()
+    private val subtaskMapper = SubtaskMapper()
 
     override fun getTasks(): Flow<TaskResult<List<Task>>> = flow {
         try {
@@ -119,29 +124,34 @@ class TaskRepositoryImpl(
     }
 
     private suspend fun insertNewTask(task: Task): Int {
-        val taskEntity = task.toTaskEntity()
+        val taskEntity = taskMapper.mapToEntity(task)
         val taskId = taskDao.insertTask(taskEntity).toInt()
         updateRelatedEntities(taskId, task)
         return taskId
     }
 
     private suspend fun updateExistingTask(task: Task) {
-        val taskEntity = task.toTaskEntity()
+        val taskEntity = taskMapper.mapToEntity(task)
         taskDao.updateTask(taskEntity)
         updateRelatedEntities(task.id, task)
     }
 
     private suspend fun updateRelatedEntities(taskId: Int, task: Task) {
-
         reminderDao.deleteRemindersForTask(taskId)
-        task.reminderPlan?.let { reminderDao.insertReminder(it.toEntity(taskId)) }
+        task.reminderPlan?.let {
+            reminderDao.insertReminder(reminderMapper.mapToEntityWithTaskId(it, taskId))
+        }
 
         repeatConfigDao.deleteRepeatConfigsForTask(taskId)
-        task.repeatPlan?.let { repeatConfigDao.insertRepeatConfig(it.toEntity(taskId)) }
+        task.repeatPlan?.let {
+            repeatConfigDao.insertRepeatConfig(repeatConfigMapper.mapToEntityWithTaskId(it, taskId))
+        }
 
         subtaskDao.deleteSubtasksForTask(taskId)
         if (task.subtasks.isNotEmpty()) {
-            subtaskDao.insertSubtasks(task.subtasks.map { it.toEntity(taskId) })
+            subtaskDao.insertSubtasks(
+                task.subtasks.map { subtaskMapper.mapToEntityWithTaskId(it, taskId) }
+            )
         }
     }
 
@@ -154,7 +164,13 @@ class TaskRepositoryImpl(
     }
 
     private fun TaskWithRelations.toDomainTask(): Task {
-        return task.toDomain(reminders, repeatConfigs, subtasks)
+        return taskMapper.mapToDomain(
+            taskEntity = task,
+            reminders = reminders,
+            repeatConfigs = repeatConfigs,
+            subtasks = subtasks
+        )
     }
+
 }
 
