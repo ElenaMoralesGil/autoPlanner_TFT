@@ -12,7 +12,6 @@ import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.TaskDatabase
 import org.koin.android.ext.koin.androidContext
 
-import com.elena.autoplanner.presentation.viewmodel.TaskViewModel
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -93,20 +92,6 @@ val useCaseModule = module {
 
 val viewModelModule = module {
     viewModel { CalendarViewModel() }
-
-    viewModel {
-        TaskViewModel(
-            getTasksUseCase = get(),
-            saveTaskUseCase = get(),
-            deleteTaskUseCase = get(),
-            addSubtaskUseCase = get(),
-            toggleSubtaskUseCase = get(),
-            deleteSubtaskUseCase = get(),
-            deleteAllTasksUseCase = get(),
-            filterTasksUseCase = get(),
-            toggleTaskCompletionUseCase = get()
-        )
-    }
 
     viewModel {
         TaskListViewModel(
