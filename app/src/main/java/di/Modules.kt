@@ -66,6 +66,7 @@ val appModule = module {
 
     single<TaskRepository> {
         TaskRepositoryImpl(
+            context = androidContext(),
             taskDao = get(),
             reminderDao = get(),
             repeatConfigDao = get(),
