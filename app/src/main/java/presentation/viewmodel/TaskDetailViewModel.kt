@@ -20,7 +20,7 @@ class TaskDetailViewModel(
     private val addSubtaskUseCase: AddSubtaskUseCase,
     private val toggleSubtaskUseCase: ToggleSubtaskUseCase,
     private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
-    private val taskId: Int // Inject the taskId parameter
+    private val taskId: Int,
 ) : BaseTaskViewModel<TaskDetailIntent, TaskDetailState, TaskDetailEffect>() {
 
     override fun createInitialState(): TaskDetailState = TaskDetailState()

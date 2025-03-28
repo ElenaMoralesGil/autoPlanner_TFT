@@ -121,6 +121,7 @@ class TaskEditViewModel(
 
             setState { copy(isLoading = true) }
 
+
             val task = Task.Builder()
                 .id(state.taskId)
                 .name(state.name)

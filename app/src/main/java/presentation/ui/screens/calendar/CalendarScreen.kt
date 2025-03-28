@@ -152,7 +152,7 @@ fun CalendarScreen(
                             onTaskSelected = onTaskSelected,
                             calendarViewModel = calendarViewModel,
                             tasksViewModel = taskListViewModel,
-                            weekStartDate = state.currentDate
+                            weekStartDateInput = calendarState!!.currentDate,
                         )
                     }
 

@@ -1,3 +1,4 @@
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -52,7 +53,9 @@ android {
 
     packaging {
         resources {
+
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
     }
 
@@ -81,6 +84,7 @@ dependencies {
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.animation.core.android)
+    implementation(libs.androidx.compose.testing)
 
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.kotlinx.coroutines.test)

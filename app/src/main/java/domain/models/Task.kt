@@ -68,6 +68,8 @@ data class Task private constructor(
     val startTime: LocalTime
         get() = startDateConf.dateTime?.toLocalTime() ?: LocalTime.MIDNIGHT
 
+    val effectiveDurationMinutes: Int
+        get() = (durationConf?.totalMinutes ?: 60).coerceAtLeast(0)
 
     class Builder {
         private var id: Int = 0
