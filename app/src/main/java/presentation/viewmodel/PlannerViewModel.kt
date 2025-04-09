@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.*
 import com.elena.autoplanner.domain.repository.TaskResult
-import com.elena.autoplanner.domain.usecases.GeneratePlanUseCase
+import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.presentation.effects.PlannerEffect
@@ -330,42 +330,16 @@ class PlannerViewModel(
 
                 // 2. Process Expired Task Resolutions
                 state.taskResolutions.forEach { (taskId, resolution) ->
-                    val task = state.expiredTasksToResolve.find { it.id == taskId }
-                    if (task == null) {
-                        Log.w(
-                            "PlannerVM",
-                            "Expired task with ID $taskId not found in state during save."
-                        )
-                        return@forEach // Skip if task is missing
-                    }
-
+                    val task =
+                        state.expiredTasksToResolve.find { it.id == taskId } ?: return@forEach
                     val tomorrow = LocalDate.now().plusDays(1)
-                    val keepTime = task.startDateConf.dateTime?.toLocalTime()
-                        ?: state.workStartTime // Use original time or default
+                    val keepTime = task.startDateConf.dateTime?.toLocalTime() ?: state.workStartTime
                     val newTaskTime = LocalDateTime.of(tomorrow, keepTime)
 
                     when (resolution) {
-                        ResolutionOption.MOVE_TO_TOMORROW -> {
-                            Log.i(
-                                "PlannerVM",
-                                "Resolving Expired ${task.id}: MOVE_TO_TOMORROW (Moving to $newTaskTime)"
-                            )
-                            val updatedTask = Task.from(task)
-                                .startDateConf(
-                                    TimePlanning(
-                                        dateTime = newTaskTime,
-                                        dayPeriod = DayPeriod.NONE
-                                    )
-                                ) // Assume specific time for tomorrow
-                                .build()
-                            updateJobs.add(async { saveTaskUseCase(updatedTask) })
-                        }
-                        // MOVE_TO_NEAREST_FREE currently behaves like MOVE_TO_TOMORROW in this resolution step
-                        ResolutionOption.MOVE_TO_NEAREST_FREE -> {
-                            Log.i(
-                                "PlannerVM",
-                                "Resolving Expired ${task.id}: MOVE_TO_NEAREST_FREE (Treating as MOVE_TO_TOMORROW -> $newTaskTime)"
-                            )
+                        ResolutionOption.MOVE_TO_TOMORROW,
+                        ResolutionOption.MOVE_TO_NEAREST_FREE,
+                        -> {
                             val updatedTask = Task.from(task)
                                 .startDateConf(
                                     TimePlanning(
@@ -373,19 +347,15 @@ class PlannerViewModel(
                                         dayPeriod = DayPeriod.NONE
                                     )
                                 )
+                                .endDateConf(null)
                                 .build()
                             updateJobs.add(async { saveTaskUseCase(updatedTask) })
                         }
 
                         ResolutionOption.MANUALLY_SCHEDULE, ResolutionOption.LEAVE_IT_LIKE_THAT -> {
-                            Log.i(
-                                "PlannerVM",
-                                "Resolving Expired ${task.id}: $resolution (No automatic save)"
-                            )
-                            // No save operation needed for these options
                         }
 
-                        ResolutionOption.RESOLVED -> { /* Internal state, ignore during save */
+                        ResolutionOption.RESOLVED -> {
                         }
                     }
                 }
@@ -393,15 +363,7 @@ class PlannerViewModel(
                 // 3. Process Conflict Resolutions
                 state.conflictResolutions.forEach { (conflictHash, resolution) ->
                     val conflict = state.conflictsToResolve.find { it.hashCode() == conflictHash }
-                    if (conflict == null) {
-                        Log.w(
-                            "PlannerVM",
-                            "Conflict with hash $conflictHash not found in state during save."
-                        )
-                        return@forEach // Skip if conflict is missing
-                    }
-
-                    // Simple strategy: Move the lowest priority task (or the first one if priorities are equal/NONE)
+                        ?: return@forEach
                     val taskToModify = conflict.conflictingTasks.minByOrNull { it.priority.ordinal }
 
                     if (taskToModify != null) {
@@ -411,7 +373,9 @@ class PlannerViewModel(
                         val newTaskTime = LocalDateTime.of(tomorrow, keepTime)
 
                         when (resolution) {
-                            ResolutionOption.MOVE_TO_TOMORROW, ResolutionOption.MOVE_TO_NEAREST_FREE -> {
+                            ResolutionOption.MOVE_TO_TOMORROW,
+                            ResolutionOption.MOVE_TO_NEAREST_FREE,
+                            -> {
                                 Log.i(
                                     "PlannerVM",
                                     "Resolving Conflict $conflictHash by moving Task ${taskToModify.id} to $newTaskTime"
@@ -422,38 +386,25 @@ class PlannerViewModel(
                                             dateTime = newTaskTime,
                                             dayPeriod = DayPeriod.NONE
                                         )
-                                    ) // Assume specific time
+                                    )
+                                    .endDateConf(null)
                                     .build()
                                 updateJobs.add(async { saveTaskUseCase(updatedTask) })
                             }
-
                             ResolutionOption.MANUALLY_SCHEDULE, ResolutionOption.LEAVE_IT_LIKE_THAT -> {
-                                Log.i(
-                                    "PlannerVM",
-                                    "Resolving Conflict $conflictHash: $resolution (No automatic save for Task ${taskToModify.id})"
-                                )
-                                // No save operation needed
                             }
 
-                            ResolutionOption.RESOLVED -> { /* Internal state, ignore */
+                            ResolutionOption.RESOLVED -> {
                             }
                         }
                     } else {
-                        Log.w(
-                            "PlannerVM",
-                            "Conflict $conflictHash resolved as '$resolution' but has no tasks to modify."
-                        )
                     }
                 }
 
-                // Wait for all save operations to complete
-                Log.d("PlannerVM", "Waiting for ${updateJobs.size} save operations...")
                 val results: List<TaskResult<Int>> = updateJobs.awaitAll()
                 val errors = results.filterIsInstance<TaskResult.Error>()
 
                 if (errors.isNotEmpty()) {
-                    val errorMessages = errors.joinToString("\n") { "- ${it.message}" }
-                    Log.e("PlannerVM", "Some tasks failed to save:\n$errorMessages")
                     setState {
                         copy(
                             isLoading = false,
@@ -462,8 +413,6 @@ class PlannerViewModel(
                     }
                     setEffect(PlannerEffect.ShowSnackbar("Error saving parts of the plan."))
                 } else {
-                    // All saves were successful
-                    Log.i("PlannerVM", "Plan saved successfully!")
                     setState { copy(isLoading = false, planSuccessfullyAdded = true) }
                     setEffect(PlannerEffect.ShowSnackbar("Plan added successfully!"))
                     setEffect(PlannerEffect.NavigateBack) // Navigate back after successful save

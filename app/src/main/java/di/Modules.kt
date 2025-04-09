@@ -15,7 +15,7 @@ import org.koin.android.ext.koin.androidContext
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.elena.autoplanner.domain.usecases.GeneratePlanUseCase
+import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteAllTasksUseCase
