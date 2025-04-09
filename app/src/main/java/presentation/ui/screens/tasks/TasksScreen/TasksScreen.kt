@@ -33,7 +33,9 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 @Composable
-fun TasksScreen() {
+fun TasksScreen(
+    onNavigateToPlanner: () -> Unit,
+) {
     // Use TaskListViewModel as the main ViewModel for this screen
     val listViewModel: TaskListViewModel = koinViewModel()
 
@@ -75,7 +77,8 @@ fun TasksScreen() {
                     },
                     onTimeFrameSelected = { timeFrame ->
                         listViewModel.sendIntent(TaskListIntent.UpdateTimeFrameFilter(timeFrame))
-                    }
+                    },
+                    onPlannerClick = onNavigateToPlanner
                 )
             }
         },

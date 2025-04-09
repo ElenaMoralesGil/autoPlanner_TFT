@@ -49,7 +49,7 @@ abstract class BaseViewModel<I : Intent, S, E : UiEffect> : ViewModel() {
     }
 
 
-    protected fun setEffect(effect: E) {
+    fun setEffect(effect: E) {
         viewModelScope.launch { _effect.emit(effect) }
     }
 

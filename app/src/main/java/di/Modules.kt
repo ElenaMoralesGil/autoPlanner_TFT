@@ -15,6 +15,7 @@ import org.koin.android.ext.koin.androidContext
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.elena.autoplanner.domain.usecases.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteAllTasksUseCase
@@ -28,6 +29,7 @@ import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.UpdateTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ValidateTaskUseCase
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
+import com.elena.autoplanner.presentation.viewmodel.PlannerViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
@@ -88,11 +90,19 @@ val useCaseModule = module {
     single { DeleteSubtaskUseCase(get(), get()) }
     single { DeleteAllTasksUseCase(get()) }
     single { FilterTasksUseCase() }
-
+    single { GeneratePlanUseCase() }
 }
 
 val viewModelModule = module {
     viewModel { CalendarViewModel() }
+
+    viewModel {
+        PlannerViewModel(
+            generatePlanUseCase = get(),
+            getTasksUseCase = get(),
+            saveTaskUseCase = get()
+        )
+    }
 
     viewModel {
         TaskListViewModel(

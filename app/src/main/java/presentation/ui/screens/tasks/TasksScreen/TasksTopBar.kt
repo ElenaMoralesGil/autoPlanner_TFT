@@ -2,14 +2,19 @@ package com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.elena.autoplanner.R
 import com.elena.autoplanner.presentation.states.TaskListState
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
@@ -20,7 +25,8 @@ import com.elena.autoplanner.presentation.states.TimeFrame
 fun TasksTopBar(
     state: TaskListState,
     onStatusSelected: (TaskStatus) -> Unit,
-    onTimeFrameSelected: (TimeFrame) -> Unit
+    onTimeFrameSelected: (TimeFrame) -> Unit,
+    onPlannerClick: () -> Unit,
 ) {
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
@@ -42,6 +48,12 @@ fun TasksTopBar(
         actions = {
             StatusFilterDropdown(state.statusFilter, onStatusSelected)
             TimeFrameFilterDropdown(state.timeFrameFilter, onTimeFrameSelected)
+            IconButton(onClick = onPlannerClick) { // Call the callback on click
+                Icon(
+                    painter = painterResource(id = R.drawable.autoplanner), // Use painterResource
+                    contentDescription = "Auto Plan Schedule",
+                )
+            }
         }
     )
 }

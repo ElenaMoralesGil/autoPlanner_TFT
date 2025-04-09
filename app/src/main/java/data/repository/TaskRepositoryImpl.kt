@@ -18,7 +18,9 @@ import com.elena.autoplanner.domain.repository.TaskResult
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.IOException
 
@@ -36,15 +38,15 @@ class TaskRepositoryImpl(
     private val repeatConfigMapper = RepeatConfigMapper()
     private val subtaskMapper = SubtaskMapper()
 
-    override fun getTasks(): Flow<TaskResult<List<Task>>> = flow {
-        try {
-            taskDao.getTasksWithRelations()
-                .collect { taskRelations ->
-                    emit(TaskResult.Success(taskRelations.map { it.toDomainTask() }))
-                }
-        } catch (error: Exception) {
-            emit(TaskResult.Error(mapExceptionMessage(error), error))
-        }
+    override fun getTasks(): Flow<TaskResult<List<Task>>> {
+        return taskDao.getTasksWithRelations()
+            .map<List<TaskWithRelations>, TaskResult<List<Task>>> { taskRelations ->
+                TaskResult.Success(taskRelations.map { it.toDomainTask() })
+            }
+            .catch { error ->
+                emit(TaskResult.Error(mapExceptionMessage(error as Exception), error))
+            }
+
     }
 
     override suspend fun getTask(taskId: Int): TaskResult<Task> = withContext(dispatcher) {

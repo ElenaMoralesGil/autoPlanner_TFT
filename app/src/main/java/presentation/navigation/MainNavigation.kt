@@ -9,6 +9,7 @@ import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarScreen
 import com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen.TasksScreen
 import com.elena.autoplanner.presentation.ui.screens.more.MoreScreen
 import com.elena.autoplanner.presentation.ui.screens.profile.ProfileScreen
+import com.elena.autoplanner.presentation.ui.screens.tasks.planner.AutoPlannerScreen
 
 @Composable
 fun MainNavigation(
@@ -21,7 +22,11 @@ fun MainNavigation(
         modifier = modifier
     ) {
         composable(Screen.Tasks.route) {
-            TasksScreen()
+            TasksScreen(
+                onNavigateToPlanner = {
+                    navController.navigate(Screen.Planner.route)
+                }
+            )
         }
         composable(Screen.Calendar.route) {
             CalendarScreen()
@@ -31,6 +36,11 @@ fun MainNavigation(
         }
         composable(Screen.More.route) {
             MoreScreen()
+        }
+        composable(Screen.Planner.route) {
+            AutoPlannerScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }
