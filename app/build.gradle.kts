@@ -3,7 +3,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+
 }
+
 configurations.all {
     exclude(group = "xmlpull", module = "xmlpull")
     exclude(group = "xpp3", module = "xpp3_min")
@@ -58,7 +60,6 @@ android {
             excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
     }
-
 }
 
 dependencies {
@@ -77,15 +78,16 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.xpp3)
-
+    implementation(libs.jems2)
+    implementation(libs.rfc5545.datetime)
+    implementation(libs.lib.recur)
     implementation(libs.androidx.navigation.safe.args.generator)
     implementation(libs.androidx.material3.android)
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.animation.core.android)
     implementation(libs.androidx.compose.testing)
-
+    implementation(libs.protolite.well.known.types)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
@@ -95,7 +97,6 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test.v164)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
-    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.mockk.android)
     androidTestImplementation(libs.androidx.espresso.core)
     debugImplementation(libs.ui.tooling)

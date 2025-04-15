@@ -10,7 +10,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // If you use other Maven repos, add them here as well
     }
 }
 

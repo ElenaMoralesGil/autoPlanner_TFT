@@ -1,3 +1,5 @@
+// =============== Content from: src\main\java\presentation\viewmodel\PlannerViewModel.kt ===============
+
 package com.elena.autoplanner.presentation.viewmodel
 
 import android.util.Log
@@ -17,7 +19,8 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
-
+import java.time.LocalTime
+import java.time.temporal.TemporalAdjusters
 
 class PlannerViewModel(
     private val generatePlanUseCase: GeneratePlanUseCase,
@@ -25,39 +28,35 @@ class PlannerViewModel(
     private val saveTaskUseCase: SaveTaskUseCase,
 ) : BaseViewModel<PlannerIntent, PlannerState, PlannerEffect>() {
 
-    override fun createInitialState(): PlannerState = PlannerState(isLoading = true)
+    override fun createInitialState(): PlannerState = PlannerState(
+        isLoading = true,
+        selectedPriority = PrioritizationStrategy.URGENT_FIRST,
+        selectedDayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
+        allowSplitting = true,
+        selectedPlacementHeuristic = PlacementHeuristic.EARLIEST_FIT
+    )
 
     init {
-        // Load initial data like overdue count when ViewModel is created
+        loadInitialData()
+    }
+
+    private fun loadInitialData() {
         viewModelScope.launch {
-            setState {
-                copy(
-                    isLoading = true,
-                    error = null
-                )
-            } // Ensure loading state and clear previous error
+            setState { copy(isLoading = true, error = null) }
             var finalOverdueCount = 0
             var errorMessage: String? = null
-
             try {
-                // Use firstOrNull to handle empty flow safely
                 val tasks: List<Task>? = getTasksUseCase().firstOrNull()
-
                 if (tasks != null) {
                     finalOverdueCount = tasks.count { !it.isCompleted && it.isExpired() }
                     Log.d("PlannerVM", "Initial overdue count = $finalOverdueCount")
                 } else {
                     Log.d("PlannerVM", "Initial task list was null or empty.")
-                    // Optionally set an error or message if tasks are expected but missing
-                    // errorMessage = "Could not load tasks."
                 }
             } catch (e: Exception) {
                 Log.e("PlannerVM", "Error loading initial tasks", e)
                 errorMessage = "Error loading initial tasks: ${e.localizedMessage}"
-                // Set effect might be better here if the screen is already visible
-                // setEffect(PlannerEffect.ShowSnackbar(errorMessage))
             } finally {
-                // Always update state, ensuring loading is false
                 setState {
                     copy(
                         numOverdueTasks = finalOverdueCount,
@@ -69,7 +68,6 @@ class PlannerViewModel(
         }
     }
 
-
     override suspend fun handleIntent(intent: PlannerIntent) {
         when (intent) {
             is PlannerIntent.GoToNextStep -> handleNextStep()
@@ -77,13 +75,11 @@ class PlannerViewModel(
             is PlannerIntent.UpdateWorkStartTime -> setState { copy(workStartTime = intent.time) }
             is PlannerIntent.UpdateWorkEndTime -> setState { copy(workEndTime = intent.time) }
             is PlannerIntent.SelectScheduleScope -> setState { copy(scheduleScope = intent.scope) }
-            is PlannerIntent.SelectPriority -> {
-                setState { copy(selectedPriority = intent.priority) }
-            }
-
+            is PlannerIntent.SelectPriority -> setState { copy(selectedPriority = intent.priority) }
             is PlannerIntent.SelectDayOrganization -> setState { copy(selectedDayOrganization = intent.organization) }
-            is PlannerIntent.SelectShowSubtasks -> setState { copy(showSubtasksWithDuration = intent.show) }
+            is PlannerIntent.SelectAllowSplitting -> setState { copy(allowSplitting = intent.allow) }
             is PlannerIntent.SelectOverdueHandling -> setState { copy(selectedOverdueHandling = intent.handling) }
+            is PlannerIntent.SelectPlacementHeuristic -> setState { copy(selectedPlacementHeuristic = intent.heuristic) }
             is PlannerIntent.GeneratePlan -> executePlanGeneration()
             is PlannerIntent.ResolveExpiredTask -> handleExpiredResolution(
                 intent.task,
@@ -95,9 +91,17 @@ class PlannerViewModel(
                 intent.resolution
             )
 
+            is PlannerIntent.FlagTaskForManualEdit -> handleFlagForManualEdit(intent.taskId)
+            is PlannerIntent.UnflagTaskForManualEdit -> handleUnflagForManualEdit(intent.taskId)
+            is PlannerIntent.AcknowledgeManualEdits -> handleAcknowledgeManualEdits()
             is PlannerIntent.AddPlanToCalendar -> savePlan()
             is PlannerIntent.CancelPlanner -> setEffect(PlannerEffect.NavigateBack)
         }
+    }
+
+    private fun handleUnflagForManualEdit(taskId: Int) {
+        Log.d("PlannerVM", "Unflagging task $taskId for manual edit UI")
+        setState { copy(tasksFlaggedForManualEdit = tasksFlaggedForManualEdit - taskId) }
     }
 
     private fun handleNextStep() {
@@ -108,20 +112,17 @@ class PlannerViewModel(
             } else {
                 setEffect(PlannerEffect.ShowSnackbar("Please select availability hours and a schedule scope."))
             }
-
-            PlannerStep.PRIORITY_INPUT -> if (currentState.canMoveToStep3) { // State logic now checks selectedPriority
+            PlannerStep.PRIORITY_INPUT -> if (currentState.canMoveToStep3) {
                 setState { copy(currentStep = PlannerStep.ADDITIONAL_OPTIONS) }
             } else {
                 setEffect(PlannerEffect.ShowSnackbar("Please select a prioritization strategy and day organization style."))
             }
-
             PlannerStep.ADDITIONAL_OPTIONS -> if (currentState.canGeneratePlan) {
                 sendIntent(PlannerIntent.GeneratePlan)
             } else {
                 setEffect(PlannerEffect.ShowSnackbar("Please select task splitting and overdue task options."))
             }
-
-            PlannerStep.REVIEW_PLAN -> { /* Final step */
+            PlannerStep.REVIEW_PLAN -> { /* Final step, no next */
             }
         }
     }
@@ -140,10 +141,10 @@ class PlannerViewModel(
                     taskResolutions = emptyMap(),
                     conflictResolutions = emptyMap(),
                     error = null,
-                    planSuccessfullyAdded = false
+                    planSuccessfullyAdded = false,
+                    tasksFlaggedForManualEdit = emptySet() // Clear flags when going back
                 )
             }
-
             PlannerStep.TIME_INPUT -> setEffect(PlannerEffect.NavigateBack)
         }
     }
@@ -165,10 +166,10 @@ class PlannerViewModel(
                     conflictsToResolve = emptyList(),
                     taskResolutions = emptyMap(),
                     conflictResolutions = emptyMap(),
-                    planSuccessfullyAdded = false
+                    planSuccessfullyAdded = false,
+                    tasksFlaggedForManualEdit = emptySet()
                 )
             }
-
             val allTasks: List<Task>? = try {
                 getTasksUseCase().firstOrNull()
             } catch (e: Exception) {
@@ -194,47 +195,40 @@ class PlannerViewModel(
                 setEffect(PlannerEffect.ShowSnackbar("No tasks found to plan."))
                 return@launch
             }
-
             Log.d("PlannerVM", "Tasks loaded for planning: ${allTasks.size}")
 
             try {
-                val scope = currentState.scheduleScope!!
-                val org = currentState.selectedDayOrganization!!
-                val priority = currentState.selectedPriority!!
-                val showSubtasks = currentState.showSubtasksWithDuration!!
-                val overdueHandling =
-                    if (currentState.numOverdueTasks > 0) currentState.selectedOverdueHandling!! else OverdueTaskHandling.ADD_TODAY_FREE_TIME // !! safe if overdue > 0
-
                 val plannerInput = PlannerInput(
-                    tasks = allTasks.filter { !it.isCompleted },
+                    tasks = allTasks,
                     workStartTime = currentState.workStartTime,
                     workEndTime = currentState.workEndTime,
-                    scheduleScope = scope,
-                    prioritizationStrategy = priority,
-                    dayOrganization = org,
-                    showSubtasksWithDuration = showSubtasks,
-                    overdueTaskHandling = overdueHandling
+                    scheduleScope = currentState.scheduleScope!!,
+                    prioritizationStrategy = currentState.selectedPriority!!,
+                    dayOrganization = currentState.selectedDayOrganization!!,
+                    flexiblePlacementHeuristic = currentState.selectedPlacementHeuristic,
+                    allowSplitting = currentState.allowSplitting!!,
+                    overdueTaskHandling = if (currentState.numOverdueTasks > 0) currentState.selectedOverdueHandling!! else OverdueTaskHandling.POSTPONE_TO_TOMORROW
                 )
-
                 Log.d("PlannerVM", "Calling GeneratePlanUseCase with input...")
                 val plannerOutput = generatePlanUseCase(plannerInput)
                 Log.d(
                     "PlannerVM",
                     "GeneratePlanUseCase output: Scheduled=${plannerOutput.scheduledTasks.values.sumOf { it.size }}, Expired=${plannerOutput.unresolvedExpired.size}, Conflicts=${plannerOutput.unresolvedConflicts.size}"
                 )
-
                 setState {
                     copy(
                         isLoading = false,
                         generatedPlan = plannerOutput.scheduledTasks,
                         expiredTasksToResolve = plannerOutput.unresolvedExpired,
                         conflictsToResolve = plannerOutput.unresolvedConflicts,
+                        infoMessages = plannerOutput.infoItems,
+                        postponedTasks = plannerOutput.postponedTasks,
                         currentStep = PlannerStep.REVIEW_PLAN,
                         taskResolutions = emptyMap(),
-                        conflictResolutions = emptyMap()
+                        conflictResolutions = emptyMap(),
+                        tasksFlaggedForManualEdit = emptySet()
                     )
                 }
-
             } catch (e: Exception) {
                 Log.e("PlannerVM", "Planning failed", e)
                 setState {
@@ -249,177 +243,213 @@ class PlannerViewModel(
     }
 
     private fun handleExpiredResolution(task: Task, resolution: ResolutionOption) {
-        // Update the resolution map in the state
-        setState {
-            copy(taskResolutions = taskResolutions + (task.id to resolution))
+        Log.d("PlannerVM", "Handling Expired Resolution: Task ${task.id}, Option $resolution")
+        setState { copy(taskResolutions = taskResolutions + (task.id to resolution)) }
+        // Flag/unflag based on resolution
+        if (resolution == ResolutionOption.MANUALLY_SCHEDULE) {
+            handleFlagForManualEdit(task.id)
+        } else {
+            handleUnflagForManualEdit(task.id)
         }
-        Log.d(
-            "PlannerVM",
-            "Resolved Expired Task ${task.id} with $resolution. Current resolutions: ${currentState.taskResolutions}"
-        )
     }
 
     private fun handleConflictResolution(conflict: ConflictItem, resolution: ResolutionOption) {
-        // Using hashCode as key - be aware of potential limitations if ConflictItem structure changes frequently
-        // or if identical conflicts can occur. A unique ID per conflict might be more robust.
         val conflictId = conflict.hashCode()
-        setState {
-            copy(conflictResolutions = conflictResolutions + (conflictId to resolution))
+        Log.d("PlannerVM", "Handling Conflict Resolution: Hash $conflictId, Option $resolution")
+        setState { copy(conflictResolutions = conflictResolutions + (conflictId to resolution)) }
+        // Flag/unflag based on resolution
+        val taskToFlag = conflict.conflictingTasks.minByOrNull { it.priority.ordinal }
+        taskToFlag?.let {
+            if (resolution == ResolutionOption.MANUALLY_SCHEDULE || resolution == ResolutionOption.LEAVE_IT_LIKE_THAT) {
+                handleFlagForManualEdit(it.id)
+            } else {
+                handleUnflagForManualEdit(it.id)
+            }
         }
-        Log.d(
-            "PlannerVM",
-            "Resolved Conflict $conflictId with $resolution. Current resolutions: ${currentState.conflictResolutions}"
-        )
     }
 
+    private fun handleFlagForManualEdit(taskId: Int) {
+        Log.d("PlannerVM", "Flagging task $taskId for manual edit UI")
+        setState { copy(tasksFlaggedForManualEdit = tasksFlaggedForManualEdit + taskId) }
+    }
+
+    private fun handleAcknowledgeManualEdits() {
+        Log.d("PlannerVM", "User acknowledged manual edits (or lack thereof)")
+        // This might trigger saving if all other resolutions are done
+    }
 
     private fun savePlan() {
         viewModelScope.launch {
-            val state = currentState // Capture current state for processing
-
-            // Final check: Ensure all resolutions are made before attempting to save
+            val state = currentState
             if (state.requiresResolution) {
-                Log.w("PlannerVM", "Attempted to save plan while resolutions are required.")
-                setEffect(PlannerEffect.ShowSnackbar("Please resolve all expired tasks and conflicts first."))
+                Log.w("PlannerVM", "Attempted save while resolutions pending.")
+                setEffect(PlannerEffect.ShowSnackbar("Please resolve all required items first."))
                 return@launch
             }
 
             Log.d("PlannerVM", "Starting savePlan...")
-            setState {
-                copy(
-                    isLoading = true,
-                    error = null,
-                    planSuccessfullyAdded = false
-                )
-            } // Set loading, clear error
+            setState { copy(isLoading = true, error = null, planSuccessfullyAdded = false) }
 
             try {
-                val updateJobs = mutableListOf<Deferred<TaskResult<Int>>>()
-
-                // 1. Process Scheduled Tasks from the generated plan
-                state.generatedPlan.forEach { (date, items) ->
-                    items.forEach { scheduledItem ->
-                        val originalTask = scheduledItem.task
-                        val newStartTime = LocalDateTime.of(date, scheduledItem.scheduledStartTime)
-
-                        // Only schedule update if time or date actually changed
-                        if (originalTask.startDateConf.dateTime != newStartTime || originalTask.startDateConf.dayPeriod != DayPeriod.NONE) {
-                            Log.i(
-                                "PlannerVM",
-                                "Updating Task ${originalTask.id} scheduled time to $newStartTime"
-                            )
-                            val updatedTask = Task.from(originalTask)
-                                .startDateConf(
-                                    TimePlanning(
-                                        dateTime = newStartTime,
-                                        dayPeriod = DayPeriod.NONE
-                                    )
-                                ) // Use specific time, clear period
-                                // Optionally update duration if planner adjusted it (though current use case doesn't modify duration)
-                                // .durationConf(...)
-                                .build()
-                            updateJobs.add(async { saveTaskUseCase(updatedTask) })
-                        } else {
-                            Log.d(
-                                "PlannerVM",
-                                "Task ${originalTask.id} scheduled time ($newStartTime) unchanged, skipping save."
-                            )
-                        }
-                    }
-                }
-
-                // 2. Process Expired Task Resolutions
-                state.taskResolutions.forEach { (taskId, resolution) ->
-                    val task =
-                        state.expiredTasksToResolve.find { it.id == taskId } ?: return@forEach
-                    val tomorrow = LocalDate.now().plusDays(1)
-                    val keepTime = task.startDateConf.dateTime?.toLocalTime() ?: state.workStartTime
-                    val newTaskTime = LocalDateTime.of(tomorrow, keepTime)
-
-                    when (resolution) {
-                        ResolutionOption.MOVE_TO_TOMORROW,
-                        ResolutionOption.MOVE_TO_NEAREST_FREE,
-                        -> {
-                            val updatedTask = Task.from(task)
-                                .startDateConf(
-                                    TimePlanning(
-                                        dateTime = newTaskTime,
-                                        dayPeriod = DayPeriod.NONE
-                                    )
-                                )
-                                .endDateConf(null)
-                                .build()
-                            updateJobs.add(async { saveTaskUseCase(updatedTask) })
-                        }
-
-                        ResolutionOption.MANUALLY_SCHEDULE, ResolutionOption.LEAVE_IT_LIKE_THAT -> {
-                        }
-
-                        ResolutionOption.RESOLVED -> {
-                        }
-                    }
-                }
-
-                // 3. Process Conflict Resolutions
-                state.conflictResolutions.forEach { (conflictHash, resolution) ->
-                    val conflict = state.conflictsToResolve.find { it.hashCode() == conflictHash }
-                        ?: return@forEach
-                    val taskToModify = conflict.conflictingTasks.minByOrNull { it.priority.ordinal }
-
-                    if (taskToModify != null) {
-                        val tomorrow = LocalDate.now().plusDays(1)
-                        val keepTime = taskToModify.startDateConf.dateTime?.toLocalTime()
-                            ?: state.workStartTime
-                        val newTaskTime = LocalDateTime.of(tomorrow, keepTime)
-
-                        when (resolution) {
-                            ResolutionOption.MOVE_TO_TOMORROW,
-                            ResolutionOption.MOVE_TO_NEAREST_FREE,
-                            -> {
-                                Log.i(
-                                    "PlannerVM",
-                                    "Resolving Conflict $conflictHash by moving Task ${taskToModify.id} to $newTaskTime"
-                                )
-                                val updatedTask = Task.from(taskToModify)
-                                    .startDateConf(
-                                        TimePlanning(
-                                            dateTime = newTaskTime,
-                                            dayPeriod = DayPeriod.NONE
-                                        )
-                                    )
-                                    .endDateConf(null)
-                                    .build()
-                                updateJobs.add(async { saveTaskUseCase(updatedTask) })
-                            }
-                            ResolutionOption.MANUALLY_SCHEDULE, ResolutionOption.LEAVE_IT_LIKE_THAT -> {
-                            }
-
-                            ResolutionOption.RESOLVED -> {
-                            }
-                        }
-                    } else {
-                    }
-                }
-
-                val results: List<TaskResult<Int>> = updateJobs.awaitAll()
-                val errors = results.filterIsInstance<TaskResult.Error>()
-
-                if (errors.isNotEmpty()) {
+                val originalTasks: Map<Int, Task> = try {
+                    getTasksUseCase().firstOrNull()?.associateBy { it.id } ?: emptyMap()
+                } catch (e: Exception) {
+                    Log.e("PlannerVM", "Error fetching original tasks during savePlan", e)
                     setState {
                         copy(
                             isLoading = false,
-                            error = "Some tasks failed to save. See logs for details."
+                            error = "Failed to load tasks for saving: ${e.localizedMessage}"
                         )
                     }
-                    setEffect(PlannerEffect.ShowSnackbar("Error saving parts of the plan."))
+                    setEffect(PlannerEffect.ShowSnackbar("Error preparing plan for saving."))
+                    return@launch
+                }
+
+                val tasksToUpdate = mutableMapOf<Int, Task>()
+                val today = LocalDate.now()
+
+                // 1. Process Resolved Expired Tasks (Only 'Move Tomorrow')
+                state.taskResolutions.forEach { (taskId, resolution) ->
+                    if (state.tasksFlaggedForManualEdit.contains(taskId)) return@forEach // Skip flagged
+                    if (resolution == ResolutionOption.MOVE_TO_TOMORROW) {
+                        originalTasks[taskId]?.let { originalTask ->
+                            val targetDate = today.plusDays(1)
+                            val keepTime = originalTask.startDateConf.dateTime?.toLocalTime()
+                                ?: state.workStartTime
+                            val newDateTime = LocalDateTime.of(targetDate, keepTime)
+                            val newEndDateConf = originalTask.endDateConf?.takeIf {
+                                it.dateTime != null && it.dateTime.isAfter(newDateTime)
+                            }
+                            tasksToUpdate[taskId] = Task.from(originalTask)
+                                .startDateConf(
+                                    TimePlanning(
+                                        dateTime = newDateTime,
+                                        dayPeriod = DayPeriod.NONE
+                                    )
+                                )
+                                .endDateConf(newEndDateConf)
+                                .build()
+                            Log.d(
+                                "PlannerVM",
+                                "Task $taskId marked for update (Expired Resolved: MoveTomorrow): New Start $newDateTime"
+                            )
+                        } ?: Log.w(
+                            "PlannerVM",
+                            "Original task $taskId not found for expired resolution."
+                        )
+                    }
+                }
+
+                // 2. Process Resolved Conflicts (Only 'Move Tomorrow')
+                state.conflictResolutions.forEach { (conflictHash, resolution) ->
+                    if (resolution == ResolutionOption.MOVE_TO_TOMORROW) {
+                        val conflict =
+                            state.conflictsToResolve.find { it.hashCode() == conflictHash }
+                        val taskToModify =
+                            conflict?.conflictingTasks?.minByOrNull { it.priority.ordinal }
+                                ?: conflict?.conflictingTasks?.firstOrNull()
+
+                        if (taskToModify != null) {
+                            val taskId = taskToModify.id
+                            if (state.tasksFlaggedForManualEdit.contains(taskId)) return@forEach // Skip flagged
+
+                            originalTasks[taskId]?.let { originalTask ->
+                                val targetDate = today.plusDays(1)
+                                val keepTime = originalTask.startDateConf.dateTime?.toLocalTime()
+                                    ?: state.workStartTime
+                                val newDateTime = LocalDateTime.of(targetDate, keepTime)
+                                val newEndDateConf = originalTask.endDateConf?.takeIf {
+                                    it.dateTime != null && it.dateTime.isAfter(newDateTime)
+                                }
+                                tasksToUpdate[taskId] = Task.from(originalTask)
+                                    .startDateConf(
+                                        TimePlanning(
+                                            dateTime = newDateTime,
+                                            dayPeriod = DayPeriod.NONE
+                                        )
+                                    )
+                                    .endDateConf(newEndDateConf)
+                                    .build()
+                                Log.d(
+                                    "PlannerVM",
+                                    "Task $taskId marked for update (Conflict Resolved: MoveTomorrow): New Start $newDateTime"
+                                )
+                            } ?: Log.w(
+                                "PlannerVM",
+                                "Original task $taskId not found for conflict resolution."
+                            )
+                        }
+                    }
+                }
+
+                // 3. Process Postponed Tasks (from initial handling)
+                state.postponedTasks.forEach { task ->
+                    if (state.tasksFlaggedForManualEdit.contains(task.id)) return@forEach // Skip flagged
+                    originalTasks[task.id]?.let { originalTask ->
+                        val targetDate = calculatePostponeDate(
+                            state.scheduleScope ?: ScheduleScope.THIS_WEEK,
+                            today
+                        )
+                        val keepTime = originalTask.startDateConf.dateTime?.toLocalTime()
+                            ?: state.workStartTime
+                        val newDateTime = LocalDateTime.of(targetDate, keepTime)
+                        val newEndDateConf = originalTask.endDateConf?.takeIf {
+                            it.dateTime != null && it.dateTime.isAfter(newDateTime)
+                        }
+                        tasksToUpdate[task.id] = Task.from(originalTask)
+                            .startDateConf(
+                                TimePlanning(
+                                    dateTime = newDateTime,
+                                    dayPeriod = DayPeriod.NONE
+                                )
+                            )
+                            .endDateConf(newEndDateConf)
+                            .build()
+                        Log.d(
+                            "PlannerVM",
+                            "Task ${task.id} marked for update (Postponed): New Start $newDateTime"
+                        )
+                    } ?: Log.w("PlannerVM", "Original task ${task.id} not found for postponement.")
+                }
+
+                // 4. Create Save Jobs ONLY for tasks that need updating
+                Log.d("PlannerVM", "Creating ${tasksToUpdate.size} save jobs for updated tasks.")
+                val updateJobs = tasksToUpdate.values.map { finalTaskToSave ->
+                    Log.d("PlannerVM", "Async save job for Task ID: ${finalTaskToSave.id}")
+                    async { saveTaskUseCase(finalTaskToSave) }
+                }
+
+                // 5. Wait and Process Results
+                if (updateJobs.isNotEmpty()) {
+                    Log.d("PlannerVM", "Waiting for ${updateJobs.size} save operations...")
+                    val results: List<TaskResult<Int>> = updateJobs.awaitAll()
+                    val errors = results.filterIsInstance<TaskResult.Error>()
+
+                    if (errors.isNotEmpty()) {
+                        val errorMessages = errors.joinToString("\n") { "- ${it.message}" }
+                        Log.e("PlannerVM", "Save plan failed for some tasks:\n$errorMessages")
+                        setState { copy(isLoading = false, error = "Some tasks failed to save.") }
+                        setEffect(PlannerEffect.ShowSnackbar("Error saving parts of the plan."))
+                    } else {
+                        Log.d("PlannerVM", "Save plan successful for ${tasksToUpdate.size} tasks.")
+                        setState { copy(isLoading = false, planSuccessfullyAdded = true) }
+                        setEffect(PlannerEffect.ShowSnackbar("Plan updates applied successfully!"))
+                        setEffect(PlannerEffect.NavigateBack)
+                    }
                 } else {
-                    setState { copy(isLoading = false, planSuccessfullyAdded = true) }
-                    setEffect(PlannerEffect.ShowSnackbar("Plan added successfully!"))
-                    setEffect(PlannerEffect.NavigateBack) // Navigate back after successful save
+                    Log.d("PlannerVM", "No tasks required updates.")
+                    setState {
+                        copy(
+                            isLoading = false,
+                            planSuccessfullyAdded = true
+                        )
+                    } // Still successful if nothing needed saving
+                    setEffect(PlannerEffect.ShowSnackbar("Plan reviewed. No updates needed."))
+                    setEffect(PlannerEffect.NavigateBack)
                 }
 
             } catch (e: Exception) {
-                Log.e("PlannerVM", "Failed to save plan", e)
+                Log.e("PlannerVM", "Exception during savePlan execution", e)
                 setState {
                     copy(
                         isLoading = false,
@@ -428,6 +458,14 @@ class PlannerViewModel(
                 }
                 setEffect(PlannerEffect.ShowSnackbar("Error saving plan: ${e.localizedMessage}"))
             }
+        }
+    }
+
+    private fun calculatePostponeDate(originalScope: ScheduleScope, today: LocalDate): LocalDate {
+        return when (originalScope) {
+            ScheduleScope.TODAY -> today.plusDays(1)
+            ScheduleScope.TOMORROW -> today.plusDays(2)
+            ScheduleScope.THIS_WEEK -> today.with(TemporalAdjusters.next(java.time.DayOfWeek.MONDAY))
         }
     }
 }

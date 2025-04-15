@@ -16,6 +16,12 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
+import com.elena.autoplanner.domain.usecases.planner.OverdueTaskHandler
+import com.elena.autoplanner.domain.usecases.planner.RecurrenceExpander
+import com.elena.autoplanner.domain.usecases.planner.TaskCategorizer
+import com.elena.autoplanner.domain.usecases.planner.TaskPlacer
+import com.elena.autoplanner.domain.usecases.planner.TaskPrioritizer
+import com.elena.autoplanner.domain.usecases.planner.TimelineManager
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteAllTasksUseCase
@@ -77,6 +83,7 @@ val appModule = module {
     }
 }
 
+
 val useCaseModule = module {
     single { GetTasksUseCase(get()) }
     single { GetTaskUseCase(get()) }
@@ -90,7 +97,23 @@ val useCaseModule = module {
     single { DeleteSubtaskUseCase(get(), get()) }
     single { DeleteAllTasksUseCase(get()) }
     single { FilterTasksUseCase() }
-    single { GeneratePlanUseCase() }
+
+    single { TaskPrioritizer() }
+    single { TaskCategorizer() }
+    single { RecurrenceExpander() }
+    single { TimelineManager() }
+    single { OverdueTaskHandler() }
+    single { TaskPlacer(taskPrioritizer = get()) }
+    single {
+        GeneratePlanUseCase(
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get()
+        )
+    }
 }
 
 val viewModelModule = module {

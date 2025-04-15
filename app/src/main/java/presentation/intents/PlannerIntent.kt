@@ -3,18 +3,21 @@ package com.elena.autoplanner.presentation.intents
 import com.elena.autoplanner.domain.models.ConflictItem
 import com.elena.autoplanner.domain.models.DayOrganization
 import com.elena.autoplanner.domain.models.OverdueTaskHandling
+import com.elena.autoplanner.domain.models.PlacementHeuristic
 import com.elena.autoplanner.domain.models.PrioritizationStrategy
 import com.elena.autoplanner.domain.models.ResolutionOption
 import com.elena.autoplanner.domain.models.ScheduleScope
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.viewmodel.Intent
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 sealed class PlannerIntent : Intent {
 
-    object GoToNextStep : PlannerIntent()
-    object GoToPreviousStep : PlannerIntent()
-    object CancelPlanner : PlannerIntent()
+    data object GoToNextStep : PlannerIntent()
+    data object GoToPreviousStep : PlannerIntent()
+    data object CancelPlanner : PlannerIntent()
 
     data class UpdateWorkStartTime(val time: LocalTime) : PlannerIntent()
     data class UpdateWorkEndTime(val time: LocalTime) : PlannerIntent()
@@ -23,19 +26,22 @@ sealed class PlannerIntent : Intent {
     // Step 2 Inputs
     data class SelectPriority(val priority: PrioritizationStrategy) : PlannerIntent()
     data class SelectDayOrganization(val organization: DayOrganization) : PlannerIntent()
-
+    data class SelectPlacementHeuristic(val heuristic: PlacementHeuristic) : PlannerIntent()
     // Step 3 Inputs
-    data class SelectShowSubtasks(val show: Boolean) : PlannerIntent()
+    data class SelectAllowSplitting(val allow: Boolean) : PlannerIntent()
     data class SelectOverdueHandling(val handling: OverdueTaskHandling) : PlannerIntent()
 
     // Plan Generation & Review
-    object GeneratePlan : PlannerIntent()
+    data object GeneratePlan : PlannerIntent()
     data class ResolveExpiredTask(val task: Task, val resolution: ResolutionOption) :
         PlannerIntent()
 
     data class ResolveConflict(val conflict: ConflictItem, val resolution: ResolutionOption) :
-        PlannerIntent() // Use conflict object or unique ID
+        PlannerIntent()
 
-    object AddPlanToCalendar : PlannerIntent()
+    object AcknowledgeManualEdits : PlannerIntent()
+    data class FlagTaskForManualEdit(val taskId: Int) : PlannerIntent()
+    data class UnflagTaskForManualEdit(val taskId: Int) : PlannerIntent()
+    data object AddPlanToCalendar : PlannerIntent()
 
 }

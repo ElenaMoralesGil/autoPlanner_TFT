@@ -12,6 +12,15 @@ enum class ErrorCode {
     NEGATIVE_DURATION,
 }
 
+data class TaskInternalFlags(
+    var isOverdue: Boolean = false,
+    var constraintDate: LocalDate? = null, // For ADD_TODAY_FREE_TIME
+    var failedPeriod: Boolean = false, // If period placement failed and fallback is attempted
+    var isHardConflict: Boolean = false, // Flag if involved in Fixed vs Fixed
+    var isPostponed: Boolean = false,
+    var needsManualResolution: Boolean = false,
+)
+
 data class Task private constructor(
     val id: Int,
     val name: String,
@@ -22,8 +31,10 @@ data class Task private constructor(
     val durationConf: DurationPlan?,
     val reminderPlan: ReminderPlan?,
     val repeatPlan: RepeatPlan?,
-    val subtasks: List<Subtask>
-) {
+    val subtasks: List<Subtask>,
+    @Transient var internalFlags: TaskInternalFlags? = null,
+
+    ) {
     fun validate() {
         if (name.isBlank()) {
             throw TaskValidationException(ErrorCode.TASK_NAME_EMPTY)
@@ -40,7 +51,9 @@ data class Task private constructor(
         }
     }
     fun isExpired(): Boolean =
-        startDateConf.dateTime?.toLocalDate()?.isBefore(LocalDate.now()) ?: false
+        endDateConf?.dateTime?.isBefore(LocalDateTime.now()) ?: (startDateConf.dateTime?.isBefore(
+            LocalDateTime.now()
+        ) == true && durationConf?.totalMinutes == null)
 
     fun isDueOn(date: LocalDate): Boolean =
         startDateConf.dateTime?.toLocalDate() == date
@@ -63,6 +76,11 @@ data class Task private constructor(
     fun isDueThisMonth(): Boolean =
         startDateConf.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } ?: false
 
+    fun copyForPlanning(flags: TaskInternalFlags? = this.internalFlags): Task {
+        val newTask = this.copy() // Standard copy
+        newTask.internalFlags = flags
+        return newTask
+    }
     val hasPeriod: Boolean = startDateConf.dayPeriod != DayPeriod.NONE
 
     val startTime: LocalTime
