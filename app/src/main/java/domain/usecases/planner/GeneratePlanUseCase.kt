@@ -991,6 +991,7 @@ class TaskPlacer(private val taskPrioritizer: TaskPrioritizer) {
             .forEach fixedLoop@{ (planningTask, occurrenceTime) ->
                 val task = planningTask.task
                 if (context.placedTaskIds.contains(task.id)) return@fixedLoop
+
                 val duration =
                     Duration.ofMinutes(task.effectiveDurationMinutes.toLong().coerceAtLeast(1))
                 if (duration <= Duration.ZERO) {
@@ -1000,39 +1001,127 @@ class TaskPlacer(private val taskPrioritizer: TaskPrioritizer) {
                             "Zero or negative duration",
                             occurrenceTime,
                             ConflictType.ZERO_DURATION
-                        ), task.id
-                    ); return@fixedLoop
+                        ),
+                        task.id
+                    )
+                    return@fixedLoop
                 }
                 val endTime = occurrenceTime.plus(duration)
-                val targetDate = occurrenceTime.toLocalDate()
-                val daySchedule = timelineManager.getDaySchedule(targetDate)
-                if (daySchedule == null) {
-                    context.addConflict(
-                        ConflictItem(
-                            listOf(task),
-                            "Fixed task date outside selected schedule scope",
-                            occurrenceTime,
-                            ConflictType.OUTSIDE_SCOPE
-                        ), task.id
-                    ); return@fixedLoop
-                }
+                val startDate = occurrenceTime.toLocalDate()
+                val endDate = endTime.toLocalDate() // Might be the next day
 
-                val result = timelineManager.placeTask(
-                    task,
-                    occurrenceTime,
-                    endTime,
-                    Occupancy.FIXED_TASK,
-                    allowOverwriteFree = false
-                )
-                when (result) {
-                    is PlacementResultInternal.Success -> {
-                        Log.d("TaskPlacer", "Placed fixed ${task.id} at $occurrenceTime")
+                // --- Validation for Multi-Day Fixed Tasks ---
+                if (startDate != endDate) {
+                    // Check if BOTH days exist in the timeline
+                    val startDaySchedule = timelineManager.getDaySchedule(startDate)
+                    val endDaySchedule = timelineManager.getDaySchedule(endDate)
+
+                    if (startDaySchedule == null || endDaySchedule == null) {
+                        context.addConflict(
+                            ConflictItem(
+                                listOf(task),
+                                "Fixed task spans midnight but target date(s) outside scope",
+                                occurrenceTime,
+                                ConflictType.OUTSIDE_SCOPE
+                            ), task.id
+                        )
+                        return@fixedLoop
+                    }
+
+                    // Perform placement checks for BOTH parts
+                    val endOfDay = startDate.atTime(LocalTime.MAX) // End of the first day
+                    val startOfNextDay = endDate.atStartOfDay()    // Start of the second day
+
+                    // Check part 1 (on start date)
+                    val result1 = timelineManager.placeTask(
+                        task,
+                        occurrenceTime,
+                        endOfDay,
+                        Occupancy.FIXED_TASK,
+                        allowOverwriteFree = false
+                    )
+                    if (result1 !is PlacementResultInternal.Success) {
+                        // Report conflict based on the first part's failure
+                        reportPlacementResult(result1, task, occurrenceTime, context)
+                        return@fixedLoop // Stop if the first part fails
+                    }
+
+                    // Check part 2 (on end date) - Use a temporary placement to check for conflicts without modifying
+                    // NOTE: A simpler check might be to just query blocks, but placeTask handles overlaps better.
+                    // We'll place it, and if the second part fails, we ideally need a way to "rollback" the first part.
+                    // For simplicity now, we'll place both and report conflict if the second fails.
+                    // A more robust solution might involve a "canPlace" check in TimelineManager.
+                    val result2 = timelineManager.placeTask(
+                        task,
+                        startOfNextDay,
+                        endTime,
+                        Occupancy.FIXED_TASK,
+                        allowOverwriteFree = false
+                    )
+                    if (result2 !is PlacementResultInternal.Success) {
+                        // Conflict on the second day. Report it.
+                        // Ideally, rollback the first placement, but that adds complexity.
+                        // For now, report the second conflict. The user will see the task placed on the first day but conflicting on the second.
+                        reportPlacementResult(result2, task, startOfNextDay, context)
+                        // Mark placed because the first part succeeded, but conflict exists.
+                        context.placedTaskIds.add(task.id)
+                        return@fixedLoop
+                    }
+
+                    // If both parts succeeded (or were checked successfully)
+                    Log.d(
+                        "TaskPlacer",
+                        "Placed multi-day fixed ${task.id} from $occurrenceTime to $endTime"
+                    )
+                    // Add *one* scheduled item representing the whole task
+                    context.addScheduledItem(
+                        ScheduledTaskItem(
+                            task,
+                            occurrenceTime.toLocalTime(),
+                            endTime.toLocalTime(),
+                            startDate
+                        ), task.id
+                    )
+                    checkAndLogOutsideWorkHours(
+                        task,
+                        occurrenceTime,
+                        endTime,
+                        startDaySchedule,
+                        context
+                    )
+                    // Optionally check for the second day too if relevant
+                    // checkAndLogOutsideWorkHours(task, startOfNextDay, endTime, endDaySchedule, context)
+
+                } else {
+                    // --- Original Logic for Single-Day Fixed Tasks ---
+                    val daySchedule = timelineManager.getDaySchedule(startDate)
+                    if (daySchedule == null) {
+                        context.addConflict(
+                            ConflictItem(
+                                listOf(task),
+                                "Fixed task date outside selected schedule scope",
+                                occurrenceTime,
+                                ConflictType.OUTSIDE_SCOPE
+                            ),
+                            task.id
+                        )
+                        return@fixedLoop
+                    }
+                    val result = timelineManager.placeTask(
+                        task,
+                        occurrenceTime,
+                        endTime,
+                        Occupancy.FIXED_TASK,
+                        allowOverwriteFree = false
+                    )
+                    reportPlacementResult(result, task, occurrenceTime, context) // Use helper
+                    if (result is PlacementResultInternal.Success) {
                         context.addScheduledItem(
                             ScheduledTaskItem(
                                 task,
                                 occurrenceTime.toLocalTime(),
                                 endTime.toLocalTime(),
-                                targetDate
+                                startDate
                             ), task.id
                         )
                         checkAndLogOutsideWorkHours(
@@ -1043,46 +1132,59 @@ class TaskPlacer(private val taskPrioritizer: TaskPrioritizer) {
                             context
                         )
                     }
-
-                    is PlacementResultInternal.Conflict -> {
-                        Log.w(
-                            "TaskPlacer",
-                            "Conflict placing fixed ${task.id}: ${result.reason} at ${result.conflictTime}"
-                        )
-                        val conflictingTask =
-                            result.conflictingTaskId?.let { cId -> context.planningTaskMap[cId]?.task }
-                        context.addConflict(
-                            ConflictItem(
-                                listOfNotNull(
-                                    task,
-                                    conflictingTask
-                                ).distinctBy { it.id },
-                                result.reason,
-                                result.conflictTime,
-                                result.type
-                            ), task.id
-                        )
-                        if (result.type == ConflictType.FIXED_VS_FIXED && result.conflictingTaskId != null) {
-                            context.placedTaskIds.add(result.conflictingTaskId)
-                            context.planningTaskMap[result.conflictingTaskId]?.flags?.isHardConflict =
-                                true
-                        }
-                    }
-
-                    is PlacementResultInternal.Failure -> {
-                        Log.e("TaskPlacer", "Failure placing fixed ${task.id}: ${result.reason}")
-                        context.addConflict(
-                            ConflictItem(
-                                listOf(task),
-                                result.reason,
-                                occurrenceTime,
-                                ConflictType.PLACEMENT_ERROR
-                            ), task.id
-                        )
-                    }
                 }
             }
     }
+
+    private fun reportPlacementResult(
+        result: PlacementResultInternal,
+        task: Task,
+        placementTime: LocalDateTime, // Time relevant to this specific placement attempt
+        context: PlanningContext,
+    ) {
+        when (result) {
+            is PlacementResultInternal.Success -> {
+                // Success is handled by the caller adding the scheduled item
+            }
+
+            is PlacementResultInternal.Conflict -> {
+                Log.w(
+                    "TaskPlacer",
+                    "Conflict placing task ${task.id}: ${result.reason} at ${result.conflictTime}"
+                )
+                val conflictingTask =
+                    result.conflictingTaskId?.let { cId -> context.planningTaskMap[cId]?.task }
+                context.addConflict(
+                    ConflictItem(
+                        listOfNotNull(task, conflictingTask).distinctBy { it.id },
+                        result.reason,
+                        result.conflictTime,
+                        result.type
+                    ),
+                    task.id // Mark this task as handled (due to conflict)
+                )
+                // Also mark the *other* task involved in a FIXED_VS_FIXED conflict as handled
+                if (result.type == ConflictType.FIXED_VS_FIXED && result.conflictingTaskId != null) {
+                    context.placedTaskIds.add(result.conflictingTaskId)
+                    context.planningTaskMap[result.conflictingTaskId]?.flags?.isHardConflict = true
+                }
+            }
+
+            is PlacementResultInternal.Failure -> {
+                Log.e("TaskPlacer", "Failure placing task ${task.id}: ${result.reason}")
+                context.addConflict(
+                    ConflictItem(
+                        listOf(task),
+                        result.reason,
+                        placementTime,
+                        ConflictType.PLACEMENT_ERROR
+                    ),
+                    task.id
+                )
+            }
+        }
+    }
+
 
     fun placePeriodTasks(
         timelineManager: TimelineManager,
@@ -1568,7 +1670,8 @@ class TaskPlacer(private val taskPrioritizer: TaskPrioritizer) {
                 Log.d(
                     "TaskPlacerFlex",
                     "Task ${task.id}: Search start $earliestNextStart is beyond max time $maxSearchTime. Stopping."
-                ); break
+                )
+                break
             }
 
             val bestFit = timelineManager.findSlot(
@@ -1582,96 +1685,183 @@ class TaskPlacer(private val taskPrioritizer: TaskPrioritizer) {
                 Log.d(
                     "TaskPlacerFlex",
                     "Task ${task.id}: No slot found for chunk of ${durationNeeded.toMinutes()}m starting after $earliestNextStart."
-                ); break
+                )
+                break
             }
 
-            val actualEndTime = minOf(bestFit.end, bestFit.start.plus(durationNeeded))
-            val actualDurationPlaced = java.time.Duration.between(bestFit.start, actualEndTime)
-            if (actualDurationPlaced < java.time.Duration.ofMinutes(1)) {
+            // --- Check if the found slot spans midnight ---
+            val slotStartTime = bestFit.start
+            val slotEndTime =
+                bestFit.start.plus(durationNeeded) // Calculate potential end based on needed duration
+            val actualEndTimeInBlock =
+                minOf(bestFit.end, slotEndTime) // Actual end within the free block found
+            val actualDurationPlaced = Duration.between(slotStartTime, actualEndTimeInBlock)
+
+            if (actualDurationPlaced < Duration.ofMinutes(1)) {
                 Log.w(
                     "TaskPlacerFlex",
                     "Task ${task.id}: Skipping near-zero duration chunk placement at ${bestFit.start}. Trying next slot."
-                ); lastBlockEndTime = bestFit.end; continue
+                )
+                lastBlockEndTime = bestFit.end // Advance past this tiny unusable slot
+                continue
             }
 
-            val placementInternalResult = timelineManager.placeTask(
-                task,
-                bestFit.start,
-                actualEndTime,
-                Occupancy.FLEXIBLE_TASK
-            )
-            when (placementInternalResult) {
-                is PlacementResultInternal.Success -> {
-                    val placedBlock = placementInternalResult.placedBlock
-                    val durationPlaced =
-                        java.time.Duration.between(placedBlock.start, placedBlock.end)
-                    if (durationPlaced <= java.time.Duration.ZERO) {
+            val placementStartTime = slotStartTime
+            val placementEndTime =
+                placementStartTime.plus(actualDurationPlaced) // Use the duration we can actually place
+
+            // --- Multi-Day Check ---
+            if (placementStartTime.toLocalDate() != placementEndTime.toLocalDate()) {
+                if (!allowSplitting) {
+                    // If splitting isn't allowed, we cannot use this slot.
+                    Log.d(
+                        "TaskPlacerFlex",
+                        "Task ${task.id}: Found slot spans midnight ($placementStartTime -> $placementEndTime), but splitting not allowed. Trying next slot."
+                    )
+                    lastBlockEndTime = bestFit.end // Skip this slot by advancing search time
+                    continue // Try finding another slot
+                }
+
+                // Handle multi-day placement (similar logic to fixed tasks)
+                val endOfDay1 = placementStartTime.toLocalDate().atTime(LocalTime.MAX)
+                val startOfDay2 = placementEndTime.toLocalDate().atStartOfDay()
+
+                // Place part 1
+                val result1 = timelineManager.placeTask(
+                    task,
+                    placementStartTime,
+                    endOfDay1,
+                    Occupancy.FLEXIBLE_TASK
+                )
+                if (result1 !is PlacementResultInternal.Success) {
+                    Log.e(
+                        "TaskPlacerFlex",
+                        "Task ${task.id}: Failed to place first part of multi-day chunk: ${result1}"
+                    )
+                    // Treat as failure for the whole chunk attempt
+                    return handlePlacementFailure(result1, task, placementStartTime)
+                }
+
+                // Place part 2
+                val result2 = timelineManager.placeTask(
+                    task,
+                    startOfDay2,
+                    placementEndTime,
+                    Occupancy.FLEXIBLE_TASK
+                )
+                if (result2 !is PlacementResultInternal.Success) {
+                    Log.e(
+                        "TaskPlacerFlex",
+                        "Task ${task.id}: Failed to place second part of multi-day chunk: ${result2}"
+                    )
+                    // Rollback or report conflict - For now, report conflict and stop placing this task
+                    // Ideally, rollback result1 placement.
+                    return handlePlacementFailure(result2, task, startOfDay2)
+                }
+
+                // Both parts succeeded
+                remainingDuration -= actualDurationPlaced
+                placedBlocksResult.add(result1.placedBlock) // Add first part block
+                placedBlocksResult.add(result2.placedBlock) // Add second part block
+                lastBlockEndTime = placementEndTime
+                context.addScheduledItem(
+                    ScheduledTaskItem(
+                        task,
+                        placementStartTime.toLocalTime(),
+                        placementEndTime.toLocalTime(),
+                        placementStartTime.toLocalDate()
+                    ), task.id
+                ) // Represent as one item
+                timelineManager.addBufferOrBreak(placementEndTime, dayOrganization)
+                Log.d(
+                    "TaskPlacerFlex",
+                    "Task ${task.id}: Placed multi-day flex chunk ${result1.placedBlock.start.toLocalTime()}-${result2.placedBlock.end.toLocalTime()}. Rem: ${remainingDuration.toMinutes()}m"
+                )
+
+            } else {
+                // --- Single-Day Placement ---
+                val placementInternalResult = timelineManager.placeTask(
+                    task,
+                    placementStartTime,
+                    placementEndTime,
+                    Occupancy.FLEXIBLE_TASK
+                )
+                when (placementInternalResult) {
+                    is PlacementResultInternal.Success -> {
+                        val placedBlock = placementInternalResult.placedBlock
+                        val durationPlaced = Duration.between(placedBlock.start, placedBlock.end)
+                        if (durationPlaced <= Duration.ZERO) {
+                            Log.e(
+                                "TaskPlacerFlex",
+                                "Task ${task.id}: Internal error - placed zero duration block."
+                            )
+                            return PlacementResult.Failure(
+                                "Internal error placing task chunk (zero duration)",
+                                ConflictType.PLACEMENT_ERROR
+                            )
+                        }
+                        remainingDuration -= durationPlaced
+                        placedBlocksResult.add(placedBlock)
+                        lastBlockEndTime = placedBlock.end
+                        context.addScheduledItem(
+                            ScheduledTaskItem(
+                                task,
+                                placedBlock.start.toLocalTime(),
+                                placedBlock.end.toLocalTime(),
+                                placedBlock.start.toLocalDate()
+                            ), task.id
+                        )
+                        timelineManager.addBufferOrBreak(placedBlock.end, dayOrganization)
+                        Log.d(
+                            "TaskPlacerFlex",
+                            "Task ${task.id}: Placed flex chunk ${placedBlock.start.toLocalTime()}-${placedBlock.end.toLocalTime()} on ${placedBlock.start.toLocalDate()}. Rem: ${remainingDuration.toMinutes()}m"
+                        )
+                        if (!allowSplitting) {
+                            remainingDuration = Duration.ZERO; break
+                        }
+                    }
+
+                    is PlacementResultInternal.Conflict -> {
                         Log.e(
                             "TaskPlacerFlex",
-                            "Task ${task.id}: Internal error - placed zero duration block."
-                        ); return PlacementResult.Failure(
-                            "Internal error placing task chunk (zero duration)",
+                            "Task ${task.id}: Unexpected conflict placing chunk: ${placementInternalResult.reason}"
+                        )
+                        return PlacementResult.Conflict(
+                            placementInternalResult.reason,
+                            placementInternalResult.conflictingTaskId,
+                            placementInternalResult.conflictTime,
+                            placementInternalResult.type
+                        )
+                    }
+
+                    is PlacementResultInternal.Failure -> {
+                        Log.e(
+                            "TaskPlacerFlex",
+                            "Task ${task.id}: Unexpected failure placing chunk: ${placementInternalResult.reason}"
+                        )
+                        return PlacementResult.Failure(
+                            placementInternalResult.reason,
                             ConflictType.PLACEMENT_ERROR
                         )
                     }
-                    remainingDuration -= durationPlaced
-                    placedBlocksResult.add(placedBlock)
-                    lastBlockEndTime = placedBlock.end
-                    context.addScheduledItem(
-                        ScheduledTaskItem(
-                            task,
-                            placedBlock.start.toLocalTime(),
-                            placedBlock.end.toLocalTime(),
-                            placedBlock.start.toLocalDate()
-                        ), task.id
-                    )
-                    timelineManager.addBufferOrBreak(placedBlock.end, dayOrganization)
-                    Log.d(
-                        "TaskPlacerFlex",
-                        "Task ${task.id}: Placed flex chunk ${placedBlock.start.toLocalTime()}-${placedBlock.end.toLocalTime()} on ${placedBlock.start.toLocalDate()}. Rem: ${remainingDuration.toMinutes()}m"
-                    )
-                    if (!allowSplitting) {
-                        remainingDuration = Duration.ZERO; break
-                    }
-                }
-
-                is PlacementResultInternal.Conflict -> {
-                    Log.e(
-                        "TaskPlacerFlex",
-                        "Task ${task.id}: Unexpected conflict placing chunk: ${placementInternalResult.reason}"
-                    ); return PlacementResult.Conflict(
-                        placementInternalResult.reason,
-                        placementInternalResult.conflictingTaskId,
-                        placementInternalResult.conflictTime,
-                        placementInternalResult.type
-                    )
-                }
-
-                is PlacementResultInternal.Failure -> {
-                    Log.e(
-                        "TaskPlacerFlex",
-                        "Task ${task.id}: Unexpected failure placing chunk: ${placementInternalResult.reason}"
-                    ); return PlacementResult.Failure(
-                        placementInternalResult.reason,
-                        ConflictType.PLACEMENT_ERROR
-                    )
                 }
             }
+        } // End while loop
+
+        // --- Determine Final Result ---
+        if (attempts >= FLEXIBLE_PLACEMENT_MAX_ATTEMPTS) {
+            Log.w("TaskPlacer", "Max placement attempts reached for flexible task ${task.id}")
         }
-        if (attempts >= FLEXIBLE_PLACEMENT_MAX_ATTEMPTS) Log.w(
-            "TaskPlacer",
-            "Max placement attempts reached for flexible task ${task.id}"
-        )
         return when {
             placedBlocksResult.isNotEmpty() && remainingDuration <= Duration.ZERO -> PlacementResult.Success(
                 placedBlocksResult
             )
-
             placedBlocksResult.isNotEmpty() && remainingDuration > Duration.ZERO -> {
                 Log.w(
                     "TaskPlacer",
                     "Task ${task.id} placed partially (${(totalDuration - remainingDuration).toMinutes()}m / ${totalDuration.toMinutes()}m). Could not place remaining ${remainingDuration.toMinutes()}m."
-                ); PlacementResult.Failure(
+                )
+                PlacementResult.Failure(
                     "Could only place partially (${(totalDuration - remainingDuration).toMinutes()}m placed)",
                     ConflictType.NO_SLOT_IN_SCOPE
                 )
@@ -1681,6 +1871,39 @@ class TaskPlacer(private val taskPrioritizer: TaskPrioritizer) {
                 "No suitable time slot found",
                 ConflictType.NO_SLOT_IN_SCOPE
             )
+        }
+    }
+
+    private fun handlePlacementFailure(
+        result: PlacementResultInternal,
+        task: Task,
+        placementTime: LocalDateTime,
+    ): PlacementResult {
+        when (result) {
+            is PlacementResultInternal.Conflict -> {
+                return PlacementResult.Conflict(
+                    result.reason,
+                    result.conflictingTaskId,
+                    result.conflictTime,
+                    result.type
+                )
+            }
+
+            is PlacementResultInternal.Failure -> {
+                return PlacementResult.Failure(result.reason, ConflictType.PLACEMENT_ERROR)
+            }
+
+            is PlacementResultInternal.Success -> {
+                // Should not happen if called on failure
+                Log.e(
+                    "TaskPlacerFlex",
+                    "handlePlacementFailure called with Success result for task ${task.id}"
+                )
+                return PlacementResult.Failure(
+                    "Internal logic error during placement",
+                    ConflictType.PLACEMENT_ERROR
+                )
+            }
         }
     }
 
