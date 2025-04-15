@@ -50,6 +50,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -78,8 +79,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -88,6 +91,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times // Keep this import
 import androidx.compose.ui.zIndex
+import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.ConflictItem
 import com.elena.autoplanner.domain.models.DayOrganization
 import com.elena.autoplanner.domain.models.OverdueTaskHandling
@@ -200,7 +204,7 @@ fun AutoPlannerScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
-    var selectedTaskIdForDetail by remember { mutableStateOf<Int?>(null) } // Corrected declaration
+    var selectedTaskIdForDetail by remember { mutableStateOf<Int?>(null) }
     var taskIdForEditSheet by remember { mutableStateOf<Int?>(null) }
     var taskForEditSheet by remember { mutableStateOf<Task?>(null) }
 
@@ -294,7 +298,6 @@ fun AutoPlannerScreen(
                     top = paddingValues.calculateTopPadding(),
                     start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
                     end = paddingValues.calculateEndPadding(LayoutDirection.Ltr)
-                    // Removed bottom padding to prevent double padding with bottomBar
                 )
                 .fillMaxSize()
         ) {
@@ -305,18 +308,15 @@ fun AutoPlannerScreen(
                     onStartTimeClick = { if (startTimeState != null) showStartTimePicker = true },
                     onEndTimeClick = { if (endTimeState != null) showEndTimePicker = true },
                     onReviewTaskClick = { task ->
-                        // Decide whether to show detail or edit based on manual flag
-                        if (currentState.tasksFlaggedForManualEdit.contains(task.id)) { // Added check if tasksFlaggedForManualEdit exists
+                        if (currentState.tasksFlaggedForManualEdit.contains(task.id)) {
                             Log.d("AutoPlannerScreen", "Edit flagged task clicked: ${task.id}")
-                            taskForEditSheet = task // Store task for context
-                            taskIdForEditSheet = task.id // Trigger edit sheet
-                            selectedTaskIdForDetail =
-                                null // Ensure detail sheet is closed // Corrected variable name
+                            taskForEditSheet = task
+                            taskIdForEditSheet = task.id
+                            selectedTaskIdForDetail = null
                         } else {
                             Log.d("AutoPlannerScreen", "Normal task clicked: ${task.id}")
-                            selectedTaskIdForDetail =
-                                task.id // Trigger detail sheet // Corrected variable name
-                            taskIdForEditSheet = null // Ensure edit sheet is closed
+                            selectedTaskIdForDetail = task.id
+                            taskIdForEditSheet = null
                         }
                     }
                 )
@@ -334,28 +334,22 @@ fun AutoPlannerScreen(
         }
 
         // --- Task Detail Sheet ---
-        selectedTaskIdForDetail?.let { taskId -> // Corrected variable name
+        selectedTaskIdForDetail?.let { taskId ->
             val detailViewModel: TaskDetailViewModel =
                 koinViewModel(parameters = { parametersOf(taskId) })
             LaunchedEffect(detailViewModel, taskId) {
                 detailViewModel.effect.collect { effect ->
                     when (effect) {
-                        is TaskDetailEffect.NavigateBack -> selectedTaskIdForDetail =
-                            null // Corrected variable name
-                        // --- Handle Navigation to Edit from Detail Sheet ---
+                        is TaskDetailEffect.NavigateBack -> selectedTaskIdForDetail = null
                         is TaskDetailEffect.NavigateToEdit -> {
-                            selectedTaskIdForDetail =
-                                null // Close detail // Corrected variable name
-                            // Need the actual task object to pass to Modification sheet if needed,
-                            // might need to fetch it again or pass from the review click handler
+                            selectedTaskIdForDetail = null
                             taskForEditSheet = state?.generatedPlan?.values?.flatten()
                                 ?.find { it.task.id == effect.taskId }?.task
                                 ?: state?.expiredTasksToResolve?.find { it.id == effect.taskId }
                                         ?: state?.conflictsToResolve?.flatMap { it.conflictingTasks }
                                     ?.find { it.id == effect.taskId }
-                            taskIdForEditSheet = effect.taskId // Open edit sheet
+                            taskIdForEditSheet = effect.taskId
                         }
-
                         is TaskDetailEffect.ShowSnackbar -> snackbarHostState.showSnackbar(
                             effect.message
                         )
@@ -364,7 +358,7 @@ fun AutoPlannerScreen(
             }
             TaskDetailSheet(
                 taskId = taskId,
-                onDismiss = { selectedTaskIdForDetail = null }, // Corrected variable name
+                onDismiss = { selectedTaskIdForDetail = null },
                 viewModel = detailViewModel
             )
         }
@@ -374,41 +368,29 @@ fun AutoPlannerScreen(
             val editViewModel: TaskEditViewModel =
                 koinViewModel(parameters = { parametersOf(taskIdToEdit) })
 
-            // Handle effects (closing the sheet, showing snackbars)
             LaunchedEffect(editViewModel, taskIdToEdit) {
                 editViewModel.effect.collect { effect ->
                     when (effect) {
                         is TaskEditEffect.NavigateBack -> {
-                            taskIdForEditSheet = null // Close the sheet
+                            taskIdForEditSheet = null
                             taskForEditSheet = null
-                            // Send intent to acknowledge manual edit (if triggered from review)
-                            if (state?.tasksFlaggedForManualEdit?.contains(taskIdToEdit) == true) { // Added check if tasksFlaggedForManualEdit exists
-                                viewModel.sendIntent(PlannerIntent.AcknowledgeManualEdits) // Or potentially UpdateManuallyEditedTask if data was passed back
+                            if (state?.tasksFlaggedForManualEdit?.contains(taskIdToEdit) == true) {
+                                viewModel.sendIntent(PlannerIntent.AcknowledgeManualEdits)
                             }
-                            // Optional: Refresh the planner preview if needed, though not strictly necessary as save hasn't happened
                         }
-
                         is TaskEditEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
                     }
                 }
             }
-            // Load the task data into the edit VM when the sheet opens
             LaunchedEffect(taskIdToEdit) {
-                editViewModel.sendIntent(
-                    TaskEditIntent.LoadTask(
-                        taskIdToEdit
-                    )
-                )
+                editViewModel.sendIntent(TaskEditIntent.LoadTask(taskIdToEdit))
             }
 
             ModificationTaskSheet(
                 taskEditViewModel = editViewModel,
-                onClose = { editViewModel.sendIntent(TaskEditIntent.Cancel) } // Standard cancel closes sheet
+                onClose = { editViewModel.sendIntent(TaskEditIntent.Cancel) }
             )
         }
-
-        // Duplicate detail sheet logic? Removed this duplicate block.
-        // selectedTaskIdForDetail?.let { taskId -> ... }
     }
 }
 
@@ -418,20 +400,20 @@ fun PlannerContent(
     onIntent: (PlannerIntent) -> Unit,
     onStartTimeClick: () -> Unit,
     onEndTimeClick: () -> Unit,
-    onReviewTaskClick: (Task) -> Unit, // Added callback parameter
+    onReviewTaskClick: (Task) -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()) // Allows content to scroll if it overflows
-            .padding(bottom = 80.dp), // Add padding at the bottom to avoid overlap with navigation buttons
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp) // Spacing between steps/cards
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         Text(
             text = "Let's create your optimized schedule!",
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(top = 16.dp, bottom = 12.dp), // Adjusted padding
+            modifier = Modifier.padding(top = 16.dp, bottom = 12.dp),
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
@@ -443,14 +425,13 @@ fun PlannerContent(
                 onStartTimeClick,
                 onEndTimeClick
             )
-
             PlannerStep.PRIORITY_INPUT -> Step2PriorityInput(state, onIntent)
             PlannerStep.ADDITIONAL_OPTIONS -> Step3AdditionalOptions(state, onIntent)
             PlannerStep.REVIEW_PLAN -> Step4ReviewPlan(
                 state,
                 onIntent,
                 onReviewTaskClick
-            ) // Pass callback
+            )
         }
 
         if (state.error != null) {
@@ -461,7 +442,6 @@ fun PlannerContent(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
-        // Removed Spacer as bottom padding is handled by Column modifier
     }
 }
 
@@ -475,7 +455,7 @@ fun Step1TimeInput(
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.padding(horizontal = 16.dp)
-    ) { // Add padding
+    ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(2.dp),
@@ -551,7 +531,7 @@ fun Step2PriorityInput(state: PlannerState, onIntent: (PlannerIntent) -> Unit) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.padding(horizontal = 16.dp)
-    ) { // Add padding
+    ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(2.dp),
@@ -567,9 +547,9 @@ fun Step2PriorityInput(state: PlannerState, onIntent: (PlannerIntent) -> Unit) {
                 )
                 RadioGroupColumn(
                     options = PrioritizationStrategy.entries.toList(),
-                    selectedOption = state.selectedPriority, // Use selectedPriorities (Set)
-                    onOptionSelected = { priority -> // Lambda receives priority and checked state
-                        onIntent(PlannerIntent.SelectPriority(priority)) // Use TogglePriority intent
+                    selectedOption = state.selectedPriority,
+                    onOptionSelected = { priority ->
+                        onIntent(PlannerIntent.SelectPriority(priority))
                     },
                     labelSelector = { it.toDisplayString() }
                 )
@@ -607,7 +587,7 @@ fun Step3AdditionalOptions(state: PlannerState, onIntent: (PlannerIntent) -> Uni
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.padding(horizontal = 16.dp)
-    ) { // Add padding
+    ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(2.dp),
@@ -630,7 +610,7 @@ fun Step3AdditionalOptions(state: PlannerState, onIntent: (PlannerIntent) -> Uni
                 RadioGroupColumn(
                     options = listOf(true, false),
                     selectedOption = state.allowSplitting,
-                    onOptionSelected = { show -> onIntent(PlannerIntent.SelectAllowSplitting(show)) }, // Intent name is correct
+                    onOptionSelected = { show -> onIntent(PlannerIntent.SelectAllowSplitting(show)) },
                     labelSelector = { if (it) "Yes, allow splitting" else "No, keep tasks whole" })
             }
         }
@@ -698,7 +678,7 @@ fun Step3AdditionalOptions(state: PlannerState, onIntent: (PlannerIntent) -> Uni
 fun ReviewSectionHeader(title: String, isError: Boolean = false) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = 12.dp, bottom = 6.dp, start = 4.dp) // Adjusted padding
+        modifier = Modifier.padding(top = 12.dp, bottom = 6.dp, start = 4.dp)
     ) {
         Icon(
             imageVector = if (isError) Icons.Default.Warning else Icons.Default.Info,
@@ -722,7 +702,23 @@ fun Step4ReviewPlan(
     onIntent: (PlannerIntent) -> Unit,
     onReviewTaskClick: (Task) -> Unit,
 ) {
-    var currentCalendarView by remember { mutableStateOf(CalendarView.WEEK) }
+    var currentCalendarView by remember { mutableStateOf(CalendarView.DAY) }
+
+    val availableViews = remember(state.scheduleScope) {
+        when (state.scheduleScope) {
+            ScheduleScope.TODAY, ScheduleScope.TOMORROW -> listOf(CalendarView.DAY)
+            else -> listOf(CalendarView.DAY, CalendarView.WEEK)
+        }
+    }
+
+    LaunchedEffect(availableViews) {
+        if (availableViews.size > 1 && state.scheduleScope == ScheduleScope.THIS_WEEK) {
+            currentCalendarView = CalendarView.WEEK
+        } else {
+            currentCalendarView = CalendarView.DAY
+        }
+    }
+
 
     val planStartDate = remember(state.generatedPlan, state.scheduleScope) {
         state.generatedPlan.keys.minOrNull() ?: state.scheduleScope?.let { scope ->
@@ -736,8 +732,10 @@ fun Step4ReviewPlan(
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp) // Consistent spacing
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
 
         AnimatedVisibility(visible = state.requiresResolution) {
@@ -779,7 +777,6 @@ fun Step4ReviewPlan(
                                         if (option == ResolutionOption.MANUALLY_SCHEDULE) {
                                             onIntent(PlannerIntent.FlagTaskForManualEdit(task.id))
                                         } else {
-                                            // Remove flag if another option is chosen
                                             onIntent(PlannerIntent.UnflagTaskForManualEdit(task.id))
                                         }
                                     }
@@ -813,16 +810,13 @@ fun Step4ReviewPlan(
                                             if (option == ResolutionOption.MANUALLY_SCHEDULE || option == ResolutionOption.LEAVE_IT_LIKE_THAT) {
                                                 onIntent(PlannerIntent.FlagTaskForManualEdit(it.id))
                                             } else {
-                                                // Remove flag if another option is chosen
                                                 onIntent(PlannerIntent.UnflagTaskForManualEdit(it.id))
                                             }
                                         }
                                     },
-                                    onTaskClick = { task -> // Pass the lambda from Step4ReviewPlan
-                                        onReviewTaskClick(task)
-                                    },
-                                    tasksFlaggedForManualEdit = state.tasksFlaggedForManualEdit, // Pass the set from the state
-                                    modifier = Modifier //
+                                    onTaskClick = onReviewTaskClick,
+                                    tasksFlaggedForManualEdit = state.tasksFlaggedForManualEdit,
+                                    modifier = Modifier
                                 )
                             }
                         }
@@ -854,9 +848,24 @@ fun Step4ReviewPlan(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                ViewToggleButtons(
-                    selectedView = currentCalendarView,
-                    onViewSelected = { currentCalendarView = it })
+
+                if (availableViews.size > 1) {
+                    ReviewViewToggle(
+                        availableViews = availableViews,
+                        selectedView = currentCalendarView,
+                        onViewSelected = { currentCalendarView = it }
+                    )
+                } else {
+                    Text(
+                        "Day View",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .padding(vertical = 8.dp)
+                    )
+                }
+
 
                 Box(
                     modifier = Modifier
@@ -869,7 +878,7 @@ fun Step4ReviewPlan(
                         )
                         .clip(RoundedCornerShape(8.dp))
                 ) {
-                    if (state.generatedPlan.isNotEmpty()) {
+                    if (state.generatedPlan.isNotEmpty() || state.conflictsToResolve.isNotEmpty()) {
                         GeneratedPlanReviewView(
                             viewType = currentCalendarView,
                             plan = state.generatedPlan,
@@ -887,7 +896,7 @@ fun Step4ReviewPlan(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "No tasks scheduled. Try adjusting the options.",
+                                "No tasks scheduled. Try adjusting the options or check conflicts.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center
@@ -1036,46 +1045,67 @@ fun PlannerNavigationButtons(
 }
 
 @Composable
-fun ViewToggleButtons(selectedView: CalendarView, onViewSelected: (CalendarView) -> Unit) {
-
-    val viewsToShow = listOf(CalendarView.DAY, CalendarView.WEEK) // Only show Day and Week
-
+fun ReviewViewToggle(
+    availableViews: List<CalendarView>,
+    selectedView: CalendarView,
+    onViewSelected: (CalendarView) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            // .padding(horizontal = 16.dp) // Keep horizontal padding for centering
+            .height(40.dp) // Set a fixed height for consistency
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
             .clip(RoundedCornerShape(50)),
-        horizontalArrangement = Arrangement.Center // Center the buttons horizontally
+        horizontalArrangement = Arrangement.Center
     ) {
-        viewsToShow.forEachIndexed { index, view ->
+        availableViews.forEachIndexed { index, view ->
             val isSelected = view == selectedView
 
             // Determine shape based on position
-            val shape = when (index) {
-                0 -> RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp) // First button
-                viewsToShow.lastIndex -> RoundedCornerShape(
+            val shape = when {
+                availableViews.size == 1 -> RoundedCornerShape(50) // Fully rounded if only one
+                index == 0 -> RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp)
+                index == availableViews.lastIndex -> RoundedCornerShape(
                     topEnd = 50.dp,
                     bottomEnd = 50.dp
-                ) // Last button
-                else -> RoundedCornerShape(0.dp) // Middle buttons (if any)
+                )
+
+                else -> RoundedCornerShape(0.dp)
             }
 
-            TextButton(
-                onClick = { onViewSelected(view) },
+            // Use IconToggleButton for better semantics and state handling
+            IconToggleButton(
+                checked = isSelected,
+                onCheckedChange = { if (it) onViewSelected(view) }, // Select only when checked
                 modifier = Modifier
-                    .weight(1f) // Distribute width equally
-                    .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent),
-                shape = shape,
-                contentPadding = PaddingValues(vertical = 8.dp) // Consistent vertical padding
+                    .weight(1f)
+                    .fillMaxHeight() // Fill height within the Row
+                    .background(
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = shape // Apply shape to background
+                    )
+                    .clip(shape), // Clip the content area as well
+                colors = androidx.compose.material3.IconButtonDefaults.iconToggleButtonColors(
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
-                Text(
-                    text = view.name.replaceFirstChar { it.uppercase() },
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
+                Icon(
+                    painter = painterResource(id = view.getIconRes()), // Use the existing icon function
+                    contentDescription = view.name,
+                    modifier = Modifier.size(20.dp) // Adjust icon size if needed
                 )
             }
         }
     }
+}
+
+// Ensure getIconRes is accessible or defined here
+fun CalendarView.getIconRes(): Int = when (this) {
+    CalendarView.DAY -> R.drawable.ic_day_view
+    CalendarView.WEEK -> R.drawable.ic_week_view
+    CalendarView.MONTH -> R.drawable.ic_month_view
 }
 
 
@@ -1242,7 +1272,7 @@ fun ReviewDailyViewContent(
             modifier = Modifier
                 .fillMaxHeight() // Takes full grid height
                 .width(timeLabelWidth)
-                .padding(end = 4.dp) // Padding from the grid line
+                .padding(start = 6.dp) // Padding from the grid line
         ) {
             for (hour in 0..23) {
                 val timeString = when (hour) {
@@ -1256,7 +1286,7 @@ fun ReviewDailyViewContent(
                         text = timeString,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp) // Padding from the top line
+                        modifier = Modifier.padding(top = 2.dp) // Use small top padding instead of offset
                     )
                 }
             }
@@ -1266,7 +1296,7 @@ fun ReviewDailyViewContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = timeLabelWidth)
+                .padding(start = timeLabelWidth, end = 4.dp)
         ) {
             // Render combined list
             allItemsToRender.sortedBy { it.scheduledStartTime }.forEach { item ->
@@ -1312,19 +1342,16 @@ fun ReviewWeeklyViewContent(
     val weekDays = remember(startDate) {
         (0..6).map { startDate.plusDays(it.toLong()) }
     }
-    val hourHeight: Dp = 60.dp // Height for one hour slot
+    val hourHeight: Dp = 60.dp
     val density = LocalDensity.current
     val hourHeightPx = remember(hourHeight, density) { with(density) { hourHeight.toPx() } }
-    val timeLabelWidth: Dp = 48.dp // Width for the time labels on the left
-    val totalGridHeight = remember(hourHeight) { hourHeight * 24 } // Total height for 24 hours
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp.dp // Get screen width
-
-    // Calculate width available for the day columns after accounting for time labels
+    val timeLabelWidth: Dp = 48.dp
+    val totalGridHeight = remember(hourHeight) { hourHeight * 24 }
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp.dp
     val availableWidthForDays = (screenWidthDp - timeLabelWidth)
     val dayWidth = remember(availableWidthForDays, weekDays) {
-        // Ensure weekDays is not empty before dividing
         if (weekDays.isNotEmpty()) (availableWidthForDays / weekDays.size).coerceAtLeast(40.dp)
-        else availableWidthForDays // Fallback if weekDays is empty
+        else availableWidthForDays
     }
     val conflictedTasksToShowMap = remember(conflicts, resolutions, weekDays) {
         weekDays.associateWith { date ->
@@ -1352,28 +1379,35 @@ fun ReviewWeeklyViewContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                .padding(start = timeLabelWidth) // Offset to align with grid content
         ) {
-            weekDays.forEach { day ->
-                Column(
-                    modifier = Modifier
-                        .width(dayWidth) // Assign calculated width
-                        .padding(vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val isToday = day == LocalDate.now()
-                    Text(
-                        day.format(DateTimeFormatter.ofPattern("E")), // Day abbreviation (Mon, Tue)
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
-                    )
-                    Text(
-                        day.dayOfMonth.toString(), // Day number
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
-                    )
+            // Add Spacer for the time label width
+            Spacer(modifier = Modifier.width(timeLabelWidth))
+            // Day Headers Row (takes remaining width)
+            Row(modifier = Modifier.weight(1f)) {
+                weekDays.forEach { day ->
+                    Column(
+                        modifier = Modifier
+                            .width(dayWidth) // Assign calculated width
+                            .padding(
+                                vertical = 6.dp,
+                                horizontal = 2.dp
+                            ), // ADDED horizontal padding
+                        horizontalAlignment = Alignment.CenterHorizontally // Center content
+                    ) {
+                        val isToday = day == LocalDate.now()
+                        Text(
+                            day.format(DateTimeFormatter.ofPattern("E")), // Day abbreviation (Mon, Tue)
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                        )
+                        Text(
+                            day.dayOfMonth.toString(), // Day number
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
                 }
             }
         }
@@ -1386,59 +1420,18 @@ fun ReviewWeeklyViewContent(
                 .verticalScroll(rememberScrollState())
                 .fillMaxWidth()
         ) {
-
-            val color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-            val color1 = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-            Box(
+            // --- Combined Time Labels and Grid Content ---
+            Row(
                 modifier = Modifier
                     .height(totalGridHeight) // Set fixed height for 24 hours
                     .fillMaxWidth()
             ) {
-                // Background Grid Canvas
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val labelWidthPx = with(density) { timeLabelWidth.toPx() }
-                    val dayWidthPx = with(density) { dayWidth.toPx() }
-                    val gridColor = color
-                    val gridColorHalf = color1
-
-                    // Draw horizontal hour lines
-                    for (hour in 0..23) {
-                        val y = hour * hourHeightPx
-                        drawLine(
-                            color = gridColor,
-                            start = Offset(labelWidthPx, y),
-                            end = Offset(size.width, y),
-                            strokeWidth = 1f
-                        )
-                        // Draw half-hour lines
-                        val halfY = y + hourHeightPx / 2
-                        drawLine(
-                            color = gridColorHalf,
-                            start = Offset(labelWidthPx, halfY),
-                            end = Offset(size.width, halfY),
-                            strokeWidth = 1f,
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
-                        )
-                    }
-
-                    // Draw vertical lines separating days
-                    for (i in 0..weekDays.size) { // Draw lines including the last one
-                        val x = labelWidthPx + i * dayWidthPx
-                        drawLine(
-                            color = gridColor,
-                            start = Offset(x, 0f),
-                            end = Offset(x, size.height),
-                            strokeWidth = 1f
-                        )
-                    }
-                }
-
-                // Time Labels Column (on the left)
+                // Time Labels Column
                 Column(
                     modifier = Modifier
-                        .fillMaxHeight()
                         .width(timeLabelWidth)
-                        .padding(end = 4.dp) // Padding from the grid line
+                        .fillMaxHeight()
+                        .padding(start = 6.dp) // Padding from the grid line
                 ) {
                     for (hour in 0..23) {
                         val timeString = when (hour) {
@@ -1452,75 +1445,126 @@ fun ReviewWeeklyViewContent(
                                 text = timeString,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp) // Padding from the top line
+                                modifier = Modifier.padding(top = 4.dp) // Use small top padding instead of offset
                             )
                         }
                     }
                 }
-
-                // Task Rendering Area (Row containing columns for each day)
-                Row(
+                val color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                val color1 = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                // Grid Content Area (Canvas + Tasks)
+                Box(
                     modifier = Modifier
-                        .fillMaxSize() // Fill the parent Box
-                        .padding(start = timeLabelWidth) // Offset start past the labels
+                        .weight(1f) // Takes remaining width
+                        .fillMaxHeight()
+                        .padding(end = 4.dp) // Padding to the right
                 ) {
-                    weekDays.forEach { date ->
-                        Box(
-                            modifier = Modifier
-                                .width(dayWidth)
-                                .fillMaxHeight()
-                        ) {
-                            // Combine scheduled and conflicted for the day
-                            val scheduledItems = plan[date] ?: emptyList()
-                            val conflictedTasks = conflictedTasksToShowMap[date] ?: emptyList()
-                            val scheduledTaskIds = scheduledItems.map { it.task.id }.toSet()
+                    // Background Grid Canvas
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val dayWidthPx = with(density) { dayWidth.toPx() }
+                        val gridColor = color
+                        val gridColorHalf = color1
 
-                            val allItemsToRender = scheduledItems + conflictedTasks
-                                .filterNot { scheduledTaskIds.contains(it.id) }
-                                .map { task ->
-                                    val startTime =
-                                        conflicts.find { c -> c.conflictingTasks.any { t -> t.id == task.id } }?.conflictTime?.toLocalTime()
-                                            ?: task.startTime
-                                    val endTime =
-                                        startTime.plusMinutes(task.effectiveDurationMinutes.toLong())
-                                    ScheduledTaskItem(
-                                        task,
-                                        startTime,
-                                        endTime,
-                                        task.startDateConf.dateTime?.toLocalDate() ?: date
-                                    )
-                                }
+                        // Draw horizontal hour lines
+                        for (hour in 0..23) {
+                            val y = hour * hourHeightPx
+                            drawLine(
+                                color = gridColor,
+                                start = Offset(0f, y), // Start from x=0 of this Box
+                                end = Offset(size.width, y),
+                                strokeWidth = 1f
+                            )
+                            // Draw half-hour lines
+                            val halfY = y + hourHeightPx / 2
+                            drawLine(
+                                color = gridColorHalf,
+                                start = Offset(0f, halfY), // Start from x=0
+                                end = Offset(size.width, halfY),
+                                strokeWidth = 1f,
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+                            )
+                        }
 
-                            allItemsToRender.sortedBy { it.scheduledStartTime }.forEach { item ->
-                                val startMinutes =
-                                    item.scheduledStartTime.hour * 60 + item.scheduledStartTime.minute
-                                val endMinutes =
-                                    item.scheduledEndTime.hour * 60 + item.scheduledEndTime.minute
-                                val durationMinutes = (endMinutes - startMinutes).coerceAtLeast(15)
-                                val topOffset = (startMinutes / 60f) * hourHeight
-                                val itemHeight = (durationMinutes / 60f) * hourHeight
-                                val isConflicted = conflictedTasks.any { it.id == item.task.id }
+                        // Draw vertical lines separating days
+                        for (i in 1 until weekDays.size) { // Draw lines BETWEEN days
+                            val x = i * dayWidthPx
+                            drawLine(
+                                color = gridColor,
+                                start = Offset(x, 0f),
+                                end = Offset(x, size.height),
+                                strokeWidth = 1f
+                            )
+                        }
+                    }
 
-                                ReviewTaskCard(
-                                    task = item.task,
-                                    startTime = item.scheduledStartTime,
-                                    endTime = item.scheduledEndTime,
-                                    isFlaggedForManualEdit = tasksFlaggedForManualEdit.contains(item.task.id),
-                                    isConflicted = isConflicted, // Pass conflict status
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 1.dp) // Minimal padding
-                                        .height(itemHeight.coerceAtLeast(24.dp))
-                                        .offset(y = topOffset),
-                                    onClick = { onTaskClick(item.task) }
-                                )
+                    // Task Rendering Row (Overlay on Canvas)
+                    Row(
+                        modifier = Modifier.fillMaxSize() // Fill the Grid Content Area Box
+                    ) {
+                        weekDays.forEach { date ->
+                            Box(
+                                modifier = Modifier
+                                    .width(dayWidth)
+                                    .fillMaxHeight()
+                            ) {
+                                // ... (Combine scheduled and conflicted items - allItemsToRender logic) ...
+                                val scheduledItems = plan[date] ?: emptyList()
+                                val conflictedTasks = conflictedTasksToShowMap[date] ?: emptyList()
+                                val scheduledTaskIds = scheduledItems.map { it.task.id }.toSet()
+                                val allItemsToRender = scheduledItems + conflictedTasks
+                                    .filterNot { scheduledTaskIds.contains(it.id) }
+                                    .map { task -> /* ... create dummy item ... */
+                                        val startTime =
+                                            conflicts.find { c -> c.conflictingTasks.any { t -> t.id == task.id } }?.conflictTime?.toLocalTime()
+                                                ?: task.startTime
+                                        val endTime =
+                                            startTime.plusMinutes(task.effectiveDurationMinutes.toLong())
+                                        ScheduledTaskItem(
+                                            task,
+                                            startTime,
+                                            endTime,
+                                            task.startDateConf.dateTime?.toLocalDate() ?: date
+                                        )
+                                    }
+
+
+                                allItemsToRender.sortedBy { it.scheduledStartTime }
+                                    .forEach { item ->
+                                        // ... (Calculate topOffset, itemHeight) ...
+                                        val startMinutes =
+                                            item.scheduledStartTime.hour * 60 + item.scheduledStartTime.minute
+                                        val endMinutes =
+                                            item.scheduledEndTime.hour * 60 + item.scheduledEndTime.minute
+                                        val durationMinutes =
+                                            (endMinutes - startMinutes).coerceAtLeast(15)
+                                        val topOffset = (startMinutes / 60f) * hourHeight
+                                        val itemHeight = (durationMinutes / 60f) * hourHeight
+                                        val isConflicted =
+                                            conflictedTasks.any { it.id == item.task.id }
+
+                                        ReviewTaskCard(
+                                            task = item.task,
+                                            startTime = item.scheduledStartTime,
+                                            endTime = item.scheduledEndTime,
+                                            isFlaggedForManualEdit = tasksFlaggedForManualEdit.contains(
+                                                item.task.id
+                                            ),
+                                            isConflicted = isConflicted,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 1.dp)
+                                                .height(itemHeight.coerceAtLeast(24.dp))
+                                                .offset(y = topOffset),
+                                            onClick = { onTaskClick(item.task) }
+                                        )
+                                    }
                             }
                         }
                     }
-                }
-            }
-        }
-    }
+                } // End Task Rendering Row
+            } // End Grid Content Area Box
+        } // End Combined Row (Labels + Grid)
+    } // End Scrollable Box
 }
 
 @Composable
