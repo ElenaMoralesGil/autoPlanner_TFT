@@ -99,8 +99,10 @@ import com.elena.autoplanner.domain.models.ScheduleScope
 import com.elena.autoplanner.domain.models.ScheduledTaskItem
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.effects.PlannerEffect
+import com.elena.autoplanner.presentation.effects.TaskDetailEffect
 import com.elena.autoplanner.presentation.effects.TaskEditEffect
 import com.elena.autoplanner.presentation.intents.PlannerIntent
+import com.elena.autoplanner.presentation.intents.TaskEditIntent
 import com.elena.autoplanner.presentation.states.PlannerState
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarView
 import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.ModificationTaskSheet
@@ -338,10 +340,10 @@ fun AutoPlannerScreen(
             LaunchedEffect(detailViewModel, taskId) {
                 detailViewModel.effect.collect { effect ->
                     when (effect) {
-                        is com.elena.autoplanner.presentation.effects.TaskDetailEffect.NavigateBack -> selectedTaskIdForDetail =
+                        is TaskDetailEffect.NavigateBack -> selectedTaskIdForDetail =
                             null // Corrected variable name
                         // --- Handle Navigation to Edit from Detail Sheet ---
-                        is com.elena.autoplanner.presentation.effects.TaskDetailEffect.NavigateToEdit -> {
+                        is TaskDetailEffect.NavigateToEdit -> {
                             selectedTaskIdForDetail =
                                 null // Close detail // Corrected variable name
                             // Need the actual task object to pass to Modification sheet if needed,
@@ -354,7 +356,7 @@ fun AutoPlannerScreen(
                             taskIdForEditSheet = effect.taskId // Open edit sheet
                         }
 
-                        is com.elena.autoplanner.presentation.effects.TaskDetailEffect.ShowSnackbar -> snackbarHostState.showSnackbar(
+                        is TaskDetailEffect.ShowSnackbar -> snackbarHostState.showSnackbar(
                             effect.message
                         )
                     }
@@ -393,7 +395,7 @@ fun AutoPlannerScreen(
             // Load the task data into the edit VM when the sheet opens
             LaunchedEffect(taskIdToEdit) {
                 editViewModel.sendIntent(
-                    com.elena.autoplanner.presentation.intents.TaskEditIntent.LoadTask(
+                    TaskEditIntent.LoadTask(
                         taskIdToEdit
                     )
                 )
@@ -401,7 +403,7 @@ fun AutoPlannerScreen(
 
             ModificationTaskSheet(
                 taskEditViewModel = editViewModel,
-                onClose = { editViewModel.sendIntent(com.elena.autoplanner.presentation.intents.TaskEditIntent.Cancel) } // Standard cancel closes sheet
+                onClose = { editViewModel.sendIntent(TaskEditIntent.Cancel) } // Standard cancel closes sheet
             )
         }
 
@@ -441,6 +443,7 @@ fun PlannerContent(
                 onStartTimeClick,
                 onEndTimeClick
             )
+
             PlannerStep.PRIORITY_INPUT -> Step2PriorityInput(state, onIntent)
             PlannerStep.ADDITIONAL_OPTIONS -> Step3AdditionalOptions(state, onIntent)
             PlannerStep.REVIEW_PLAN -> Step4ReviewPlan(
@@ -814,7 +817,12 @@ fun Step4ReviewPlan(
                                                 onIntent(PlannerIntent.UnflagTaskForManualEdit(it.id))
                                             }
                                         }
-                                    }
+                                    },
+                                    onTaskClick = { task -> // Pass the lambda from Step4ReviewPlan
+                                        onReviewTaskClick(task)
+                                    },
+                                    tasksFlaggedForManualEdit = state.tasksFlaggedForManualEdit, // Pass the set from the state
+                                    modifier = Modifier //
                                 )
                             }
                         }
@@ -865,9 +873,11 @@ fun Step4ReviewPlan(
                         GeneratedPlanReviewView(
                             viewType = currentCalendarView,
                             plan = state.generatedPlan,
+                            conflicts = state.conflictsToResolve,
+                            resolutions = state.conflictResolutions + state.taskResolutions,
                             startDate = planStartDate,
                             onTaskClick = onReviewTaskClick,
-                            tasksFlaggedForManualEdit = state.tasksFlaggedForManualEdit // Pass flags
+                            tasksFlaggedForManualEdit = state.tasksFlaggedForManualEdit
                         )
                     } else if (!state.isLoading) {
                         Box(
@@ -1073,6 +1083,8 @@ fun ViewToggleButtons(selectedView: CalendarView, onViewSelected: (CalendarView)
 fun GeneratedPlanReviewView(
     viewType: CalendarView,
     plan: Map<LocalDate, List<ScheduledTaskItem>>,
+    conflicts: List<ConflictItem>, // Added
+    resolutions: Map<Int, ResolutionOption>,
     startDate: LocalDate,
     onTaskClick: (Task) -> Unit,
     tasksFlaggedForManualEdit: Set<Int>, // Receive the flags
@@ -1088,8 +1100,10 @@ fun GeneratedPlanReviewView(
                 ReviewWeeklyViewContent(
                     startDate = weekStart,
                     plan = plan,
+                    conflicts = conflicts, // Pass down
+                    resolutions = resolutions, // Pass down
                     onTaskClick = onTaskClick,
-                    tasksFlaggedForManualEdit = tasksFlaggedForManualEdit // Pass down
+                    tasksFlaggedForManualEdit = tasksFlaggedForManualEdit
                 )
             }
 
@@ -1097,8 +1111,12 @@ fun GeneratedPlanReviewView(
                 ReviewDailyViewContent(
                     date = startDate,
                     items = plan[startDate] ?: emptyList(),
+                    conflicts = conflicts.filter { // Filter conflicts relevant to this day
+                        it.conflictTime?.toLocalDate() == startDate || it.conflictingTasks.any { t -> t.startDateConf.dateTime?.toLocalDate() == startDate }
+                    },
+                    resolutions = resolutions, // Pass down
                     onTaskClick = onTaskClick,
-                    tasksFlaggedForManualEdit = tasksFlaggedForManualEdit // Pass down
+                    tasksFlaggedForManualEdit = tasksFlaggedForManualEdit
                 )
             }
 
@@ -1120,6 +1138,8 @@ fun GeneratedPlanReviewView(
 fun ReviewDailyViewContent(
     date: LocalDate,
     items: List<ScheduledTaskItem>,
+    conflicts: List<ConflictItem>, // Added
+    resolutions: Map<Int, ResolutionOption>, // Added
     onTaskClick: (Task) -> Unit,
     tasksFlaggedForManualEdit: Set<Int>, // Receive the flags
     modifier: Modifier = Modifier,
@@ -1132,6 +1152,51 @@ fun ReviewDailyViewContent(
     val scrollState = rememberScrollState()
     val color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
     val color1 = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+
+    val conflictedTasksToShow = remember(conflicts, resolutions, date) {
+        conflicts.flatMap { conflict ->
+            // Check if the conflict itself is resolved in a way that removes it visually
+            val conflictResolved = resolutions[conflict.hashCode()]?.let {
+                it == ResolutionOption.MOVE_TO_TOMORROW // Only move removes it visually here
+            } ?: false
+
+            if (conflictResolved) {
+                emptyList()
+            } else {
+                conflict.conflictingTasks.filter { task ->
+                    // Show if task resolution is null, LeaveAsIs, or Manual
+                    val taskResolution = resolutions[task.id]
+                    val showTask = taskResolution == null ||
+                            taskResolution == ResolutionOption.LEAVE_IT_LIKE_THAT ||
+                            taskResolution == ResolutionOption.MANUALLY_SCHEDULE
+
+                    // And the task belongs to this date (either by conflict time or original start date)
+                    showTask && (conflict.conflictTime?.toLocalDate() == date || task.startDateConf.dateTime?.toLocalDate() == date)
+                }
+            }
+        }.distinctBy { it.id } // Avoid duplicates if a task is in multiple conflicts
+    }
+    val allItemsToRender = remember(items, conflictedTasksToShow) {
+        val scheduledTaskIds = items.map { it.task.id }.toSet()
+        // Combine, ensuring tasks from conflicts list are added if not already in scheduled items
+        items + conflictedTasksToShow
+            .filterNot { scheduledTaskIds.contains(it.id) }
+            .map { task ->
+                // Create a dummy ScheduledTaskItem for conflicted tasks not in the plan
+                // Use conflict time or original start time for positioning
+                val startTime =
+                    conflicts.find { c -> c.conflictingTasks.any { t -> t.id == task.id } }?.conflictTime?.toLocalTime()
+                        ?: task.startTime
+                val endTime = startTime.plusMinutes(task.effectiveDurationMinutes.toLong())
+                ScheduledTaskItem(
+                    task,
+                    startTime,
+                    endTime,
+                    task.startDateConf.dateTime?.toLocalDate() ?: date
+                )
+            }
+    }
+
     Box(
         modifier = modifier
             .heightIn(max = totalHeight) // Constrain height but allow scrolling if needed
@@ -1200,29 +1265,32 @@ fun ReviewDailyViewContent(
         // Task Items Container
         Box(
             modifier = Modifier
-                .fillMaxSize() // Fill the parent Box
-                .padding(start = timeLabelWidth) // Offset start past the labels
+                .fillMaxSize()
+                .padding(start = timeLabelWidth)
         ) {
-            items.sortedBy { it.scheduledStartTime }.forEach { item ->
+            // Render combined list
+            allItemsToRender.sortedBy { it.scheduledStartTime }.forEach { item ->
                 val startMinutes =
                     item.scheduledStartTime.hour * 60 + item.scheduledStartTime.minute
                 val endMinutes = item.scheduledEndTime.hour * 60 + item.scheduledEndTime.minute
-                // Ensure minimum duration for calculation, e.g., 15 minutes
                 val durationMinutes = (endMinutes - startMinutes).coerceAtLeast(15)
-
                 val topOffset = (startMinutes / 60f) * hourHeight
                 val itemHeight = (durationMinutes / 60f) * hourHeight
+
+                // Check if this task is part of an unresolved conflict
+                val isConflicted = conflictedTasksToShow.any { it.id == item.task.id }
 
                 ReviewTaskCard(
                     task = item.task,
                     startTime = item.scheduledStartTime,
                     endTime = item.scheduledEndTime,
-                    isFlaggedForManualEdit = tasksFlaggedForManualEdit.contains(item.task.id), // Pass flag
+                    isFlaggedForManualEdit = tasksFlaggedForManualEdit.contains(item.task.id),
+                    isConflicted = isConflicted, // Pass conflict status
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 2.dp, vertical = 0.5.dp) // Minimal padding
-                        .height(itemHeight.coerceAtLeast(24.dp)) // Minimum height
-                        .offset(y = topOffset), // Position based on start time
+                        .padding(horizontal = 2.dp, vertical = 0.5.dp)
+                        .height(itemHeight.coerceAtLeast(24.dp))
+                        .offset(y = topOffset),
                     onClick = { onTaskClick(item.task) }
                 )
             }
@@ -1235,6 +1303,8 @@ fun ReviewDailyViewContent(
 fun ReviewWeeklyViewContent(
     startDate: LocalDate,
     plan: Map<LocalDate, List<ScheduledTaskItem>>,
+    conflicts: List<ConflictItem>, // Added
+    resolutions: Map<Int, ResolutionOption>,
     onTaskClick: (Task) -> Unit,
     tasksFlaggedForManualEdit: Set<Int>, // Accept flagged IDs
     modifier: Modifier = Modifier,
@@ -1255,6 +1325,25 @@ fun ReviewWeeklyViewContent(
         // Ensure weekDays is not empty before dividing
         if (weekDays.isNotEmpty()) (availableWidthForDays / weekDays.size).coerceAtLeast(40.dp)
         else availableWidthForDays // Fallback if weekDays is empty
+    }
+    val conflictedTasksToShowMap = remember(conflicts, resolutions, weekDays) {
+        weekDays.associateWith { date ->
+            conflicts.flatMap { conflict ->
+                val conflictResolved = resolutions[conflict.hashCode()]?.let {
+                    it == ResolutionOption.MOVE_TO_TOMORROW
+                } ?: false
+                if (conflictResolved) emptyList()
+                else {
+                    conflict.conflictingTasks.filter { task ->
+                        val taskResolution = resolutions[task.id]
+                        val showTask = taskResolution == null ||
+                                taskResolution == ResolutionOption.LEAVE_IT_LIKE_THAT ||
+                                taskResolution == ResolutionOption.MANUALLY_SCHEDULE
+                        showTask && (conflict.conflictTime?.toLocalDate() == date || task.startDateConf.dateTime?.toLocalDate() == date)
+                    }
+                }
+            }.distinctBy { it.id }
+        }
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -1376,37 +1465,54 @@ fun ReviewWeeklyViewContent(
                         .padding(start = timeLabelWidth) // Offset start past the labels
                 ) {
                     weekDays.forEach { date ->
-                        // Column for tasks for a specific day
                         Box(
                             modifier = Modifier
-                                .width(dayWidth) // Assign calculated width
+                                .width(dayWidth)
                                 .fillMaxHeight()
                         ) {
-                            // Iterate through tasks scheduled for this date
-                            plan[date]?.sortedBy { it.scheduledStartTime }?.forEach { item ->
-                                // Calculate vertical position and height based on time
+                            // Combine scheduled and conflicted for the day
+                            val scheduledItems = plan[date] ?: emptyList()
+                            val conflictedTasks = conflictedTasksToShowMap[date] ?: emptyList()
+                            val scheduledTaskIds = scheduledItems.map { it.task.id }.toSet()
+
+                            val allItemsToRender = scheduledItems + conflictedTasks
+                                .filterNot { scheduledTaskIds.contains(it.id) }
+                                .map { task ->
+                                    val startTime =
+                                        conflicts.find { c -> c.conflictingTasks.any { t -> t.id == task.id } }?.conflictTime?.toLocalTime()
+                                            ?: task.startTime
+                                    val endTime =
+                                        startTime.plusMinutes(task.effectiveDurationMinutes.toLong())
+                                    ScheduledTaskItem(
+                                        task,
+                                        startTime,
+                                        endTime,
+                                        task.startDateConf.dateTime?.toLocalDate() ?: date
+                                    )
+                                }
+
+                            allItemsToRender.sortedBy { it.scheduledStartTime }.forEach { item ->
                                 val startMinutes =
                                     item.scheduledStartTime.hour * 60 + item.scheduledStartTime.minute
                                 val endMinutes =
                                     item.scheduledEndTime.hour * 60 + item.scheduledEndTime.minute
-                                // Ensure minimum duration for calculation, e.g., 15 minutes
                                 val durationMinutes = (endMinutes - startMinutes).coerceAtLeast(15)
-
                                 val topOffset = (startMinutes / 60f) * hourHeight
                                 val itemHeight = (durationMinutes / 60f) * hourHeight
+                                val isConflicted = conflictedTasks.any { it.id == item.task.id }
 
-                                // Render the task card
                                 ReviewTaskCard(
                                     task = item.task,
                                     startTime = item.scheduledStartTime,
                                     endTime = item.scheduledEndTime,
-                                    isFlaggedForManualEdit = tasksFlaggedForManualEdit.contains(item.task.id), // Pass flag
+                                    isFlaggedForManualEdit = tasksFlaggedForManualEdit.contains(item.task.id),
+                                    isConflicted = isConflicted, // Pass conflict status
                                     modifier = Modifier
-                                        .fillMaxWidth() // Fill the width of the day column
-                                        .padding(horizontal = 1.dp) // Minimal horizontal padding
-                                        .height(itemHeight.coerceAtLeast(24.dp)) // Minimum height
-                                        .offset(y = topOffset), // Position based on start time
-                                    onClick = { onTaskClick(item.task) } // Click handler
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 1.dp) // Minimal padding
+                                        .height(itemHeight.coerceAtLeast(24.dp))
+                                        .offset(y = topOffset),
+                                    onClick = { onTaskClick(item.task) }
                                 )
                             }
                         }
@@ -1423,6 +1529,8 @@ fun ConflictResolutionCard(
     options: List<ResolutionOption>,
     selectedOption: ResolutionOption?,
     onOptionSelected: (ResolutionOption) -> Unit,
+    onTaskClick: (Task) -> Unit, // Callback to handle task clicks
+    tasksFlaggedForManualEdit: Set<Int>, // To style flagged tasks
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -1431,16 +1539,14 @@ fun ConflictResolutionCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface, // Use regular surface color
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
-        ) // Keep error border
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.6f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), // Adjusted padding
-            verticalArrangement = Arrangement.spacedBy(6.dp) // Consistent spacing
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp) // Increased spacing
         ) {
+            // Conflict Header
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.Warning,
@@ -1456,9 +1562,9 @@ fun ConflictResolutionCard(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    conflict.conflictTime?.let { // Check if conflictTime exists
+                    conflict.conflictTime?.let {
                         Text(
-                            "At: ${it.format(timeFormatter)}",
+                            "Around: ${it.format(timeFormatter)}", // Changed "At" to "Around"
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Medium
@@ -1468,25 +1574,32 @@ fun ConflictResolutionCard(
             }
 
             Column(
-                modifier = Modifier.padding(start = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
+                modifier = Modifier.padding(start = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) { // Reduced start padding
                 Text(
                     "Involved Tasks:",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 2.dp)
                 )
                 conflict.conflictingTasks.forEach { task ->
-                    Text(
-                        "- ${task.name}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                    val displayStartTime = conflict.conflictTime?.toLocalTime() ?: task.startTime
+                    val displayEndTime =
+                        displayStartTime.plusMinutes(task.effectiveDurationMinutes.toLong())
+                    ReviewTaskCard(
+                        task = task,
+                        startTime = displayStartTime, // Use conflict time or task start
+                        endTime = displayEndTime,     // Calculate end based on duration
+                        isFlaggedForManualEdit = tasksFlaggedForManualEdit.contains(task.id),
+                        modifier = Modifier.fillMaxWidth(), // Make cards fill width within the column
+                        onClick = { onTaskClick(task) },
+                        isConflicted = true
                     )
                 }
             }
 
+            // Resolution Dropdown
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Box {
                     OutlinedButton(
@@ -1552,9 +1665,11 @@ fun ResolutionCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(modifier = Modifier
-                .weight(1f)
-                .padding(end = 12.dp)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp)
+            ) {
                 Text(
                     text = task.name,
                     style = MaterialTheme.typography.bodyLarge,
@@ -1615,33 +1730,48 @@ fun ReviewTaskCard(
     startTime: LocalTime,
     endTime: LocalTime,
     isFlaggedForManualEdit: Boolean, // Receive flag
+    isConflicted: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
-    // Determine colors based on state
     val priorityColor = when (task.priority) {
         Priority.HIGH -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-        Priority.MEDIUM -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f) // Assuming tertiary is orange-ish
-        Priority.LOW -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) // Using primary for low
+        Priority.MEDIUM -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f)
+        Priority.LOW -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
         Priority.NONE -> MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
     }
-    val cardColor = when {
-        isFlaggedForManualEdit -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f) // Highlight flagged
+    // Base card color
+    var cardColor = when {
+        isFlaggedForManualEdit -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
         task.isCompleted -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
         else -> MaterialTheme.colorScheme.surface
     }
-    val borderColor = when {
-        isFlaggedForManualEdit -> MaterialTheme.colorScheme.tertiary // Stronger border for flagged
+    // Base border color
+    var borderColor = when {
+        isFlaggedForManualEdit -> MaterialTheme.colorScheme.tertiary
         else -> priorityColor.copy(alpha = 0.5f)
     }
-    val textColor = when {
+    // Base text color
+    var textColor = when {
         isFlaggedForManualEdit -> MaterialTheme.colorScheme.onTertiaryContainer
         task.isCompleted -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface
     }
-    val borderStroke =
-        BorderStroke(width = if (isFlaggedForManualEdit) 1.5.dp else 1.dp, color = borderColor)
+
+    // Override for conflict
+    if (isConflicted) {
+        cardColor =
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f) // More subtle conflict background
+        borderColor = MaterialTheme.colorScheme.error.copy(alpha = 0.8f) // Stronger conflict border
+        textColor =
+            MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f) // Ensure text is readable
+    }
+
+    val borderStroke = BorderStroke(
+        width = if (isFlaggedForManualEdit || isConflicted) 1.5.dp else 1.dp,
+        color = borderColor
+    )
 
     Box(
         modifier = modifier
@@ -1649,56 +1779,58 @@ fun ReviewTaskCard(
             .background(cardColor)
             .border(border = borderStroke, shape = RoundedCornerShape(4.dp))
             .clickable(onClick = onClick)
-            .padding(start = 6.dp, end = 4.dp, top = 3.dp, bottom = 3.dp) // Adjusted padding
+            .padding(start = 6.dp, end = 4.dp, top = 3.dp, bottom = 3.dp)
     ) {
         Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            // Priority Indicator
+            // Priority/Conflict Indicator
             Box(
                 modifier = Modifier
                     .width(3.dp)
                     .fillMaxHeight()
-                    .background(color = priorityColor, shape = RoundedCornerShape(2.dp))
+                    .background(
+                        color = if (isConflicted) borderColor else priorityColor,
+                        shape = RoundedCornerShape(2.dp)
+                    ) // Use border color for conflict
             )
             Spacer(Modifier.width(5.dp))
             // Task Details
             Column(
-                modifier = Modifier.weight(1f), // Takes available space
-                verticalArrangement = Arrangement.spacedBy(1.dp) // Minimal space between lines
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         task.name,
-                        style = MaterialTheme.typography.labelMedium, // Slightly smaller for compactness
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = textColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false) // Don't force fill if short
+                        modifier = Modifier.weight(1f, fill = false)
                     )
-                    // Show Edit icon if flagged
                     if (isFlaggedForManualEdit) {
                         Spacer(Modifier.width(4.dp))
                         Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Edit Required",
-                            modifier = Modifier.size(12.dp),
+                            Icons.Default.Edit, "Edit Required", Modifier.size(12.dp),
                             tint = MaterialTheme.colorScheme.tertiary
+                        )
+                    } else if (isConflicted) { // Show warning for conflict if not flagged for edit
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            Icons.Default.Warning, "Conflict", Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
-                // Time Text
                 Text(
                     "${startTime.format(timeFormatter)} - ${endTime.format(timeFormatter)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = textColor.copy(alpha = 0.8f)
                 )
             }
-            // Completion Check (only if not flagged for edit)
-            if (task.isCompleted && !isFlaggedForManualEdit) {
+            if (task.isCompleted && !isFlaggedForManualEdit && !isConflicted) { // Hide check if conflicted or flagged
                 Icon(
-                    Icons.Default.Check,
-                    "Completed",
-                    modifier = Modifier
+                    Icons.Default.Check, "Completed", Modifier
                         .size(14.dp)
                         .padding(start = 2.dp),
                     tint = MaterialTheme.colorScheme.primary
