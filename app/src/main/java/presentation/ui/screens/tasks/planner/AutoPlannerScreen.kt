@@ -120,6 +120,7 @@ import com.elena.autoplanner.presentation.intents.PlannerIntent
 import com.elena.autoplanner.presentation.intents.TaskEditIntent
 import com.elena.autoplanner.presentation.states.PlannerState
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarView
+import com.elena.autoplanner.presentation.ui.screens.tasks.HourMinutePickerDialog
 import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
 import com.elena.autoplanner.presentation.viewmodel.PlannerViewModel
@@ -242,12 +243,11 @@ fun AutoPlannerScreen(
     }
 
 
-    if (showStartTimePicker && startTimeState != null) {
-        TimePickerDialog(
-            state = startTimeState,
+    if (showStartTimePicker && state != null) {
+        HourMinutePickerDialog( // Use the NumberPicker based dialog
+            initialTime = state!!.workStartTime,
             onDismiss = { showStartTimePicker = false },
-            onConfirm = {
-                val selectedTime = LocalTime.of(startTimeState.hour, startTimeState.minute)
+            onConfirm = { selectedTime ->
                 viewModel.sendIntent(PlannerIntent.UpdateWorkStartTime(selectedTime))
                 showStartTimePicker = false
             }
@@ -255,26 +255,18 @@ fun AutoPlannerScreen(
     }
 
 
-    if (showEndTimePicker && endTimeState != null && startTimeState != null) {
-        TimePickerDialog(
-            state = endTimeState,
+    if (showEndTimePicker && state != null) {
+        HourMinutePickerDialog( // Use the NumberPicker based dialog
+            initialTime = state!!.workEndTime,
             onDismiss = { showEndTimePicker = false },
-            onConfirm = {
-                viewModel.sendIntent(
-                    PlannerIntent.UpdateWorkEndTime(
-                        LocalTime.of(
-                            endTimeState.hour,
-                            endTimeState.minute
-                        )
-                    )
-                )
-                showEndTimePicker = false
-            },
+            onConfirm = { selectedTime ->
+                if (selectedTime > state!!.workStartTime) {
+                    viewModel.sendIntent(PlannerIntent.UpdateWorkEndTime(selectedTime))
+                    showEndTimePicker = false
+                } else {
 
-            validateTime = { selectedEndTime ->
-                selectedEndTime > LocalTime.of(startTimeState.hour, startTimeState.minute)
-            },
-            errorMessage = "End time must be after start time"
+                }
+            }
         )
     }
 

@@ -39,7 +39,7 @@ fun Chip(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (selected) MaterialTheme.colorScheme.background
+                color = if (selected) MaterialTheme.colorScheme.onPrimary
                 else MaterialTheme.colorScheme.onSurface
             )
             trailingIcon?.invoke()
