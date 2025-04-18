@@ -3,10 +3,10 @@ package com.elena.autoplanner.data.local
 import androidx.room.TypeConverter
 import com.elena.autoplanner.domain.models.DayOfWeek
 import com.elena.autoplanner.domain.models.IntervalUnit
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 object Converters {
     private val formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
@@ -40,6 +40,7 @@ object ListOfIntConverter {
         return gson.fromJson(json, type)
     }
 }
+
 object DayOfWeekSetConverter {
     private val gson = Gson()
 
@@ -66,6 +67,7 @@ object DayOfWeekSetConverter {
         }
     }
 }
+
 // Converters.kt
 object IntervalUnitConverter {
     @TypeConverter

@@ -19,5 +19,5 @@ data class TaskEditState(
     val reminderPlan: ReminderPlan? = null,
     val repeatPlan: RepeatPlan? = null,
     val subtasks: List<Subtask> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
 )

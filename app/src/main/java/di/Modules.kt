@@ -1,20 +1,16 @@
 package com.elena.autoplanner.di
 
 import android.util.Log
-import org.koin.dsl.module
-import com.elena.autoplanner.domain.repository.TaskRepository
-import com.elena.autoplanner.data.repository.TaskRepositoryImpl
-
-import com.elena.autoplanner.data.local.dao.TaskDao
-import com.elena.autoplanner.data.local.dao.ReminderDao
-import com.elena.autoplanner.data.local.dao.RepeatConfigDao
-import com.elena.autoplanner.data.local.dao.SubtaskDao
-import com.elena.autoplanner.data.local.TaskDatabase
-import org.koin.android.ext.koin.androidContext
-
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.elena.autoplanner.data.local.TaskDatabase
+import com.elena.autoplanner.data.local.dao.ReminderDao
+import com.elena.autoplanner.data.local.dao.RepeatConfigDao
+import com.elena.autoplanner.data.local.dao.SubtaskDao
+import com.elena.autoplanner.data.local.dao.TaskDao
+import com.elena.autoplanner.data.repository.TaskRepositoryImpl
+import com.elena.autoplanner.domain.repository.TaskRepository
 import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.planner.OverdueTaskHandler
 import com.elena.autoplanner.domain.usecases.planner.RecurrenceExpander
@@ -24,9 +20,9 @@ import com.elena.autoplanner.domain.usecases.planner.TaskPrioritizer
 import com.elena.autoplanner.domain.usecases.planner.TimelineManager
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
+import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteAllTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
-import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.FilterTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
@@ -39,7 +35,9 @@ import com.elena.autoplanner.presentation.viewmodel.PlannerViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
+import org.koin.dsl.module
 
 
 val appModule = module {

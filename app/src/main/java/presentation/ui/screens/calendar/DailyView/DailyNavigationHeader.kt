@@ -30,7 +30,7 @@ import java.time.format.DateTimeFormatter
 fun DailyNavigationHeader(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val today = LocalDate.now()
     var dragAccumulator by remember { mutableStateOf(0f) }

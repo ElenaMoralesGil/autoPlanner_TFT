@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.ui.utils
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,9 +24,9 @@ fun GeneralAlertDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onNeutral: (() -> Unit)? = null,
-    hideDismissButton: Boolean = false
+    hideDismissButton: Boolean = false,
 
-) {
+    ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,

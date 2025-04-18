@@ -22,7 +22,7 @@ fun ConfigItem(
     painter: Painter,
     label: String,
     value: String,
-    color: Color = Color.Unspecified
+    color: Color = Color.Unspecified,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),

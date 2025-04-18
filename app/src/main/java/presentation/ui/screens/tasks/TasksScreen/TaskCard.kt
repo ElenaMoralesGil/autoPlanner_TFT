@@ -49,7 +49,7 @@ fun TaskCard(
     onDelete: () -> Unit,
     onEdit: () -> Unit,
     onTaskSelected: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
     val maxOffset = with(LocalDensity.current) { 150.dp.toPx() }

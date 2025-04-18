@@ -5,7 +5,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,7 +53,7 @@ fun StartEndDateAlertDialog(
     highlightDate: LocalDate?,
     onDismiss: () -> Unit,
     onReady: (TimePlanning?) -> Unit,
-    validator: ((TimePlanning?) -> String?)? = null
+    validator: ((TimePlanning?) -> String?)? = null,
 ) {
     var selectedDateTime by remember { mutableStateOf(existing?.dateTime ?: LocalDateTime.now()) }
     var dayPeriod by remember { mutableStateOf(existing?.dayPeriod ?: DayPeriod.NONE) }
@@ -251,7 +250,7 @@ fun DayPeriodOption(
     iconLabel: String,
     range: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
 
     Column(
@@ -279,11 +278,12 @@ fun DayPeriodOption(
         }
     }
 }
+
 @Composable
 fun HourMinutePickerDialog(
     initialTime: LocalTime,
     onDismiss: () -> Unit,
-    onConfirm: (LocalTime) -> Unit
+    onConfirm: (LocalTime) -> Unit,
 ) {
     var selectedHour by remember { mutableIntStateOf(initialTime.hour) }
     var selectedMinute by remember { mutableIntStateOf(initialTime.minute) }
@@ -336,7 +336,7 @@ fun HourMinutePickerDialog(
         shape = RoundedCornerShape(16.dp),
         containerColor = MaterialTheme.colorScheme.surface,
 
-    )
+        )
 }
 
 
@@ -345,7 +345,7 @@ fun TimePickerColumn(
     range: IntRange,
     selectedValue: Int,
     onValueChange: (Int) -> Unit,
-    label: String
+    label: String,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(

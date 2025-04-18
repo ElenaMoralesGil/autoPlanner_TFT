@@ -55,5 +55,5 @@ data class CalendarTasksState(
     val morningTasks: List<Task> = emptyList(),
     val eveningTasks: List<Task> = emptyList(),
     val nightTasks: List<Task> = emptyList(),
-    val scheduledTasks: List<Task> = emptyList()
+    val scheduledTasks: List<Task> = emptyList(),
 )

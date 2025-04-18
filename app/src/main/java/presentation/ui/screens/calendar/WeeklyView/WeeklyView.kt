@@ -1,17 +1,19 @@
 package com.elena.autoplanner.presentation.ui.screens.calendar.WeeklyView
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
-import com.elena.autoplanner.domain.models.isToday
 import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
@@ -50,7 +52,7 @@ fun WeeklyView(
         tasks.filter { task ->
             task.startDateConf?.dateTime?.toLocalDate()?.let { date ->
                 date >= weekDays.first() && date <= weekDays.last()
-            } ?: false
+            } == true
         }
     }
 

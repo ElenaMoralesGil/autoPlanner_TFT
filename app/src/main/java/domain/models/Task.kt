@@ -50,6 +50,7 @@ data class Task private constructor(
             }
         }
     }
+
     fun isExpired(): Boolean =
         endDateConf?.dateTime?.isBefore(LocalDateTime.now()) ?: (startDateConf.dateTime?.isBefore(
             LocalDateTime.now()
@@ -70,17 +71,18 @@ data class Task private constructor(
         val endOfWeek = startOfWeek.plusDays(6)
         return startDateConf.dateTime?.toLocalDate()?.let {
             !it.isBefore(startOfWeek) && !it.isAfter(endOfWeek)
-        } ?: false
+        } == true
     }
 
     fun isDueThisMonth(): Boolean =
-        startDateConf.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } ?: false
+        startDateConf.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } == true
 
     fun copyForPlanning(flags: TaskInternalFlags? = this.internalFlags): Task {
         val newTask = this.copy() // Standard copy
         newTask.internalFlags = flags
         return newTask
     }
+
     val hasPeriod: Boolean = startDateConf.dayPeriod != DayPeriod.NONE
 
     val startTime: LocalTime
@@ -169,7 +171,7 @@ enum class Priority {
 
 data class TimePlanning(
     val dateTime: LocalDateTime?,
-    val dayPeriod: DayPeriod = DayPeriod.NONE
+    val dayPeriod: DayPeriod = DayPeriod.NONE,
 ) {
     init {
         if (dayPeriod == DayPeriod.ALLDAY && dateTime != null) {
@@ -183,5 +185,5 @@ enum class DayPeriod {
 }
 
 data class DurationPlan(
-    val totalMinutes: Int?
+    val totalMinutes: Int?,
 )

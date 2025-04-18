@@ -23,7 +23,7 @@ fun SectionHeader(
     title: String,
     count: Int,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier

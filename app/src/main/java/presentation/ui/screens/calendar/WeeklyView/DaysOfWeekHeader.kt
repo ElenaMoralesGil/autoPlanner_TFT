@@ -23,7 +23,7 @@ import java.time.format.DateTimeFormatter
 fun DaysOfWeekHeader(
     weekDays: List<LocalDate>,
     currentDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit
+    onDateSelected: (LocalDate) -> Unit,
 ) {
     Row(
         modifier = Modifier

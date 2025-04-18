@@ -13,5 +13,5 @@ data class ReminderPlan(
     val customDayOffset: Int? = null,
     val customWeekOffset: Int? = null,
     val customHour: Int? = null,
-    val customMinute: Int? = null
+    val customMinute: Int? = null,
 )

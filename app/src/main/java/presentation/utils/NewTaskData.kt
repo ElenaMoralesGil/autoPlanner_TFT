@@ -17,7 +17,7 @@ data class NewTaskData(
     val durationConf: DurationPlan? = null,
     val reminderPlan: ReminderPlan? = null,
     val repeatPlan: RepeatPlan? = null,
-    val subtasks: List<Subtask> = emptyList()
+    val subtasks: List<Subtask> = emptyList(),
 )
 
 fun NewTaskData.toTask(): Task {

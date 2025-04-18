@@ -6,7 +6,7 @@ import com.elena.autoplanner.domain.repository.TaskResult
 
 class SaveTaskUseCase(
     private val repository: TaskRepository,
-    private val validateTask: ValidateTaskUseCase
+    private val validateTask: ValidateTaskUseCase,
 ) {
     suspend operator fun invoke(task: Task): TaskResult<Int> {
         return when (val validationResult = validateTask(task)) {

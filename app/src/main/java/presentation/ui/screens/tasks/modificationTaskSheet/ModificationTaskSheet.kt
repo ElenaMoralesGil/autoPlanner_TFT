@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,6 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -18,44 +21,27 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.elena.autoplanner.domain.models.DayPeriod
-import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.Priority
-import com.elena.autoplanner.domain.models.ReminderMode
-import com.elena.autoplanner.domain.models.ReminderPlan
-import com.elena.autoplanner.domain.models.RepeatPlan
-import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.presentation.intents.TaskEditIntent
-import com.elena.autoplanner.presentation.ui.screens.tasks.RepeatAlertDialog
-import com.elena.autoplanner.presentation.ui.screens.tasks.ReminderAlertDialog
-import com.elena.autoplanner.presentation.ui.screens.tasks.DurationAlertDialog
-import com.elena.autoplanner.presentation.ui.screens.tasks.StartEndDateAlertDialog
 import com.elena.autoplanner.presentation.ui.screens.tasks.TimeConfigSheet
-import com.elena.autoplanner.presentation.ui.screens.tasks.TimeDialogType
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
-import java.time.LocalDate
-import java.time.LocalDateTime
+import kotlinx.coroutines.launch
 
-/**
- * Sheet for creating and editing tasks
- * Follows MVI architecture by observing state and dispatching intents
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModificationTaskSheet(
     taskEditViewModel: TaskEditViewModel,
-    onClose: () -> Unit
+    onClose: () -> Unit,
 ) {
 
     val state by taskEditViewModel.state.collectAsState()
@@ -64,6 +50,8 @@ fun ModificationTaskSheet(
     var showPriorityDialog by remember { mutableStateOf(false) }
     var showTimeConfigSheet by remember { mutableStateOf(false) }
     val isEditMode = state?.isNewTask == false
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -73,6 +61,7 @@ fun ModificationTaskSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
+                .verticalScroll(scrollState)
         ) {
             state?.error?.let {
                 Text(
@@ -124,11 +113,11 @@ fun ModificationTaskSheet(
             ConfigurationOptionsRow(
                 onTimeClick = { showTimeConfigSheet = true },
                 onPriorityClick = { showPriorityDialog = true },
-                onListsClick = { /* Show lists dialog */ },
+                onListsClick = { },
                 onSubtasksClick = { showSubtasksSection = !showSubtasksSection }
             )
 
-            // Display task configuration if any
+
             if (hasAnyConfig(state)) {
                 Spacer(modifier = Modifier.height(16.dp))
                 state?.let {
@@ -143,30 +132,47 @@ fun ModificationTaskSheet(
                 }
             }
 
-            // Subtasks section
+
             if (showSubtasksSection) {
-                Spacer(modifier = Modifier.height(8.dp))
-                state?.let {
-                    SubtasksSection(
-                        subtasks = it.subtasks,
-                        onSubtaskToggled = { subtaskId, isCompleted ->
-                            val subtask = it.subtasks.find { s -> s.id == subtaskId }
-                            subtask?.let { s ->
-                                taskEditViewModel.sendIntent(
-                                    TaskEditIntent.UpdateSubtask(s.copy(isCompleted = isCompleted))
-                                )
-                            }
-                        },
-                        onSubtaskAdded = { subtaskName ->
-                            taskEditViewModel.sendIntent(TaskEditIntent.AddSubtask(subtaskName))
-                        },
-                        onSubtaskDeleted = { subtask ->
-                            taskEditViewModel.sendIntent(TaskEditIntent.RemoveSubtask(subtask.id))
-                        },
-                        showDeleteButton = true,
-                        showAddButton = true,
-                        errorMessage = it.error
-                    )
+                AnimatedVisibility(visible = showSubtasksSection) {
+                    Column {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        state?.let {
+                            SubtasksSection(
+                                subtasks = it.subtasks,
+                                onSubtaskToggled = { subtaskId, isCompleted ->
+                                    val subtask = it.subtasks.find { s -> s.id == subtaskId }
+                                    subtask?.let { s ->
+                                        taskEditViewModel.sendIntent(
+                                            TaskEditIntent.UpdateSubtask(s.copy(isCompleted = isCompleted))
+                                        )
+                                    }
+                                },
+                                onSubtaskAdded = { subtaskName ->
+                                    taskEditViewModel.sendIntent(
+                                        TaskEditIntent.AddSubtask(
+                                            subtaskName
+                                        )
+                                    )
+                                    scope.launch {
+
+                                        kotlinx.coroutines.delay(50)
+                                        scrollState.animateScrollTo(scrollState.maxValue)
+                                    }
+                                },
+                                onSubtaskDeleted = { subtask ->
+                                    taskEditViewModel.sendIntent(
+                                        TaskEditIntent.RemoveSubtask(
+                                            subtask.id
+                                        )
+                                    )
+                                },
+                                showDeleteButton = true,
+                                showAddButton = true,
+                                errorMessage = it.error
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -193,7 +199,7 @@ fun ModificationTaskSheet(
         }
     }
 
-    // Display priority dialog if needed
+
     if (showPriorityDialog) {
         PriorityDialog(
             currentPriority = state?.priority ?: Priority.NONE,
@@ -206,9 +212,6 @@ fun ModificationTaskSheet(
     }
 }
 
-/**
- * Check if task has any configuration
- */
 private fun hasAnyConfig(state: com.elena.autoplanner.presentation.states.TaskEditState?): Boolean {
     if (state == null) return false
 

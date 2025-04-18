@@ -8,13 +8,11 @@ import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.repository.TaskRepository
-import com.elena.autoplanner.presentation.utils.NewTaskData
-import com.elena.autoplanner.presentation.utils.toTask
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 
 class RealDataSeeder(
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
 ) : DataSeeder {
 
     override suspend fun seedTasks(count: Int) {
@@ -111,7 +109,7 @@ class RealDataSeeder(
         hasEndDate: Boolean,
         durationMinutes: Int?,
         priority: Priority,
-        subtaskCount: Int
+        subtaskCount: Int,
     ): String {
         val sign = if (dayOffset >= 0) "+" else ""
         val offsetDescriptor = "start in $sign$dayOffset days"

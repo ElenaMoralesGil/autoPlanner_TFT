@@ -38,6 +38,7 @@ abstract class BaseViewModel<I : Intent, S, E : UiEffect> : ViewModel() {
             }
         }
     }
+
     fun sendIntent(intent: I) {
         viewModelScope.launch { _intent.emit(intent) }
     }

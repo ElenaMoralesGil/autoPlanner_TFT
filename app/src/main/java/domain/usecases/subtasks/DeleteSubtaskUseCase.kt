@@ -7,7 +7,7 @@ import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 
 class DeleteSubtaskUseCase(
     private val getTaskUseCase: GetTaskUseCase,
-    private val saveTaskUseCase: SaveTaskUseCase
+    private val saveTaskUseCase: SaveTaskUseCase,
 ) {
     suspend operator fun invoke(taskId: Int, subtaskId: Int): TaskResult<Task> {
         return when (val taskResult = getTaskUseCase(taskId)) {

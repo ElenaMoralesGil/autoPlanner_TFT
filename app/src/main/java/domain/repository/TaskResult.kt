@@ -13,7 +13,7 @@ sealed class TaskResult<out T> {
 
     inline fun <R> fold(
         onSuccess: (T) -> R,
-        onError: (String) -> R
+        onError: (String) -> R,
     ): R {
         return when (this) {
             is Success -> onSuccess(data)

@@ -48,8 +48,8 @@ fun TimeConfigSheet(
         TimePlanning?,
         DurationPlan?,
         ReminderPlan?,
-        RepeatPlan?
-    ) -> Unit
+        RepeatPlan?,
+    ) -> Unit,
 ) {
 
     var localStart by remember { mutableStateOf(currentStart) }
@@ -87,26 +87,32 @@ fun TimeConfigSheet(
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(16.dp)) {
-            TimeConfigItem("Start date",
+                .padding(16.dp)
+        ) {
+            TimeConfigItem(
+                "Start date",
                 formatDateTimeWithPeriod(localStart)
             ) { openDialog = TimeDialogType.StartDate }
             HorizontalDivider()
-            TimeConfigItem("End date",
+            TimeConfigItem(
+                "End date",
                 formatDateTimeWithPeriod(localEnd)
             ) { openDialog = TimeDialogType.EndDate }
             HorizontalDivider()
-            TimeConfigItem("Duration",
+            TimeConfigItem(
+                "Duration",
                 formatDurationForDisplay(localDuration)
             ) { openDialog = TimeDialogType.Duration }
 
             HorizontalDivider()
-            TimeConfigItem("Reminder",
+            TimeConfigItem(
+                "Reminder",
                 formatReminderForDisplay(localReminder)
             ) { openDialog = TimeDialogType.Reminder }
 
             HorizontalDivider()
-            TimeConfigItem("Repeat",
+            TimeConfigItem(
+                "Repeat",
                 formatRepeatForDisplay(localRepeat)
             ) { openDialog = TimeDialogType.Repeat }
 
@@ -126,6 +132,7 @@ fun TimeConfigSheet(
                 }
             )
         }
+
         TimeDialogType.EndDate -> {
             StartEndDateAlertDialog(
                 label = "End date",
@@ -151,6 +158,7 @@ fun TimeConfigSheet(
                 }
             )
         }
+
         TimeDialogType.Duration -> {
             DurationAlertDialog(
                 existing = localDuration,
@@ -161,6 +169,7 @@ fun TimeConfigSheet(
                 }
             )
         }
+
         TimeDialogType.Reminder -> {
             ReminderAlertDialog(
                 existing = localReminder,
@@ -171,6 +180,7 @@ fun TimeConfigSheet(
                 }
             )
         }
+
         TimeDialogType.Repeat -> {
             RepeatAlertDialog(
                 existing = localRepeat,
@@ -181,6 +191,7 @@ fun TimeConfigSheet(
                 }
             )
         }
+
         else -> {}
     }
 }

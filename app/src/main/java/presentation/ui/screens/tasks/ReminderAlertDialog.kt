@@ -1,11 +1,23 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -20,7 +32,7 @@ import com.elena.autoplanner.presentation.ui.utils.StringPicker
 fun ReminderAlertDialog(
     existing: ReminderPlan?,
     onDismiss: () -> Unit,
-    onReady: (ReminderPlan?) -> Unit
+    onReady: (ReminderPlan?) -> Unit,
 ) {
     var showPersonalized by remember { mutableStateOf(false) }
     var localRem by remember {
@@ -40,7 +52,10 @@ fun ReminderAlertDialog(
                 ),
                 onSelect = { index ->
                     val offsets = listOf(0, 5, 30, 1440, 10080)
-                    localRem = ReminderPlan(mode = ReminderMode.PRESET_OFFSET, offsetMinutes = offsets[index])
+                    localRem = ReminderPlan(
+                        mode = ReminderMode.PRESET_OFFSET,
+                        offsetMinutes = offsets[index]
+                    )
                 },
                 onPersonalized = { showPersonalized = true },
                 isPersonalizedSelected = localRem.mode == ReminderMode.CUSTOM
@@ -75,7 +90,7 @@ fun ReminderAlertDialog(
 fun ReminderPersonalizedAlertDialog(
     existing: ReminderPlan,
     onDismiss: () -> Unit,
-    onReady: (ReminderPlan) -> Unit
+    onReady: (ReminderPlan) -> Unit,
 ) {
 
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -107,7 +122,7 @@ fun ReminderPersonalizedAlertDialog(
     GeneralAlertDialog(
         title = {
 
-        TabRow(selectedTabIndex = selectedTab) {
+            TabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = (selectedTab == 0),
                     onClick = { selectedTab = 0 },
@@ -167,7 +182,7 @@ fun ReminderPersonalizedAlertDialog(
                         label = "Min"
                     )
                 }
-                }
+            }
         },
         onDismiss = onDismiss,
         onConfirm = {
@@ -192,7 +207,7 @@ fun ScrollingStringPickerColumn(
     items: List<String>,
     selectedIndex: Int,
     onIndexChange: (Int) -> Unit,
-    label: String
+    label: String,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(

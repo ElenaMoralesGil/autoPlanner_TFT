@@ -23,5 +23,5 @@ data class SubtaskEntity(
     val parentTaskId: Int,
     val name: String,
     val isCompleted: Boolean,
-    val estimatedDurationInMinutes: Int?
+    val estimatedDurationInMinutes: Int?,
 )

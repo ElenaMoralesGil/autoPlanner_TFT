@@ -22,7 +22,7 @@ fun TasksSectionContent(
     onTaskChecked: (Task, Boolean) -> Unit,
     onTaskSelected: (Task) -> Unit,
     onDelete: (Task) -> Unit,
-    onEdit: (Task) -> Unit
+    onEdit: (Task) -> Unit,
 ) {
     val tasks = state.filteredTasks
     val notDoneTasks = tasks.filter { !it.isCompleted && !it.isExpired() }

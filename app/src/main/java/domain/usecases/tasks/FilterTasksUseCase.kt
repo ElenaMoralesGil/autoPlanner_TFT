@@ -8,7 +8,7 @@ class FilterTasksUseCase {
     operator fun invoke(
         tasks: List<Task>,
         status: TaskStatus,
-        timeFrame: TimeFrame
+        timeFrame: TimeFrame,
     ): List<Task> {
         return tasks.filter { task ->
 

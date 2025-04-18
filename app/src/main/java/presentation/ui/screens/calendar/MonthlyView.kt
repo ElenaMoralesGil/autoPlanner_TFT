@@ -2,7 +2,17 @@ package com.elena.autoplanner.presentation.ui.screens.calendar.MonthlyView
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,7 +21,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,7 +41,6 @@ import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarView
 import com.elena.autoplanner.presentation.ui.screens.calendar.getPriorityColor
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
-
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -100,7 +110,7 @@ fun MonthlyView(
 fun MonthHeader(
     currentMonth: YearMonth,
     onPreviousMonth: () -> Unit,
-    onNextMonth: () -> Unit
+    onNextMonth: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -161,7 +171,7 @@ fun DaysOfWeekHeader() {
 @Composable
 fun WeekDaysRow(
     week: List<CalendarDay>,
-    onDayClick: (LocalDate) -> Unit
+    onDayClick: (LocalDate) -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -184,7 +194,7 @@ fun DayCell(
     day: CalendarDay,
     isToday: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val textColor = when {
         isToday -> Color.White
@@ -226,7 +236,7 @@ fun DayCell(
 fun WeekTasksGrid(
     week: List<CalendarDay>,
     tasks: List<Task>,
-    onTaskClick: (Task) -> Unit
+    onTaskClick: (Task) -> Unit,
 ) {
     val tasksByDay = tasks.groupBy { task ->
         val taskDate = task.startDateConf?.dateTime?.toLocalDate()
@@ -265,7 +275,7 @@ fun WeekTasksGrid(
 fun TaskCard(
     task: Task,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier
@@ -327,7 +337,7 @@ fun TaskCard(
 
 data class CalendarDay(
     val date: LocalDate,
-    val isCurrentMonth: Boolean
+    val isCurrentMonth: Boolean,
 )
 
 fun generateCalendarDays(yearMonth: YearMonth): List<List<CalendarDay>> {
@@ -342,6 +352,7 @@ fun generateCalendarDays(yearMonth: YearMonth): List<List<CalendarDay>> {
             today.dayOfMonth >= yearMonth.lengthOfMonth() - 7 ->
                 yearMonth.atEndOfMonth().minusWeeks(3)
                     .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+
             else -> today.minusWeeks(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         }
     } else {

@@ -4,7 +4,18 @@ package com.elena.autoplanner.presentation.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.viewModelScope
-import com.elena.autoplanner.domain.models.*
+import com.elena.autoplanner.domain.models.ConflictItem
+import com.elena.autoplanner.domain.models.DayOrganization
+import com.elena.autoplanner.domain.models.DayPeriod
+import com.elena.autoplanner.domain.models.OverdueTaskHandling
+import com.elena.autoplanner.domain.models.PlacementHeuristic
+import com.elena.autoplanner.domain.models.PlannerInput
+import com.elena.autoplanner.domain.models.PlannerStep
+import com.elena.autoplanner.domain.models.PrioritizationStrategy
+import com.elena.autoplanner.domain.models.ResolutionOption
+import com.elena.autoplanner.domain.models.ScheduleScope
+import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.repository.TaskResult
 import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
@@ -12,14 +23,12 @@ import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.presentation.effects.PlannerEffect
 import com.elena.autoplanner.presentation.intents.PlannerIntent
 import com.elena.autoplanner.presentation.states.PlannerState
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
 
 class PlannerViewModel(
@@ -112,16 +121,19 @@ class PlannerViewModel(
             } else {
                 setEffect(PlannerEffect.ShowSnackbar("Please select availability hours and a schedule scope."))
             }
+
             PlannerStep.PRIORITY_INPUT -> if (currentState.canMoveToStep3) {
                 setState { copy(currentStep = PlannerStep.ADDITIONAL_OPTIONS) }
             } else {
                 setEffect(PlannerEffect.ShowSnackbar("Please select a prioritization strategy and day organization style."))
             }
+
             PlannerStep.ADDITIONAL_OPTIONS -> if (currentState.canGeneratePlan) {
                 sendIntent(PlannerIntent.GeneratePlan)
             } else {
                 setEffect(PlannerEffect.ShowSnackbar("Please select task splitting and overdue task options."))
             }
+
             PlannerStep.REVIEW_PLAN -> { /* Final step, no next */
             }
         }
@@ -145,6 +157,7 @@ class PlannerViewModel(
                     tasksFlaggedForManualEdit = emptySet() // Clear flags when going back
                 )
             }
+
             PlannerStep.TIME_INPUT -> setEffect(PlannerEffect.NavigateBack)
         }
     }

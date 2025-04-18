@@ -22,7 +22,7 @@ fun WeekNavigationHeader(
     weekStartDate: LocalDate,
     weekEndDate: LocalDate,
     onPreviousWeek: () -> Unit,
-    onNextWeek: () -> Unit
+    onNextWeek: () -> Unit,
 ) {
     Row(
         modifier = Modifier

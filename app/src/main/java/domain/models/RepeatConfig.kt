@@ -16,7 +16,7 @@ data class RepeatPlan(
     val frequencyType: FrequencyType = FrequencyType.NONE,
     val interval: Int? = null, // e.g., repeat every 2 weeks
     val intervalUnit: IntervalUnit? = null, // DAY, WEEK, MONTH, YEAR
-    val selectedDays: Set<com.elena.autoplanner.domain.models.DayOfWeek> = emptySet(), // For WEEKLY repetition
+    val selectedDays: Set<DayOfWeek> = emptySet(), // For WEEKLY repetition
     val repeatEndDate: LocalDate? = null, // Optional end date for the recurrence
     val repeatOccurrences: Int? = null, // Optional number of times to repeat
     // Advanced RRULE fields (optional, add if needed)
@@ -33,8 +33,8 @@ data class RepeatPlan(
 }
 
 enum class IntervalUnit { DAY, WEEK, MONTH, YEAR }
-enum class DayOfWeek { MON, TUE, WED, THU, FRI,   SAT, SUN }
+enum class DayOfWeek { MON, TUE, WED, THU, FRI, SAT, SUN }
 data class OrdinalWeekday(
     val ordinal: Int, // e.g., 1 for 1st, 2 for 2nd, -1 for last
-    val dayOfWeek: com.elena.autoplanner.domain.models.DayOfWeek,
+    val dayOfWeek: DayOfWeek,
 )

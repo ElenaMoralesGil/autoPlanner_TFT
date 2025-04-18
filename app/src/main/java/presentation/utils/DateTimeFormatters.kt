@@ -8,7 +8,6 @@ import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
 import com.elena.autoplanner.domain.models.TimePlanning
 import java.time.LocalDateTime
-import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 object DateTimeFormatters {
@@ -32,8 +31,8 @@ object DateTimeFormatters {
     fun formatDurationShort(duration: DurationPlan?): String {
         return duration?.totalMinutes?.let { mins ->
             when {
-                mins >= 1440 -> "${mins/1440}d"
-                mins >= 60 -> "${mins/60}h ${mins%60}m"
+                mins >= 1440 -> "${mins / 1440}d"
+                mins >= 60 -> "${mins / 60}h ${mins % 60}m"
                 else -> "${mins}m"
             }
         } ?: ""
@@ -63,7 +62,7 @@ object DateTimeFormatters {
     fun formatDurationForDisplay(duration: DurationPlan?): String {
         return duration?.totalMinutes?.let { mins ->
             when {
-                mins % 60 == 0 -> "${mins/60}H"
+                mins % 60 == 0 -> "${mins / 60}H"
                 else -> "${mins}min"
             }
         } ?: "None"
@@ -73,20 +72,21 @@ object DateTimeFormatters {
         return when (reminder?.mode) {
             ReminderMode.PRESET_OFFSET -> reminder.offsetMinutes?.let {
                 when {
-                    it >= 1440 -> "${it/1440} day${if(it/1440 > 1) "s" else ""} before"
-                    it >= 60 -> "${it/60} hour${if(it/60 > 1) "s" else ""} before"
+                    it >= 1440 -> "${it / 1440} day${if (it / 1440 > 1) "s" else ""} before"
+                    it >= 60 -> "${it / 60} hour${if (it / 60 > 1) "s" else ""} before"
                     else -> "$it min before"
                 }
             } ?: "At start time"
+
             ReminderMode.EXACT -> "At ${reminder.exactDateTime?.let { formatTime(it) }}"
             ReminderMode.CUSTOM -> {
                 val daysPart = if (reminder.customDayOffset != null) {
                     when (reminder.customDayOffset) {
                         0 -> "Same day"
-                        else -> "${reminder.customDayOffset} day${if(reminder.customDayOffset > 1) "s" else ""} before"
+                        else -> "${reminder.customDayOffset} day${if (reminder.customDayOffset > 1) "s" else ""} before"
                     }
                 } else if (reminder.customWeekOffset != null) {
-                    "${reminder.customWeekOffset} week${if(reminder.customWeekOffset > 1) "s" else ""} before"
+                    "${reminder.customWeekOffset} week${if (reminder.customWeekOffset > 1) "s" else ""} before"
                 } else ""
 
                 val timePart = reminder.customHour?.let { hour ->
@@ -97,6 +97,7 @@ object DateTimeFormatters {
 
                 "$daysPart$timePart"
             }
+
             else -> "None"
         }
     }
@@ -115,7 +116,7 @@ object DateTimeFormatters {
                 FrequencyType.MONTHLY -> "Monthly"
                 FrequencyType.YEARLY -> "Yearly"
                 FrequencyType.CUSTOM -> it.interval?.let { interval ->
-                    "Every $interval ${it.intervalUnit?.name?.lowercase()}${if(interval > 1) "s" else ""}"
+                    "Every $interval ${it.intervalUnit?.name?.lowercase()}${if (interval > 1) "s" else ""}"
                 } ?: "Custom"
 
                 else -> "None"

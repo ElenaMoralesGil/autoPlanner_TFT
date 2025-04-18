@@ -12,7 +12,7 @@ fun NumberPicker(
     value: Int,
     range: IntRange,
     onValueChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     AndroidView(
         modifier = modifier,
@@ -20,7 +20,7 @@ fun NumberPicker(
 
             val themedContext = ContextThemeWrapper(context, R.style.MyNumberPickerTheme)
 
-          NumberPicker(themedContext).apply {
+            NumberPicker(themedContext).apply {
                 minValue = range.first
                 maxValue = range.last
                 this.value = value
@@ -40,7 +40,7 @@ fun StringPicker(
     items: List<String>,
     selectedIndex: Int,
     onValueChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     AndroidView(
         modifier = modifier,

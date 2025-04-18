@@ -26,5 +26,5 @@ data class TaskWithRelations(
         parentColumn = "id",
         entityColumn = "parentTaskId"
     )
-    val subtasks: List<SubtaskEntity> = emptyList()
+    val subtasks: List<SubtaskEntity> = emptyList(),
 )

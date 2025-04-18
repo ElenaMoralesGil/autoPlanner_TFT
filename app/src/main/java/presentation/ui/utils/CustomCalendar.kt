@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -78,7 +77,7 @@ fun CustomCalendar(
 fun WeekHeader(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val weekDays = remember(selectedDate) {
         selectedDate.getWeekDays()
@@ -101,6 +100,7 @@ fun WeekHeader(
         }
     }
 }
+
 @Composable
 private fun CalendarHeader(
     currentMonth: YearMonth,
@@ -151,7 +151,7 @@ private fun MonthGrid(
     selectedDates: List<LocalDate>,
     highlightedDates: List<LocalDate>,
     isInteractive: Boolean,
-    onDayClick: (Int) -> Unit
+    onDayClick: (Int) -> Unit,
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
     val firstDayOfWeek = currentMonth.atDay(1).dayOfWeek.value
@@ -188,7 +188,7 @@ fun DayCell(
     date: LocalDate,
     isSelected: Boolean,
     isToday: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     val bgColor = when {
         isSelected -> MaterialTheme.colorScheme.primary

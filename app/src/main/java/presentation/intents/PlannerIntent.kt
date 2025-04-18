@@ -9,8 +9,6 @@ import com.elena.autoplanner.domain.models.ResolutionOption
 import com.elena.autoplanner.domain.models.ScheduleScope
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.viewmodel.Intent
-import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
 
 sealed class PlannerIntent : Intent {
@@ -27,6 +25,7 @@ sealed class PlannerIntent : Intent {
     data class SelectPriority(val priority: PrioritizationStrategy) : PlannerIntent()
     data class SelectDayOrganization(val organization: DayOrganization) : PlannerIntent()
     data class SelectPlacementHeuristic(val heuristic: PlacementHeuristic) : PlannerIntent()
+
     // Step 3 Inputs
     data class SelectAllowSplitting(val allow: Boolean) : PlannerIntent()
     data class SelectOverdueHandling(val handling: OverdueTaskHandling) : PlannerIntent()

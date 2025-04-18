@@ -7,7 +7,10 @@ import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
-import com.elena.autoplanner.data.local.entities.*
+import com.elena.autoplanner.data.local.entities.ReminderEntity
+import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
+import com.elena.autoplanner.data.local.entities.SubtaskEntity
+import com.elena.autoplanner.data.local.entities.TaskEntity
 
 @Database(
     entities = [

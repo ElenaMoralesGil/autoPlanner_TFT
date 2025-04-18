@@ -14,7 +14,7 @@ abstract class BaseTaskViewModel<I : Intent, S, E : UiEffect> : BaseViewModel<I,
         getTasksUseCase: GetTasksUseCase,
         setLoadingState: (Boolean) -> Unit,
         processResult: (List<Task>) -> Unit,
-        handleError: (Throwable) -> Unit
+        handleError: (Throwable) -> Unit,
     ) {
         viewModelScope.launch {
             setLoadingState(true)
@@ -34,7 +34,7 @@ abstract class BaseTaskViewModel<I : Intent, S, E : UiEffect> : BaseViewModel<I,
     protected fun <T> handleTaskResult(
         result: TaskResult<T>,
         onSuccess: (T) -> Unit,
-        onError: (String) -> Unit
+        onError: (String) -> Unit,
     ) {
         when (result) {
             is TaskResult.Success -> onSuccess(result.data)
@@ -47,7 +47,7 @@ abstract class BaseTaskViewModel<I : Intent, S, E : UiEffect> : BaseViewModel<I,
         setLoadingState: (Boolean) -> Unit,
         operation: suspend () -> TaskResult<T>,
         onSuccess: (T) -> Unit,
-        onError: (String) -> Unit
+        onError: (String) -> Unit,
     ) {
         setLoadingState(true)
 

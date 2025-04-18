@@ -19,7 +19,7 @@ import com.elena.autoplanner.presentation.states.TaskStatus
 @Composable
 fun StatusFilterDropdown(
     currentStatus: TaskStatus,
-    onSelected: (TaskStatus) -> Unit
+    onSelected: (TaskStatus) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
 

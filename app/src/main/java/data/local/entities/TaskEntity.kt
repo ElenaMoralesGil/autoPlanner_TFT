@@ -1,6 +1,5 @@
 package com.elena.autoplanner.data.local.entities
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.time.LocalDateTime
@@ -15,6 +14,6 @@ data class TaskEntity(
     val startDayPeriod: String?,
     val endDateTime: LocalDateTime?,
     val endDayPeriod: String?,
-    val durationMinutes: Int?
+    val durationMinutes: Int?,
 
-)
+    )

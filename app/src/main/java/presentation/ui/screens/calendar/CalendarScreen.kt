@@ -44,8 +44,8 @@ import com.elena.autoplanner.presentation.intents.TaskEditIntent
 import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.ui.screens.calendar.MonthlyView.MonthlyView
 import com.elena.autoplanner.presentation.ui.screens.calendar.WeeklyView.WeeklyView
-import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
+import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.utils.CustomCalendar
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
@@ -63,7 +63,7 @@ enum class CalendarView { DAY, WEEK, MONTH }
 @Composable
 fun CalendarScreen(
     calendarViewModel: CalendarViewModel = koinViewModel(),
-    taskListViewModel: TaskListViewModel = koinViewModel()
+    taskListViewModel: TaskListViewModel = koinViewModel(),
 ) {
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
     var showAddEditSheet by remember { mutableStateOf(false) }
@@ -303,7 +303,7 @@ private fun CalendarTopAppBar(
     currentDate: LocalDate,
     currentView: CalendarView,
     onTitleSelected: () -> Unit,
-    onViewSelectorClicked: () -> Unit
+    onViewSelectorClicked: () -> Unit,
 ) {
     val titleText = when (currentView) {
         CalendarView.DAY -> {
@@ -313,8 +313,10 @@ private fun CalendarTopAppBar(
                 currentDate.format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy"))
             }
         }
+
         CalendarView.WEEK ->
             "Week of ${currentDate.format(DateTimeFormatter.ofPattern("d MMM"))}"
+
         CalendarView.MONTH ->
             currentDate.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
     }
@@ -342,7 +344,7 @@ private fun CalendarTopAppBar(
 private fun ViewSelector(
     currentView: CalendarView,
     onViewSelected: (CalendarView) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier,
@@ -370,7 +372,7 @@ private fun ViewSelector(
 private fun ViewOption(
     view: CalendarView,
     isSelected: Boolean,
-    onSelected: () -> Unit
+    onSelected: () -> Unit,
 ) {
     val tintColor =
         if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface

@@ -10,7 +10,7 @@ import androidx.compose.runtime.Composable
 @Composable
 fun AnimatedSection(
     visible: Boolean,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     AnimatedVisibility(
         visible = visible,

@@ -20,7 +20,7 @@ fun SubtaskItem(
     subtask: Subtask,
     showDeleteButton: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,

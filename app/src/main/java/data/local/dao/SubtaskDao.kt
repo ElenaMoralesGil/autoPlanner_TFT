@@ -17,6 +17,7 @@ interface SubtaskDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSubtasks(subtask: List<SubtaskEntity>)
+
     @Update
     suspend fun updateSubtask(subtask: SubtaskEntity)
 

@@ -25,7 +25,7 @@ class TaskMapper {
         taskEntity: TaskEntity,
         reminders: List<ReminderEntity> = emptyList(),
         repeatConfigs: List<RepeatConfigEntity> = emptyList(),
-        subtasks: List<SubtaskEntity> = emptyList()
+        subtasks: List<SubtaskEntity> = emptyList(),
     ): Task {
         val reminderMapper = ReminderMapper()
         val repeatConfigMapper = RepeatConfigMapper()

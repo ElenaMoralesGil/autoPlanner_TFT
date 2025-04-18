@@ -31,7 +31,7 @@ fun TaskConfigDisplay(
     duration: DurationPlan?,
     reminder: ReminderPlan?,
     repeat: RepeatPlan?,
-    priority: Priority
+    priority: Priority,
 ) {
     Card(
         modifier = Modifier

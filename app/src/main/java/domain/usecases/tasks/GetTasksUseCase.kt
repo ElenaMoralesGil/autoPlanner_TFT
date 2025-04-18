@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 class GetTasksUseCase(
-    private val repository: TaskRepository
+    private val repository: TaskRepository,
 ) {
     operator fun invoke(): Flow<List<Task>> = repository.getTasks()
         .map { result ->

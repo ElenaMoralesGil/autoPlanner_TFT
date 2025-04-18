@@ -22,7 +22,7 @@ fun TaskChip(
     icon: Painter,
     iconTint: Color,
     text: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier,

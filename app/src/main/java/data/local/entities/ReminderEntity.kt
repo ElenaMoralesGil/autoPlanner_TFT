@@ -25,9 +25,9 @@ data class ReminderEntity(
     // e.g. "NONE", "PRESET_OFFSET", "CUSTOM", "EXACT"
     val mode: String,
     val offsetMinutes: Int? = null,
-    val exactDateTime: LocalDateTime? = null
-){
-    init{
+    val exactDateTime: LocalDateTime? = null,
+) {
+    init {
         require(offsetMinutes == null || offsetMinutes >= 0) {
             "Offset cannot be negative"
         }

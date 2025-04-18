@@ -6,11 +6,11 @@ data class TaskState(
     val tasks: List<Task> = emptyList(),
     val filteredTasks: List<Task> = emptyList(),
     val filters: Filters = Filters(),
-    val uiState: UiState = UiState.Idle
+    val uiState: UiState = UiState.Idle,
 ) {
     data class Filters(
         val status: TaskStatus = TaskStatus.ALL,
-        val timeFrame: TimeFrame = TimeFrame.ALL
+        val timeFrame: TimeFrame = TimeFrame.ALL,
     )
 
     sealed class UiState {
@@ -29,6 +29,7 @@ enum class TaskStatus(val displayName: String) {
     COMPLETED("Completed"),
     UNCOMPLETED("Uncompleted")
 }
+
 enum class TimeFrame(val displayName: String) {
     TODAY("Today"),
     ALL("All Time"),

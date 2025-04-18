@@ -6,7 +6,6 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavHostController
@@ -65,5 +64,5 @@ fun BottomNavigationBar(navController: NavHostController) {
 data class BottomNavItem(
     val label: String,
     val icon: Int,
-    val route: String
+    val route: String,
 )

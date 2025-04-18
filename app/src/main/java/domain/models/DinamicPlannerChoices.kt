@@ -71,6 +71,7 @@ data class ConflictItem(
         return result
     }
 }
+
 enum class PlannerStep {
     TIME_INPUT,
     PRIORITY_INPUT,

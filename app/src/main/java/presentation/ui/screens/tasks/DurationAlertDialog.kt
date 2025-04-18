@@ -32,7 +32,7 @@ import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 fun DurationAlertDialog(
     existing: DurationPlan?,
     onDismiss: () -> Unit,
-    onReady: (DurationPlan?) -> Unit
+    onReady: (DurationPlan?) -> Unit,
 ) {
 
     var useHours by remember { mutableStateOf(false) }
@@ -61,7 +61,7 @@ fun DurationAlertDialog(
     }
 
     val bodyContent: @Composable () -> Unit = {
-        Row (
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),

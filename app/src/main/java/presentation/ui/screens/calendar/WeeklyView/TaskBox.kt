@@ -30,7 +30,7 @@ import java.time.format.DateTimeFormatter
 fun TaskBox(
     task: Task,
     modifier: Modifier = Modifier,
-    onTaskSelected: (Task) -> Unit
+    onTaskSelected: (Task) -> Unit,
 ) {
     Box(
         modifier = modifier

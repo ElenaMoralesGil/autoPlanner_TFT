@@ -71,7 +71,8 @@ fun TaskMetadata(task: Task) {
                 }
                 startTimePlanning.dayPeriod?.takeIf { it != DayPeriod.NONE && it != DayPeriod.ALLDAY }
                     ?.let { period ->
-                        append(" (${
+                        append(
+                            " (${
                             period.name.lowercase()
                                 .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
                         })"
@@ -96,7 +97,8 @@ fun TaskMetadata(task: Task) {
                     endTimePlanning.dayPeriod?.takeIf {
                         it != DayPeriod.NONE && it != DayPeriod.ALLDAY && it != startTimePlanning.dayPeriod
                     }?.let { period ->
-                        append(" (${
+                        append(
+                            " (${
                             period.name.lowercase()
                                 .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
                         })"

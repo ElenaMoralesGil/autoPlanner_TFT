@@ -5,7 +5,7 @@ import com.elena.autoplanner.domain.repository.TaskRepository
 import com.elena.autoplanner.domain.repository.TaskResult
 
 class GetTaskUseCase(
-    private val repository: TaskRepository
+    private val repository: TaskRepository,
 ) {
     suspend operator fun invoke(taskId: Int): TaskResult<Task> = repository.getTask(taskId)
 

@@ -24,7 +24,7 @@ fun ConfigurationOptionsRow(
     onPriorityClick: () -> Unit,
     onListsClick: () -> Unit,
     onSubtasksClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
@@ -62,7 +62,7 @@ fun ConfigurationOptionsRow(
 private fun ActionButton(
     icon: Painter,
     label: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,

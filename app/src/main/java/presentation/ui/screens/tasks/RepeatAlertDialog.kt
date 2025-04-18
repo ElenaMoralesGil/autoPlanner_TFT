@@ -15,7 +15,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,9 +29,9 @@ import com.elena.autoplanner.domain.models.DayOfWeek
 import com.elena.autoplanner.domain.models.FrequencyType
 import com.elena.autoplanner.domain.models.IntervalUnit
 import com.elena.autoplanner.domain.models.RepeatPlan
+import com.elena.autoplanner.presentation.ui.utils.AnimatedSection
 import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 import com.elena.autoplanner.presentation.ui.utils.NumberPicker
-import com.elena.autoplanner.presentation.ui.utils.AnimatedSection
 import com.elena.autoplanner.presentation.ui.utils.SelectionGrid
 
 
@@ -34,7 +39,7 @@ import com.elena.autoplanner.presentation.ui.utils.SelectionGrid
 fun RepeatAlertDialog(
     existing: RepeatPlan?,
     onDismiss: () -> Unit,
-    onReady: (RepeatPlan?) -> Unit
+    onReady: (RepeatPlan?) -> Unit,
 ) {
     var showPersonalized by remember { mutableStateOf(false) }
     var localRepeat by remember {
@@ -52,7 +57,12 @@ fun RepeatAlertDialog(
                     "Yearly" to (localRepeat.frequencyType == FrequencyType.YEARLY)
                 ),
                 onSelect = { index ->
-                    val types = listOf(FrequencyType.DAILY, FrequencyType.WEEKLY, FrequencyType.MONTHLY, FrequencyType.YEARLY)
+                    val types = listOf(
+                        FrequencyType.DAILY,
+                        FrequencyType.WEEKLY,
+                        FrequencyType.MONTHLY,
+                        FrequencyType.YEARLY
+                    )
                     localRepeat = RepeatPlan(frequencyType = types[index])
                 },
                 onPersonalized = { showPersonalized = true },
@@ -60,7 +70,10 @@ fun RepeatAlertDialog(
             )
 
             AnimatedSection(visible = localRepeat.frequencyType == FrequencyType.WEEKLY) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(8.dp)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(8.dp)
+                ) {
                     Text("On which days?", style = MaterialTheme.typography.bodyLarge)
                     DaysOfWeekSelector(
                         selectedDays = localRepeat.selectedDays.map { it.ordinal }.toSet(),
@@ -105,7 +118,7 @@ fun RepeatAlertDialog(
 @Composable
 private fun DaysOfWeekSelector(
     selectedDays: Set<Int>,
-    onDaySelected: (Int) -> Unit
+    onDaySelected: (Int) -> Unit,
 ) {
     val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
@@ -123,11 +136,12 @@ private fun DaysOfWeekSelector(
         }
     }
 }
+
 @Composable
 private fun RepeatPersonalizedAlertDialog(
     existing: RepeatPlan,
     onDismiss: () -> Unit,
-    onReady: (RepeatPlan) -> Unit
+    onReady: (RepeatPlan) -> Unit,
 ) {
     var interval by remember { mutableIntStateOf(existing.interval ?: 1) }
     var intervalUnit by remember { mutableStateOf(existing.intervalUnit ?: IntervalUnit.WEEK) }
@@ -167,7 +181,7 @@ private fun IntervalSelector(
     interval: Int,
     unit: IntervalUnit,
     onIntervalChange: (Int) -> Unit,
-    onUnitChange: (IntervalUnit) -> Unit
+    onUnitChange: (IntervalUnit) -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -199,7 +213,7 @@ private fun IntervalSelector(
 private fun DayChip(
     label: String,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
@@ -224,7 +238,7 @@ fun SegmentedControlColumn(
     options: List<String>,
     selectedIndex: Int,
     onSelectionChanged: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
 
     Surface(

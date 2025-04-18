@@ -21,8 +21,8 @@ import com.elena.autoplanner.presentation.effects.TaskListEffect
 import com.elena.autoplanner.presentation.intents.TaskDetailIntent
 import com.elena.autoplanner.presentation.intents.TaskEditIntent
 import com.elena.autoplanner.presentation.intents.TaskListIntent
-import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
+import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.utils.ErrorMessage
 import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
@@ -53,6 +53,7 @@ fun TasksScreen(
                 is TaskListEffect.NavigateToTaskDetail -> {
                     selectedTaskId = effect.taskId
                 }
+
                 is TaskListEffect.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(effect.message)
                 }
@@ -136,12 +137,14 @@ fun TasksScreen(
                         // Refresh task list to reflect changes
                         listViewModel.sendIntent(TaskListIntent.LoadTasks)
                     }
+
                     is TaskDetailEffect.NavigateToEdit -> {
                         // Load task to edit and show edit sheet
                         taskToEdit = state?.tasks?.find { it.id == effect.taskId }
                         selectedTaskId = null
                         showAddEditSheet = true
                     }
+
                     is TaskDetailEffect.ShowSnackbar -> {
                         snackbarHostState.showSnackbar(effect.message)
                     }
@@ -181,6 +184,7 @@ fun TasksScreen(
                         // Refresh task list to reflect changes
                         listViewModel.sendIntent(TaskListIntent.LoadTasks)
                     }
+
                     is TaskEditEffect.ShowSnackbar -> {
                         snackbarHostState.showSnackbar(effect.message)
                     }

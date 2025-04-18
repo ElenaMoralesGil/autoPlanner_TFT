@@ -6,15 +6,15 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarScreen
-import com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen.TasksScreen
 import com.elena.autoplanner.presentation.ui.screens.more.MoreScreen
 import com.elena.autoplanner.presentation.ui.screens.profile.ProfileScreen
+import com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen.TasksScreen
 import com.elena.autoplanner.presentation.ui.screens.tasks.planner.AutoPlannerScreen
 
 @Composable
 fun MainNavigation(
     navController: NavHostController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     NavHost(
         navController = navController,

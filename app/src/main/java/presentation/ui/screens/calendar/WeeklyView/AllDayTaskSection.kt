@@ -20,7 +20,7 @@ import java.time.LocalDate
 fun AllDayTasksSection(
     allDayTasks: List<Task>,
     weekDays: List<LocalDate>,
-    onTaskSelected: (Task) -> Unit
+    onTaskSelected: (Task) -> Unit,
 ) {
     Surface(
         modifier = Modifier

@@ -8,5 +8,5 @@ data class TaskListState(
     val filteredTasks: List<Task> = emptyList(),
     val statusFilter: TaskStatus = TaskStatus.ALL,
     val timeFrameFilter: TimeFrame = TimeFrame.TODAY,
-    val error: String? = null
+    val error: String? = null,
 )

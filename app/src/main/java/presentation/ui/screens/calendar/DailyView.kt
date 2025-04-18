@@ -162,7 +162,7 @@ private fun EnhancedTimeSchedule(
     onTaskTimeChanged: (Task, LocalTime) -> Unit,
     isToday: Boolean,
     currentTime: LocalTime,
-    scrollState: ScrollState
+    scrollState: ScrollState,
 ) {
     val hourHeightPx = with(LocalDensity.current) { hourHeightDp.toPx() }
     val currentMinutes = currentTime.hour * 60 + currentTime.minute
@@ -215,7 +215,7 @@ private fun TimeBlockSection(
     onTaskSelected: (Task) -> Unit,
     onTaskTimeChanged: (Task, LocalTime) -> Unit,
     draggedTasks: Map<Int, TaskDragState>,
-    updateDragState: (TaskDragState) -> Unit
+    updateDragState: (TaskDragState) -> Unit,
 ) {
     Column {
         block.periodTasks?.takeIf { it.isNotEmpty() }?.let {
@@ -321,7 +321,7 @@ fun TaskBox(
     onTaskSelected: (Task) -> Unit,
     onTaskTimeChanged: (Task, LocalTime) -> Unit,
     draggedTasks: Map<Int, TaskDragState>,
-    updateDragState: (TaskDragState) -> Unit
+    updateDragState: (TaskDragState) -> Unit,
 ) {
     val dayStart = LocalTime.MIDNIGHT
     val dayEnd = LocalTime.of(23, 59)
@@ -518,14 +518,14 @@ fun TaskBox(
 data class TaskDragState(
     val task: Task,
     val offset: Float = 0f,
-    val tempStartTime: LocalTime? = null
+    val tempStartTime: LocalTime? = null,
 )
 
 @Composable
 private fun PeriodTasksSection(
     periodName: String,
     tasks: List<Task>,
-    onTaskSelected: (Task) -> Unit
+    onTaskSelected: (Task) -> Unit,
 ) {
     Surface(
         modifier = Modifier
@@ -560,7 +560,7 @@ private fun PeriodTasksSection(
 @Composable
 fun AllDayTasksSection(
     tasks: List<Task>,
-    onTaskSelected: (Task) -> Unit
+    onTaskSelected: (Task) -> Unit,
 ) {
     Surface(
         modifier = Modifier
@@ -596,7 +596,7 @@ private fun CurrentTimeIndicator(
     block: TimeBlock,
     currentTime: LocalTime,
     currentMinutes: Int,
-    hourHeightPx: Float
+    hourHeightPx: Float,
 ) {
     val blockStartMinutes = block.startHour * 60
     val relativeCurrentMinutes = currentMinutes - blockStartMinutes
@@ -628,7 +628,7 @@ private fun CurrentTimeIndicator(
 private fun TimeLabelsForBlock(
     startHour: Int,
     endHour: Int,
-    hourHeightDp: Dp
+    hourHeightDp: Dp,
 ) {
     Column(modifier = Modifier.width(48.dp)) {
         for (hour in startHour until endHour.coerceAtMost(24)) {
@@ -675,7 +675,7 @@ fun TaskItem(
     task: Task,
     onTaskSelected: (Task) -> Unit,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
@@ -740,7 +740,7 @@ private fun positionTasks(tasks: List<Task>): Map<Task, TaskPosition> {
         val targetColumn = columns.firstOrNull { column ->
             column.lastOrNull()?.let { lastTask ->
                 !taskOverlaps(lastTask, task)
-            } ?: true
+            } != false
         } ?: run {
             mutableListOf<Task>().also { columns.add(it) }
         }
@@ -775,7 +775,7 @@ data class TimeBlock(
     val name: String,
     val startHour: Int,
     val endHour: Int,
-    val periodTasks: List<Task>?
+    val periodTasks: List<Task>?,
 )
 
 data class TaskPosition(val xFraction: Float, val width: Float)

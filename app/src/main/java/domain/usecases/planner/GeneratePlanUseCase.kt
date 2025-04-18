@@ -1,21 +1,46 @@
 package com.elena.autoplanner.domain.usecases.planner
 
 import android.util.Log
-import com.elena.autoplanner.domain.models.*
+import com.elena.autoplanner.domain.models.CategorizationResult
+import com.elena.autoplanner.domain.models.ConflictItem
+import com.elena.autoplanner.domain.models.ConflictType
+import com.elena.autoplanner.domain.models.DayOfWeek
+import com.elena.autoplanner.domain.models.DayOrganization
+import com.elena.autoplanner.domain.models.DayPeriod
+import com.elena.autoplanner.domain.models.DaySchedule
+import com.elena.autoplanner.domain.models.FrequencyType
+import com.elena.autoplanner.domain.models.InfoItem
+import com.elena.autoplanner.domain.models.IntervalUnit
+import com.elena.autoplanner.domain.models.Occupancy
+import com.elena.autoplanner.domain.models.OverdueTaskHandling
+import com.elena.autoplanner.domain.models.PlacementHeuristic
+import com.elena.autoplanner.domain.models.PlacementResult
+import com.elena.autoplanner.domain.models.PlacementResultInternal
+import com.elena.autoplanner.domain.models.PlannerInput
+import com.elena.autoplanner.domain.models.PlannerOutput
+import com.elena.autoplanner.domain.models.PlanningTask
+import com.elena.autoplanner.domain.models.PrioritizationStrategy
+import com.elena.autoplanner.domain.models.Priority
+import com.elena.autoplanner.domain.models.RepeatPlan
+import com.elena.autoplanner.domain.models.ScheduleScope
+import com.elena.autoplanner.domain.models.ScheduledTaskItem
+import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TimeBlock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.dmfs.rfc5545.DateTime
+import org.dmfs.rfc5545.recur.InvalidRecurrenceRuleException
+import org.dmfs.rfc5545.recur.RecurrenceRule
+import org.dmfs.rfc5545.recur.RecurrenceRuleIterator
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.Duration
 import java.time.ZoneId
-import org.dmfs.rfc5545.recur.RecurrenceRule
+import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.TimeZone
-import org.dmfs.rfc5545.DateTime
-import org.dmfs.rfc5545.recur.*
-import java.time.Instant
-import java.time.format.DateTimeFormatter
 
 class GeneratePlanUseCase(
     private val taskCategorizer: TaskCategorizer,
@@ -887,13 +912,13 @@ class TimelineManager {
         timeline.mapValues { it.value.pendingPeriodTasks }
 
     fun findSlot(
-        durationNeeded: java.time.Duration,
+        durationNeeded: Duration,
         minSearchTime: LocalDateTime,
         maxSearchTime: LocalDateTime,
         heuristic: PlacementHeuristic,
         taskIdToIgnore: Int? = null,
     ): TimeBlock? {
-        if (durationNeeded <= java.time.Duration.ZERO) return null
+        if (durationNeeded <= Duration.ZERO) return null
         val potentialSlots = mutableListOf<Pair<TimeBlock, TimeBlock>>()
         val searchBlocks = timeline.entries
             .filter {
@@ -909,7 +934,7 @@ class TimelineManager {
                 val maxPossibleEndInBlock = minOf(block.end, maxSearchTime)
                 if (potentialStart >= maxPossibleEndInBlock) return@forEach
                 val availableDuration =
-                    java.time.Duration.between(potentialStart, maxPossibleEndInBlock)
+                    Duration.between(potentialStart, maxPossibleEndInBlock)
                 if (availableDuration >= durationNeeded) {
                     val potentialEnd = potentialStart.plus(durationNeeded)
                     if (potentialStart < potentialEnd) {

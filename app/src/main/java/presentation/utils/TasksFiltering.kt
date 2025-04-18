@@ -14,7 +14,7 @@ fun Task.isDueToday(): Boolean {
 
 fun Task.isExpired(): Boolean {
     val today = LocalDate.now()
-    return endDateConf?.dateTime?.toLocalDate()?.isBefore(today) ?: false
+    return endDateConf?.dateTime?.toLocalDate()?.isBefore(today) == true
 }
 
 fun Task.isDueThisWeek(): Boolean {

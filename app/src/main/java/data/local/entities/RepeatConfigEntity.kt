@@ -26,5 +26,5 @@ data class RepeatConfigEntity(
     val frequencyType: String,
     val interval: Int? = null,
     val intervalUnit: IntervalUnit? = null,
-    val selectedDays: Set<DayOfWeek> = emptySet()
+    val selectedDays: Set<DayOfWeek> = emptySet(),
 )

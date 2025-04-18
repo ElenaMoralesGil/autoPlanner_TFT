@@ -12,7 +12,6 @@ import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.states.TaskListState
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 
@@ -21,7 +20,7 @@ class TaskListViewModel(
     private val filterTasksUseCase: FilterTasksUseCase,
     private val toggleTaskCompletionUseCase: ToggleTaskCompletionUseCase,
     private val deleteTaskUseCase: DeleteTaskUseCase,
-    private val saveTaskUseCase: SaveTaskUseCase
+    private val saveTaskUseCase: SaveTaskUseCase,
 ) : BaseTaskViewModel<TaskListIntent, TaskListState, TaskListEffect>() {
 
     override fun createInitialState(): TaskListState = TaskListState()
@@ -35,6 +34,7 @@ class TaskListViewModel(
                 intent.taskId,
                 intent.completed
             )
+
             is TaskListIntent.SelectTask -> setEffect(TaskListEffect.NavigateToTaskDetail(intent.taskId))
             is TaskListIntent.DeleteTask -> handleDeleteTask(intent.taskId)
             is TaskListIntent.UpdateTask -> handleUpdateTask(intent.taskId)

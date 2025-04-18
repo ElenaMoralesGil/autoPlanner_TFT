@@ -30,7 +30,7 @@ import com.elena.autoplanner.presentation.ui.screens.calendar.getPriorityColor
 fun TaskItem(
     task: Task,
     onTaskSelected: (Task) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier

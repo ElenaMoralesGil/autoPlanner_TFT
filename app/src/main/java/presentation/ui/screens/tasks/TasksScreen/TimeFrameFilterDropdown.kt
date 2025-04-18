@@ -19,7 +19,7 @@ import com.elena.autoplanner.presentation.states.TimeFrame
 @Composable
 fun TimeFrameFilterDropdown(
     currentTimeFrame: TimeFrame,
-    onSelected: (TimeFrame) -> Unit
+    onSelected: (TimeFrame) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
 

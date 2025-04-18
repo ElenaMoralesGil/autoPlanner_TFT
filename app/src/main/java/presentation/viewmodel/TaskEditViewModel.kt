@@ -17,7 +17,7 @@ import java.time.LocalDateTime
  */
 class TaskEditViewModel(
     private val getTaskUseCase: GetTaskUseCase,
-    private val saveTaskUseCase: SaveTaskUseCase
+    private val saveTaskUseCase: SaveTaskUseCase,
 ) : BaseTaskViewModel<TaskEditIntent, TaskEditState, TaskEditEffect>() {
 
     override fun createInitialState(): TaskEditState = TaskEditState()

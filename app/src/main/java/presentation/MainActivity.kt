@@ -10,12 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.elena.autoplanner.domain.utils.DataSeeder
-import com.elena.autoplanner.presentation.ui.components.BottomNavigationBar
 import com.elena.autoplanner.presentation.navigation.MainNavigation
+import com.elena.autoplanner.presentation.ui.components.BottomNavigationBar
 import com.elena.autoplanner.presentation.ui.theme.AppTheme
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
-import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : ComponentActivity() {
 
