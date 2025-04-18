@@ -121,7 +121,7 @@ import com.elena.autoplanner.presentation.intents.TaskEditIntent
 import com.elena.autoplanner.presentation.states.PlannerState
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarView
 import com.elena.autoplanner.presentation.ui.screens.tasks.HourMinutePickerDialog
-import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.ModificationTaskSheet
+import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
 import com.elena.autoplanner.presentation.viewmodel.PlannerViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel

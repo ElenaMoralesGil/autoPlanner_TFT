@@ -10,8 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.presentation.intents.TaskDetailIntent
-import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.SubtasksSection
-import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.TaskConfigDisplay
+import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.SubtasksSection
+import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.TaskConfigDisplay
 import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 import kotlinx.coroutines.flow.collectLatest

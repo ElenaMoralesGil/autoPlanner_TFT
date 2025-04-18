@@ -1,4 +1,4 @@
-package com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet
+package com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,11 +32,14 @@ fun SubtasksSection(
     onSubtaskDeleted: (Subtask) -> Unit,
     showDeleteButton: Boolean,
     showAddButton: Boolean,
-    errorMessage: String?,
-    modifier: Modifier = Modifier
+    errorMessage: String?, // For errors from ViewModel
+    modifier: Modifier = Modifier,
 ) {
 
     var newSubtaskText by remember { mutableStateOf("") }
+    // State specifically to track if the user tried adding an empty subtask
+    var showEmptyInputError by remember { mutableStateOf(false) }
+
     Column(modifier = modifier) {
         Text(
             text = "Subtasks",
@@ -44,20 +47,20 @@ fun SubtasksSection(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
+        // Display errors coming from the ViewModel (e.g., save errors)
         errorMessage?.let {
             Text(
                 text = it,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
         }
-
 
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp, horizontal = 16.dp)
-                .heightIn(min = 0.dp, max = 200.dp)
+                .heightIn(min = 0.dp, max = 200.dp) // Constrain height
         ) {
             items(subtasks, key = { it.id }) { subtask ->
                 SubtaskItem(
@@ -73,8 +76,6 @@ fun SubtasksSection(
             }
         }
 
-
-
         if (showAddButton) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -82,26 +83,37 @@ fun SubtasksSection(
             ) {
                 OutlinedTextField(
                     value = newSubtaskText,
-                    onValueChange = { newSubtaskText = it },
+                    onValueChange = {
+                        newSubtaskText = it
+                        if (it.isNotBlank()) {
+                            showEmptyInputError = false
+                        }
+                    },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Add subtask") }
+                    placeholder = { Text("Add subtask") },
+                    isError = showEmptyInputError
                 )
                 IconButton(
                     onClick = {
                         if (newSubtaskText.isNotBlank()) {
                             onSubtaskAdded(newSubtaskText)
                             newSubtaskText = ""
+                            showEmptyInputError = false
+                        } else {
+                            showEmptyInputError = true
                         }
                     }
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add subtask")
                 }
             }
-            if (newSubtaskText.isBlank()) {
+
+            if (showEmptyInputError) {
                 Text(
                     text = "Subtask name required",
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(start = 16.dp)
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
                 )
             }
         }

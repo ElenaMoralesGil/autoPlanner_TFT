@@ -21,7 +21,7 @@ import com.elena.autoplanner.presentation.effects.TaskListEffect
 import com.elena.autoplanner.presentation.intents.TaskDetailIntent
 import com.elena.autoplanner.presentation.intents.TaskEditIntent
 import com.elena.autoplanner.presentation.intents.TaskListIntent
-import com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet.ModificationTaskSheet
+import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
 import com.elena.autoplanner.presentation.ui.utils.ErrorMessage
 import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator

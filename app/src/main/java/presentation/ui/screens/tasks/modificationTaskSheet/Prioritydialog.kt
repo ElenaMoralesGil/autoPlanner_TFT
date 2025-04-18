@@ -1,4 +1,4 @@
-package com.elena.autoplanner.presentation.ui.screens.tasks.ModificationTaskSheet
+package com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
