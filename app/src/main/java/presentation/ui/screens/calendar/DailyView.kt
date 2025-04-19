@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.calendar
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
@@ -203,6 +204,7 @@ private fun EnhancedTimeSchedule(
     }
 }
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun TimeBlockSection(
     currentTime: LocalTime,

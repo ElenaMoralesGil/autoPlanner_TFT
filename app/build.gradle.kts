@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    id("com.google.gms.google-services")
 
 }
 
@@ -83,6 +84,7 @@ dependencies {
     implementation(libs.lib.recur)
     implementation(libs.androidx.navigation.safe.args.generator)
     implementation(libs.androidx.material3.android)
+    implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.animation.core.android)
