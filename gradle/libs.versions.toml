@@ -1,5 +1,6 @@
 [versions]
 agp = "8.9.1"
+firebaseBom = "33.12.0"
 gson = "2.12.0"
 jems2 = "2.25.0"
 jems2Optional = "0.11.0"
@@ -20,6 +21,7 @@ mockitoCore = "4.11.0"
 mockk = "1.13.7"
 navigationRuntimeKtx = "2.8.6"
 navigationCompose = "2.8.6"
+playServicesAuth = "21.3.0"
 rfc5545Datetime = "0.3"
 rfc5545Recur = "0.19.1"
 roomCommon = "2.6.1"
@@ -42,6 +44,8 @@ protoliteWellKnownTypes = "18.0.1"
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
+firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
@@ -65,6 +69,7 @@ mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockitoCore
 mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockitoCore" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockk" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 rfc5545-datetime = { module = "org.dmfs:rfc5545-datetime", version.ref = "rfc5545Datetime" }
 rfc5545-recur = { module = "org.dmfs:rfc5545-recur", version.ref = "rfc5545Recur" }
 rrule-v108 = { module = "com.github.PhilJay:RRule", version.ref = "rruleVersion" }
