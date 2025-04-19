@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.List
@@ -71,7 +72,10 @@ fun PlannerConfigurationStep(
     }
 
 
-    QuestionnaireSectionCard(title = "Prioritization Strategy", icon = Icons.Outlined.List) {
+    QuestionnaireSectionCard(
+        title = "Prioritization Strategy",
+        icon = Icons.AutoMirrored.Outlined.List
+    ) {
         SingleChoiceChipGroup(
             options = PrioritizationStrategy.entries,
             selectedOption = state.selectedPriority,
@@ -83,7 +87,10 @@ fun PlannerConfigurationStep(
     }
 
 
-    QuestionnaireSectionCard(title = "Day Organization Style", icon = Icons.Outlined.List) {
+    QuestionnaireSectionCard(
+        title = "Day Organization Style",
+        icon = Icons.AutoMirrored.Outlined.List
+    ) {
         SingleChoiceChipGroup(
             options = DayOrganization.entries,
             selectedOption = state.selectedDayOrganization,

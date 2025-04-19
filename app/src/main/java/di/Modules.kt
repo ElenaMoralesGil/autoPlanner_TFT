@@ -10,7 +10,9 @@ import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
 import com.elena.autoplanner.data.repository.TaskRepositoryImpl
+import com.elena.autoplanner.data.repository.UserRepositoryImpl
 import com.elena.autoplanner.domain.repository.TaskRepository
+import com.elena.autoplanner.domain.repository.UserRepository
 import com.elena.autoplanner.domain.usecases.auth.DeleteAccountUseCase
 import com.elena.autoplanner.domain.usecases.auth.GetCurrentUserUseCase
 import com.elena.autoplanner.domain.usecases.auth.LoginUseCase
@@ -37,11 +39,14 @@ import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.UpdateTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ValidateTaskUseCase
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
+import com.elena.autoplanner.presentation.viewmodel.LoginViewModel
 import com.elena.autoplanner.presentation.viewmodel.PlannerViewModel
 import com.elena.autoplanner.presentation.viewmodel.ProfileViewModel
+import com.elena.autoplanner.presentation.viewmodel.RegisterViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
+import com.google.firebase.auth.FirebaseAuth
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -67,7 +72,7 @@ val appModule = module {
             TaskDatabase::class.java,
             "task_database"
         )
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(false)
             .addCallback(roomCallback)
             .build()
     }
@@ -86,6 +91,8 @@ val appModule = module {
             subtaskDao = get()
         )
     }
+    single { FirebaseAuth.getInstance() }
+    single<UserRepository> { UserRepositoryImpl(firebaseAuth = get()) }
 }
 
 
@@ -124,7 +131,6 @@ val useCaseModule = module {
     single { RegisterUseCase(get()) }
     single { LogoutUseCase(get()) }
     single { DeleteAccountUseCase(get()) }
-
     // Profile Use Cases
     single { GetProfileStatsUseCase(get()) }
 }

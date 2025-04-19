@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.compose.compiler)
     id("com.google.gms.google-services")
 
 }
@@ -51,7 +52,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.11"
     }
 
     packaging {
@@ -86,7 +87,6 @@ dependencies {
     implementation(libs.androidx.material3.android)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
-    implementation("com.google.firebase-auth:16.0.3")
     implementation(libs.play.services.auth)
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.foundation.android)

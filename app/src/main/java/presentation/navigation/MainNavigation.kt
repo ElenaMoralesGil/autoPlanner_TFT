@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.elena.autoplanner.presentation.ui.screens.auth.LoginScreen
+import com.elena.autoplanner.presentation.ui.screens.auth.RegisterScreen
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarScreen
 import com.elena.autoplanner.presentation.ui.screens.more.MoreScreen
 import com.elena.autoplanner.presentation.ui.screens.profile.ProfileScreen
@@ -58,16 +59,22 @@ fun MainNavigation(
                 onNavigateToRegister = { navController.navigate(Screen.Register.route) }
             )
         }
-//        composable(Screen.Register.route) {
-//            RegisterScreen(
-//                onRegisterSuccess = {
-//                    // Navigate back to Profile or Tasks after registration
-//                    navController.popBackStack(Screen.Profile.route, inclusive = false)
-//                },
-//                onNavigateToLogin = { navController.navigate(Screen.Login.route) { popUpTo(Screen.Register.route) { inclusive = true } } }
-//            )
-//        }
-        // Add composable for EditProfileScreen later
+        composable(Screen.Register.route) {
+            RegisterScreen(
+                onRegisterSuccess = {
+                    // Navigate back to Profile or Tasks after registration
+                    navController.popBackStack(Screen.Profile.route, inclusive = false)
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Register.route) {
+                            inclusive = true
+                        }
+                    }
+                }
+            )
+        }
+
     }
 }
 

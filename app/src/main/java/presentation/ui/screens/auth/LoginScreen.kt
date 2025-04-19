@@ -34,7 +34,9 @@ fun LoginScreen(
         }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
+        snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
