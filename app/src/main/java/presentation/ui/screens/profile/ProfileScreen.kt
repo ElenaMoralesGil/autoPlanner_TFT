@@ -97,6 +97,7 @@ fun ProfileScreen(
             // Delete Confirmation Dialog
             if (state?.showDeleteConfirmDialog == true) {
                 AlertDialog(
+                    containerColor = MaterialTheme.colorScheme.surface,
                     onDismissRequest = { viewModel.sendIntent(ProfileIntent.CancelDeleteAccount) },
                     title = { Text("Delete Account?") },
                     text = { Text("This action is permanent and cannot be undone. Are you sure?") },
@@ -187,7 +188,7 @@ fun UserInfoSection(user: User) {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = user.displayName ?: "Username", // Display name or default
+            text = user.displayName ?: "Welcome", // Display name or default
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold
         )
@@ -221,9 +222,7 @@ fun StatCard(title: String, value: String) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                alpha = 0.5f
-            )
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
