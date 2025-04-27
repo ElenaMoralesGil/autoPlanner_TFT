@@ -15,5 +15,6 @@ data class TaskEntity(
     val endDateTime: LocalDateTime?,
     val endDayPeriod: String?,
     val durationMinutes: Int?,
-
-    )
+    val scheduledStartDateTime: LocalDateTime? = null,
+    val scheduledEndDateTime: LocalDateTime? = null,
+)

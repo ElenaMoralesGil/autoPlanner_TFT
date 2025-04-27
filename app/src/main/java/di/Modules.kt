@@ -46,7 +46,7 @@ import com.elena.autoplanner.presentation.viewmodel.RegisterViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
-import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.*
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module

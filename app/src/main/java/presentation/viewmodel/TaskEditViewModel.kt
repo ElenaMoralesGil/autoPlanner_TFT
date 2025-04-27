@@ -9,6 +9,7 @@ import com.elena.autoplanner.presentation.effects.TaskEditEffect
 import com.elena.autoplanner.presentation.intents.TaskEditIntent
 import com.elena.autoplanner.presentation.states.TaskEditState
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
@@ -43,8 +44,9 @@ class TaskEditViewModel(
     private fun loadTask(taskId: Int) {
         if (taskId == 0) {
             setState {
-                copy(
+                createInitialState().copy(
                     isNewTask = true,
+                    isLoading = false,
                     startDateConf = com.elena.autoplanner.domain.models.TimePlanning(dateTime = LocalDateTime.now())
                 )
             }
@@ -119,10 +121,28 @@ class TaskEditViewModel(
                 return@launch
             }
 
+            if (state.endDateConf != null && state.startDateConf?.dateTime != null &&
+                state.endDateConf.dateTime?.isBefore(state.startDateConf.dateTime) == true
+            ) {
+                setEffect(TaskEditEffect.ShowSnackbar("End date cannot be before start date"))
+                return@launch
+            }
+
             setState { copy(isLoading = true) }
 
+            val newStartDateTime = state.startDateConf?.dateTime
+            val newDurationMinutes = state.durationConf?.totalMinutes?.toLong()
 
-            val task = Task.Builder()
+            // Calculate the new scheduled end time IF start and duration exist
+            val newScheduledEndDateTime =
+                if (newStartDateTime != null && newDurationMinutes != null) {
+                    newStartDateTime.plusMinutes(newDurationMinutes)
+                } else {
+                    // If start or duration is cleared, clear the scheduled end time too
+                    null
+                }
+
+            val taskToSave = Task.Builder()
                 .id(state.taskId)
                 .name(state.name)
                 .priority(state.priority)
@@ -132,11 +152,13 @@ class TaskEditViewModel(
                 .reminderPlan(state.reminderPlan)
                 .repeatPlan(state.repeatPlan)
                 .subtasks(state.subtasks)
+                .scheduledStartDateTime(null)
+                .scheduledEndDateTime(null)
                 .build()
 
             executeTaskOperation(
                 setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
-                operation = { saveTaskUseCase(task) },
+                operation = { saveTaskUseCase(taskToSave) },
                 onSuccess = { _ ->
                     val message = if (state.isNewTask) "Task created" else "Task updated"
                     setEffect(TaskEditEffect.NavigateBack)

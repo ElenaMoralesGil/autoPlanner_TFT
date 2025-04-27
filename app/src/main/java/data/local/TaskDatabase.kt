@@ -19,7 +19,7 @@ import com.elena.autoplanner.data.local.entities.TaskEntity
         RepeatConfigEntity::class,
         SubtaskEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(

@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.calendar.WeeklyView
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,10 +48,11 @@ fun WeeklyView(
         (0..6).map { weekStartDate.plusDays(it.toLong()) }
     }
 
-    // Filter tasks relevant to the displayed week days
     val weekTasks = remember(tasks, weekDays) {
         tasks.filter { task ->
-            task.startDateConf?.dateTime?.toLocalDate()?.let { date ->
+            val relevantDate = task.scheduledStartDateTime?.toLocalDate()
+                ?: task.startDateConf?.dateTime?.toLocalDate()
+            relevantDate?.let { date ->
                 date >= weekDays.first() && date <= weekDays.last()
             } == true
         }
@@ -58,15 +60,55 @@ fun WeeklyView(
 
     // Categorize tasks for different sections
     val allDayTasks = remember(weekTasks) { weekTasks.filter { it.isAllDay() } }
-    val scheduledTasks =
-        remember(weekTasks) { weekTasks.filter { !it.hasPeriod && !it.isAllDay() && it.startDateConf?.dateTime != null } }
-    val morningTasks =
-        remember(weekTasks) { weekTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.MORNING } }
-    val eveningTasks =
-        remember(weekTasks) { weekTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING } } // Assuming AFTERNOON maps here
-    val nightTasks =
-        remember(weekTasks) { weekTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING || it.startDateConf.dayPeriod == DayPeriod.NIGHT } } // Grouping evening/night
+    val scheduledTasks = remember(weekTasks) {
+        weekTasks.filter {
+            val displayDateTime = it.scheduledStartDateTime ?: it.startDateConf?.dateTime
+            displayDateTime != null && !it.isAllDay() && !it.hasPeriod
+        }
+    }
+    val periodTasks = remember(weekTasks) {
+        weekTasks.filter {
+            it.scheduledStartDateTime == null &&
+                    it.startDateConf?.dayPeriod != DayPeriod.NONE &&
+                    it.startDateConf?.dayPeriod != DayPeriod.ALLDAY
+        }
+    }
 
+    val onTaskTimeChanged: (Task, LocalTime, Long) -> Unit = { task, newTime, dayOffset ->
+        val originalDateTime = task.scheduledStartDateTime ?: task.startDateConf?.dateTime
+        if (originalDateTime != null) {
+            val originalDate = originalDateTime.toLocalDate()
+            val newDate = originalDate.plusDays(dayOffset) // Apply day offset from drag
+            val newDateTime = LocalDateTime.of(newDate, newTime)
+
+            val newConf = TimePlanning(
+                dateTime = newDateTime,
+                dayPeriod = DayPeriod.NONE // Manual drag sets specific time
+            )
+            val updatedTask = Task.from(task)
+                .startDateConf(newConf)
+                .scheduledStartDateTime(null) // Clear scheduled time on manual drag
+                .scheduledEndDateTime(null)   // Clear scheduled time on manual drag
+                .build()
+            Log.d(
+                "WeeklyView",
+                "Task ${updatedTask.id} dragged. Updating with StartConf: ${updatedTask.startDateConf}, Cleared Scheduled Times."
+            )
+            tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
+        } else {
+            Log.e(
+                "WeeklyView",
+                "Cannot update task ${task.id} time, original date/time context is missing."
+            )
+        }
+    }
+
+    val morningTasks =
+        remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.MORNING } }
+    val eveningTasks =
+        remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING } } // Assuming AFTERNOON maps here
+    val nightTasks =
+        remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.NIGHT } }
     // Scroll to current time on initial composition or when week changes to contain today
     LaunchedEffect(weekDays) {
         val today = LocalDate.now()
@@ -106,10 +148,8 @@ fun WeeklyView(
             weekDays = weekDays,
             currentDate = LocalDate.now(), // Highlight today
             onDateSelected = { selectedDate ->
-                // Change view or navigate when a date header is clicked
                 calendarViewModel.sendIntent(CalendarIntent.ChangeDate(selectedDate))
-                // Consider if you want WeeklyView to switch to DailyView on tap,
-                // or just change the highlighted date. Currently changes the focused date.
+
             }
         )
 
@@ -136,21 +176,7 @@ fun WeeklyView(
                 nightTasks = nightTasks,
                 hourHeightDp = hourHeightDp,
                 onTaskSelected = onTaskSelected,
-                onTaskTimeChanged = { task, newTime, dayOffset ->
-                    val originalDateTime = task.startDateConf?.dateTime
-                    if (originalDateTime != null) {
-                        val originalDate = originalDateTime.toLocalDate()
-                        val newDate = originalDate.plusDays(dayOffset)
-                        val newDateTime = LocalDateTime.of(newDate, newTime)
-
-                        val newConf = TimePlanning(
-                            dateTime = newDateTime,
-                            dayPeriod = DayPeriod.NONE
-                        )
-                        val updatedTask = Task.from(task).startDateConf(newConf).build()
-                        tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
-                    }
-                },
+                onTaskTimeChanged = onTaskTimeChanged,
                 scrollState = scrollState,
                 currentTime = currentTime
             )

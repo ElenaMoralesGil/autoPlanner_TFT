@@ -32,7 +32,10 @@ data class Task private constructor(
     val reminderPlan: ReminderPlan?,
     val repeatPlan: RepeatPlan?,
     val subtasks: List<Subtask>,
+
     @Transient var internalFlags: TaskInternalFlags? = null,
+    val scheduledStartDateTime: LocalDateTime? = null,
+    val scheduledEndDateTime: LocalDateTime? = null,
 
     ) {
     fun validate() {
@@ -103,6 +106,9 @@ data class Task private constructor(
         private var repeatPlan: RepeatPlan? = null
         private var subtasks: List<Subtask> = emptyList()
 
+        private var scheduledStartDateTime: LocalDateTime? = null
+        private var scheduledEndDateTime: LocalDateTime? = null
+
         fun id(id: Int) = apply { this.id = id }
         fun name(name: String) = apply { this.name = name }
         fun isCompleted(isCompleted: Boolean) = apply { this.isCompleted = isCompleted }
@@ -115,6 +121,12 @@ data class Task private constructor(
         fun reminderPlan(reminderPlan: ReminderPlan?) = apply { this.reminderPlan = reminderPlan }
         fun repeatPlan(repeatPlan: RepeatPlan?) = apply { this.repeatPlan = repeatPlan }
         fun subtasks(subtasks: List<Subtask>) = apply { this.subtasks = subtasks }
+
+        fun scheduledStartDateTime(dateTime: LocalDateTime?) =
+            apply { this.scheduledStartDateTime = dateTime }
+
+        fun scheduledEndDateTime(dateTime: LocalDateTime?) =
+            apply { this.scheduledEndDateTime = dateTime }
 
         fun build(): Task {
             val effectiveStartDate = startDateConf ?: TimePlanning(
@@ -132,7 +144,10 @@ data class Task private constructor(
                 durationConf = durationConf,
                 reminderPlan = reminderPlan,
                 repeatPlan = repeatPlan,
-                subtasks = subtasks
+                subtasks = subtasks,
+                scheduledStartDateTime = scheduledStartDateTime,
+                scheduledEndDateTime = scheduledEndDateTime
+
             )
             task.validate()
             return task
@@ -159,6 +174,8 @@ data class Task private constructor(
                 .reminderPlan(task.reminderPlan)
                 .repeatPlan(task.repeatPlan)
                 .subtasks(task.subtasks)
+                .scheduledStartDateTime(task.scheduledStartDateTime)
+                .scheduledEndDateTime(task.scheduledEndDateTime)
         }
     }
 }

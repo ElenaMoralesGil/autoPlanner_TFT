@@ -59,6 +59,15 @@ fun MonthlyView(
         generateCalendarDays(selectedMonth)
     }
 
+    val monthTasks = remember(tasks, selectedMonth) {
+        tasks.filter { task ->
+            val relevantDate = task.scheduledStartDateTime?.toLocalDate()
+                ?: task.startDateConf?.dateTime?.toLocalDate()
+            relevantDate?.year == selectedMonth.year && relevantDate.month == selectedMonth.month
+        }
+    }
+
+
     Column(modifier = Modifier.fillMaxSize()) {
         MonthHeader(
             currentMonth = selectedMonth,
@@ -97,7 +106,7 @@ fun MonthlyView(
                 item {
                     WeekTasksGrid(
                         week = week,
-                        tasks = tasks,
+                        tasks = monthTasks,
                         onTaskClick = onTaskSelected
                     )
                 }
@@ -238,12 +247,19 @@ fun WeekTasksGrid(
     tasks: List<Task>,
     onTaskClick: (Task) -> Unit,
 ) {
-    val tasksByDay = tasks.groupBy { task ->
-        val taskDate = task.startDateConf?.dateTime?.toLocalDate()
-        week.indexOfFirst { it.date == taskDate }
+    val tasksByDay = remember(tasks, week) {
+        tasks.groupBy { task ->
+            // Priorizar scheduled date para determinar en qué día de la semana va
+            val relevantDate = task.scheduledStartDateTime?.toLocalDate()
+                ?: task.startDateConf?.dateTime?.toLocalDate()
+            // Encontrar el índice de esa fecha en la lista 'week'
+            week.indexOfFirst { calendarDay -> calendarDay.date == relevantDate }
+        }.filterKeys { it != -1 } // Filtrar tareas que no caen en los días mostrados esta semana
     }
 
-    val maxTasksPerDay = tasksByDay.values.maxOfOrNull { it.size } ?: 0
+    val maxTasksPerDay = remember(tasksByDay) {
+        tasksByDay.values.maxOfOrNull { it.size } ?: 0
+    }
 
     Column(
         modifier = Modifier
@@ -267,6 +283,9 @@ fun WeekTasksGrid(
                     }
                 }
             }
+        }
+        if (maxTasksPerDay == 0) {
+            Spacer(modifier = Modifier.height(24.dp)) // Ensure week row takes some space
         }
     }
 }

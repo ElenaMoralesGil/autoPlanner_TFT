@@ -1,6 +1,7 @@
 package com.elena.autoplanner.presentation.ui.screens.calendar
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
@@ -87,27 +88,61 @@ fun DailyView(
     val currentTime = LocalTime.now()
     val currentMinutes = currentTime.hour * 60 + currentTime.minute
 
-    val filteredTasks = tasks.filter { it.isDueOn(selectedDate) }
-    val allDayTasks = filteredTasks.filter { it.isAllDay() }
-    val scheduledTasks = filteredTasks.filter { !it.hasPeriod }
-    val periodTasks = filteredTasks.filter { it.hasPeriod && !it.isAllDay() }
+    val filteredTasks = remember(tasks, selectedDate) {
+        tasks.filter { task ->
+            val relevantDate = task.scheduledStartDateTime?.toLocalDate()
+                ?: task.startDateConf?.dateTime?.toLocalDate()
+            relevantDate == selectedDate
+        }
+    }
+    val allDayTasks = remember(filteredTasks) { filteredTasks.filter { it.isAllDay() } }
+    val scheduledTasks = remember(filteredTasks) {
+        filteredTasks.filter {
+            val displayDateTime = it.scheduledStartDateTime ?: it.startDateConf?.dateTime
+            displayDateTime != null && !it.isAllDay() && !it.hasPeriod
+        }
+    }
 
-    val morningTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.MORNING }
-    val eveningTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING }
-    val nightTasks = periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.NIGHT }
+    val periodTasks = remember(filteredTasks) {
+        filteredTasks.filter {
+            it.scheduledStartDateTime == null &&
+                    it.startDateConf?.dayPeriod != DayPeriod.NONE &&
+                    it.startDateConf?.dayPeriod != DayPeriod.ALLDAY
+        }
+    }
+    val morningTasks =
+        remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.MORNING } }
+    val eveningTasks =
+        remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING } }
+    val nightTasks =
+        remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.NIGHT } }
 
     val onTaskTimeChanged: (Task, LocalTime) -> Unit = { task, newTime ->
-        val currentDayPeriod = task.startDateConf.dayPeriod
+        val originalDateTime = task.scheduledStartDateTime ?: task.startDateConf?.dateTime
+        if (originalDateTime == null) {
+            Log.e(
+                "DailyView",
+                "Cannot update task ${task.id} time, original date/time context is missing."
+            )
+        }
 
-        val newTimePlanning = TimePlanning(
-            dateTime = LocalDateTime.of(selectedDate, newTime),
-            dayPeriod = currentDayPeriod
+        val newDateTime = LocalDateTime.of(selectedDate, newTime)
+
+        val newStartDateConf = TimePlanning(
+            dateTime = newDateTime,
+            dayPeriod = DayPeriod.NONE
         )
 
         val updatedTask = Task.from(task)
-            .startDateConf(newTimePlanning)
+            .startDateConf(newStartDateConf)
+            .scheduledStartDateTime(null)
+            .scheduledEndDateTime(null)
             .build()
 
+        Log.d(
+            "DailyView",
+            "Task ${updatedTask.id} dragged. Updating with StartConf: ${updatedTask.startDateConf}, Cleared Scheduled Times."
+        )
         tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
     }
 
@@ -119,6 +154,8 @@ fun DailyView(
         if (selectedDate.isToday()) {
             val scrollToPosition = (currentMinutes / 60f * hourHeightPx).toInt() - 200
             scrollState.animateScrollTo(scrollToPosition.coerceAtLeast(0))
+        } else {
+            scrollState.animateScrollTo(0)
         }
     }
 
@@ -328,36 +365,47 @@ fun TaskBox(
     val dayStart = LocalTime.MIDNIGHT
     val dayEnd = LocalTime.of(23, 59)
     var localDragOffset by remember { mutableStateOf(0f) }
-    val dragOffset by animateFloatAsState(targetValue = localDragOffset)
-    var initialTaskStartTime by remember { mutableStateOf(task.startTime) }
-
-    val totalDraggedMinutes = (dragOffset / hourHeightPx * 60).roundToInt()
-    val snappedMinutes = (totalDraggedMinutes / 5) * 5L
-    val taskDuration = task.durationConf?.totalMinutes ?: 60
-    val isShortTask = taskDuration < 50
-    val effectiveStartTime = if (dragOffset != 0f) {
-        initialTaskStartTime.plusMinutes(snappedMinutes)
-            .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration.toLong()))
-    } else {
-        draggedTasks[task.id]?.tempStartTime ?: task.startTime
+    val dragOffset by animateFloatAsState(targetValue = localDragOffset, label = "dragOffset")
+    // Use the effective start time for initial state if dragging
+    var initialTaskStartTime by remember(task.id) {
+        mutableStateOf(task.scheduledStartDateTime?.toLocalTime() ?: task.startTime)
     }
 
+    val taskDuration = task.effectiveDurationMinutes.toLong() // Use effectiveDurationMinutes
+    val isShortTask = taskDuration < 50
+
+    // Determine the START time to use for calculations and display
+    val calculationStartTime =
+        draggedTasks[task.id]?.tempStartTime // If currently dragging, use temp time
+            ?: task.scheduledStartDateTime?.toLocalTime() // Otherwise, prioritize scheduled time
+            ?: task.startTime // Fallback to original start time
+
+    // Determine the END time based on the calculationStartTime and duration
+    val calculationEndTime = calculationStartTime.plusMinutes(taskDuration)
+
+    // --- Positioning Logic ---
     val xOffset = with(LocalDensity.current) { (parentWidth * position.xFraction).toPx() }
     val blockStartTime = LocalTime.of(block.startHour, 0)
     val blockEndTime = if (block.endHour == 24) LocalTime.MAX else LocalTime.of(block.endHour, 0)
-    val taskEndTime = effectiveStartTime.plusMinutes(taskDuration.toLong())
+
+    // Clamp the display times within the current block's boundaries
     val displayStartTime =
-        if (effectiveStartTime.isBefore(blockStartTime)) blockStartTime else effectiveStartTime
-    val displayEndTime = if (taskEndTime.isAfter(blockEndTime)) blockEndTime else taskEndTime
+        if (calculationStartTime.isBefore(blockStartTime)) blockStartTime else calculationStartTime
+    val displayEndTime =
+        if (calculationEndTime.isAfter(blockEndTime)) blockEndTime else calculationEndTime
+
+    // Calculate offset and height based on clamped display times relative to the block start
     val offsetMinutes =
         java.time.Duration.between(blockStartTime, displayStartTime).toMinutes().toFloat()
     val heightMinutes =
         java.time.Duration.between(displayStartTime, displayEndTime).toMinutes().toFloat()
+            .coerceAtLeast(1f) // Ensure minimum 1 minute height
 
     val visualY = (offsetMinutes / 60f) * hourHeightPx
-    val rectHeightDp = (heightMinutes / 60f) * hourHeightDp.value
+    val rectHeightDpValue = (heightMinutes / 60f) * hourHeightDp.value
     val minVisibleHeight = if (isShortTask) 30.dp else 40.dp
-    val adjustedHeight = maxOf(rectHeightDp.dp, minVisibleHeight)
+    val adjustedHeight = maxOf(rectHeightDpValue.dp, minVisibleHeight)
+    // --- End Positioning Logic ---
 
     Box(
         modifier = Modifier
@@ -365,28 +413,51 @@ fun TaskBox(
             .widthIn(min = 120.dp)
             .offset { IntOffset(x = xOffset.roundToInt(), y = visualY.roundToInt()) }
             .zIndex(if (dragOffset != 0f) 1f else 0f)
-            .heightIn(min = minVisibleHeight, max = rectHeightDp.dp)
-            .height(adjustedHeight)
-            .pointerInput(task.id) {
+            .height(adjustedHeight) // Use calculated height
+            .pointerInput(task.id) { // Use task.id as key
                 detectDragGestures(
+                    onDragStart = {
+                        // Capture the initial start time when drag begins
+                        initialTaskStartTime =
+                            task.scheduledStartDateTime?.toLocalTime() ?: task.startTime
+                        localDragOffset = 0f // Reset local offset
+                    },
                     onDrag = { _, dragAmount ->
-                        if (localDragOffset == 0f) initialTaskStartTime = task.startTime
                         localDragOffset += dragAmount.y
-                        val totalMinutes = (localDragOffset / hourHeightPx * 60).roundToInt()
-                        val snappedMinutes = (totalMinutes / 5) * 5L
+                        val totalMinutesDragged = (localDragOffset / hourHeightPx * 60).roundToInt()
+                        val snappedMinutesDragged =
+                            (totalMinutesDragged / 5) * 5L // Snap to 5 minutes
+
+                        // Calculate new temporary start time based on initial time + snapped drag
                         val newTempStartTime = initialTaskStartTime
-                            .plusMinutes(snappedMinutes)
-                            .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration.toLong()))
+                            .plusMinutes(snappedMinutesDragged)
+                            .coerceIn(
+                                dayStart,
+                                dayEnd.minusMinutes(taskDuration)
+                            ) // Ensure within day bounds
+
                         updateDragState(TaskDragState(task, localDragOffset, newTempStartTime))
                     },
                     onDragEnd = {
-                        val totalMinutes = (localDragOffset / hourHeightPx * 60).roundToInt()
-                        val snappedMinutes = (totalMinutes / 5) * 5L
-                        val newTime = initialTaskStartTime
-                            .plusMinutes(snappedMinutes)
-                            .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration.toLong()))
-                        updateDragState(TaskDragState(task, 0f, newTime))
-                        onTaskTimeChanged(task, newTime)
+                        val totalMinutesDragged = (localDragOffset / hourHeightPx * 60).roundToInt()
+                        val snappedMinutesDragged = (totalMinutesDragged / 5) * 5L
+                        val finalNewTime = initialTaskStartTime
+                            .plusMinutes(snappedMinutesDragged)
+                            .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration))
+
+                        // Only call update if the time actually changed
+                        val originalTime =
+                            task.scheduledStartDateTime?.toLocalTime() ?: task.startTime
+                        if (finalNewTime != originalTime) {
+                            onTaskTimeChanged(task, finalNewTime)
+                        }
+                        // Reset drag state regardless
+                        updateDragState(TaskDragState(task, 0f, null)) // Clear temp time
+                        localDragOffset = 0f
+                    },
+                    onDragCancel = {
+                        // Reset drag state on cancel
+                        updateDragState(TaskDragState(task, 0f, null))
                         localDragOffset = 0f
                     }
                 )
@@ -405,7 +476,8 @@ fun TaskBox(
             .clickable { onTaskSelected(task) }
             .padding(8.dp)
     ) {
-        Box(
+        // --- Display Logic ---
+        Box( // Priority Indicator
             modifier = Modifier
                 .fillMaxHeight()
                 .width(4.dp)
@@ -422,26 +494,26 @@ fun TaskBox(
                 .padding(start = 12.dp)
                 .fillMaxSize()
         ) {
+            // Task Name (only if enough space)
             if (!isShortTask) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f) // Allow name to take space
                 ) {
                     Text(
                         text = task.name,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp,
-                            textDecoration = if (task.isCompleted) TextDecoration.LineThrough
-                            else TextDecoration.None
+                            textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
                         ),
                         color = if (task.isCompleted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         else MaterialTheme.colorScheme.onPrimaryContainer,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f) // Take available space
                     )
-
+                    // Completed Icon (if applicable)
                     if (task.isCompleted) {
                         Box(
                             modifier = Modifier
@@ -461,58 +533,41 @@ fun TaskBox(
                 }
             }
 
+            // Time Display Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (isShortTask) {
-                    Text(
-                        text = "${effectiveStartTime.format(DateTimeFormatter.ofPattern("HH:mm"))}-${
-                            taskEndTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                        }",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                            alpha = 0.6f
-                        )
-                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    Text(
-                        text = effectiveStartTime.format(DateTimeFormatter.ofPattern("HH:mm")),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                            alpha = 0.6f
-                        )
-                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    )
+                val timeColor =
+                    if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                val timeStyle =
+                    if (isShortTask) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                    else MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
+
+                Text(
+                    text = calculationStartTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                    style = timeStyle,
+                    color = timeColor,
+                    modifier = if (isShortTask) Modifier.weight(1f) else Modifier // Allow short task time to take more space
+                )
+                if (!isShortTask) { // Show arrow only for longer tasks
                     Icon(
                         painter = painterResource(id = R.drawable.ic_arrow_right),
                         contentDescription = "to",
-                        tint = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                            alpha = 0.4f
-                        )
-                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                        tint = timeColor.copy(alpha = timeColor.alpha * 0.75f),
                         modifier = Modifier.size(12.dp)
                     )
-                    Text(
-                        text = taskEndTime.format(DateTimeFormatter.ofPattern("HH:mm")),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                            alpha = 0.6f
-                        )
-                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    )
                 }
+                Text(
+                    text = calculationEndTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                    style = timeStyle,
+                    color = timeColor
+                )
             }
         }
+        // --- End Display Logic ---
     }
 }
 
@@ -738,11 +793,12 @@ private fun CompletedIcon() {
 private fun positionTasks(tasks: List<Task>): Map<Task, TaskPosition> {
     val columns = mutableListOf<MutableList<Task>>()
 
-    tasks.sortedBy { it.startTime }.forEach { task ->
+    // Ordenar por la hora de inicio efectiva para el posicionamiento
+    tasks.sortedBy { it.scheduledStartDateTime ?: it.startDateConf.dateTime }.forEach { task ->
         val targetColumn = columns.firstOrNull { column ->
             column.lastOrNull()?.let { lastTask ->
                 !taskOverlaps(lastTask, task)
-            } != false
+            } ?: true // Si la columna está vacía, se puede añadir
         } ?: run {
             mutableListOf<Task>().also { columns.add(it) }
         }
@@ -753,18 +809,24 @@ private fun positionTasks(tasks: List<Task>): Map<Task, TaskPosition> {
     return columns.flatMapIndexed { colIndex, columnTasks ->
         columnTasks.map { task ->
             task to TaskPosition(
-                xFraction = colIndex * columnWidth,
-                width = columnWidth
+                // Ajustar xFraction si es necesario para evitar solapamientos visuales mínimos
+                xFraction = colIndex * columnWidth + (0.01f * colIndex), // Pequeño espacio
+                width = columnWidth * 0.98f // Ligeramente más estrecho
             )
         }
     }.toMap()
 }
 
 private fun taskOverlaps(prevTask: Task, newTask: Task): Boolean {
-    val prevEnd =
-        prevTask.startTime.plusMinutes(prevTask.durationConf?.totalMinutes?.toLong() ?: 60)
-    return newTask.startTime.isBefore(prevEnd)
+    val prevStartTime = prevTask.scheduledStartDateTime ?: prevTask.startDateConf.dateTime
+    ?: return false // No se puede comparar si falta la hora
+    val newStartTime =
+        newTask.scheduledStartDateTime ?: newTask.startDateConf.dateTime ?: return false
+
+    val prevEndTime = prevStartTime.plusMinutes(prevTask.effectiveDurationMinutes.toLong())
+    return newStartTime.isBefore(prevEndTime)
 }
+
 
 fun getPriorityColor(priority: Priority): Color = when (priority) {
     Priority.HIGH -> Color.Red

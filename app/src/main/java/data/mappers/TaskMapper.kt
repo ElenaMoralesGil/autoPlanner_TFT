@@ -60,6 +60,8 @@ class TaskMapper {
             .reminderPlan(reminders.firstOrNull()?.let { reminderMapper.mapToDomain(it) })
             .repeatPlan(repeatConfigs.firstOrNull()?.let { repeatConfigMapper.mapToDomain(it) })
             .subtasks(subtasks.map { subtaskMapper.mapToDomain(it) })
+            .scheduledStartDateTime(taskEntity.scheduledStartDateTime)
+            .scheduledEndDateTime(taskEntity.scheduledEndDateTime)
             .build()
     }
 
@@ -73,7 +75,9 @@ class TaskMapper {
             startDayPeriod = domain.startDateConf.dayPeriod.name,
             endDateTime = domain.endDateConf?.dateTime,
             endDayPeriod = domain.endDateConf?.dayPeriod?.name,
-            durationMinutes = domain.durationConf?.totalMinutes
+            durationMinutes = domain.durationConf?.totalMinutes,
+            scheduledStartDateTime = domain.scheduledStartDateTime,
+            scheduledEndDateTime = domain.scheduledEndDateTime
         )
     }
 }
