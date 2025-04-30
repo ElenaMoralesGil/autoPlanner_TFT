@@ -37,9 +37,10 @@ fun Task.toFirebaseMap(userId: String): Map<String, Any?> {
         "subtasks" to subtasks.map { it.toFirebaseMap() },
         "scheduledStartDateTime" to scheduledStartDateTime?.toTimestamp(),
         "scheduledEndDateTime" to scheduledEndDateTime?.toTimestamp(),
+        "completionDateTime" to completionDateTime?.toTimestamp(),
         "lastUpdated" to FieldValue.serverTimestamp()
-
     ).filterValues { it != null }
+
 }
 
 fun TimePlanning.toFirebaseMap(): Map<String, Any?> {
@@ -97,14 +98,13 @@ fun Subtask.toFirebaseMap(): Map<String, Any?> {
 
 // --- From Firestore ---
 
-fun DocumentSnapshot.toTask(localIdFallback: Int? = null): Task? { // Accept optional local ID
+fun DocumentSnapshot.toTask(localIdFallback: Int? = null): Task? {
     return try {
         val data = data ?: return null
-        // Use Firestore ID primarily, fallback to localId if needed (e.g., during sync before local ID is updated)
-        val domainId = localIdFallback ?: id.hashCode() // Or a more robust mapping if needed
+        val domainId = localIdFallback ?: id.hashCode()
 
         Task.Builder()
-            .id(domainId) // Use determined ID
+            .id(domainId)
             .name(getString("name") ?: "")
             .isCompleted(getBoolean("isCompleted") ?: false)
             .priority(Priority.valueOf(getString("priority") ?: Priority.NONE.name))
@@ -118,6 +118,7 @@ fun DocumentSnapshot.toTask(localIdFallback: Int? = null): Task? { // Accept opt
             } ?: emptyList())
             .scheduledStartDateTime((data["scheduledStartDateTime"] as? Timestamp)?.toLocalDateTime())
             .scheduledEndDateTime((data["scheduledEndDateTime"] as? Timestamp)?.toLocalDateTime())
+            .completionDateTime((data["completionDateTime"] as? Timestamp)?.toLocalDateTime()) // <-- Add this line
             .build()
     } catch (e: Exception) {
         Log.e("FirebaseMapper", "Error mapping Firestore document ${id} to Task", e)

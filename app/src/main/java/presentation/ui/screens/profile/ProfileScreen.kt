@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,13 +26,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.ProfileStats
+import com.elena.autoplanner.domain.models.TimeSeriesStat
 import com.elena.autoplanner.domain.models.User
 import com.elena.autoplanner.presentation.effects.ProfileEffect
 import com.elena.autoplanner.presentation.intents.ProfileIntent
-import com.elena.autoplanner.presentation.states.ProfileState
+import com.elena.autoplanner.presentation.states.StatsTimeFrame
 import com.elena.autoplanner.presentation.viewmodel.ProfileViewModel
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+// Add this import at the top of ProfileScreen.kt
+import com.patrykandpatrick.vico.compose.m3.style.m3ChartStyle
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.compose.chart.scroll.rememberChartScrollState
+import com.patrykandpatrick.vico.compose.component.shape.shader.verticalGradient
+import com.patrykandpatrick.vico.compose.style.ProvideChartStyle
+import com.patrykandpatrick.vico.core.axis.AxisPosition
+import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
+import com.patrykandpatrick.vico.core.chart.line.LineChart
+import com.patrykandpatrick.vico.core.component.shape.LineComponent
+import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
+import com.patrykandpatrick.vico.core.entry.entryOf
+import com.patrykandpatrick.vico.compose.*
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +67,11 @@ fun ProfileScreen(
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(state?.user) {
+        if (state?.user != null && state?.stats == null && state?.isLoading == false) {
+            viewModel.sendIntent(ProfileIntent.LoadData)
+        }
+    }
     LaunchedEffect(viewModel) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
@@ -70,7 +98,7 @@ fun ProfileScreen(
                 .fillMaxSize()
         ) {
             when {
-                state?.isLoading == true && state?.user == null -> { // Show loading only initially
+                state?.isLoading == true && (state?.user == null || state?.stats == null) -> { // Show loading only initially
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
@@ -79,6 +107,14 @@ fun ProfileScreen(
                         ProfileContent(
                             user = user,
                             stats = state?.stats,
+                            selectedTimeFrame = state?.selectedTimeFrame ?: StatsTimeFrame.WEEKLY,
+                            onTimeFrameSelected = { tf ->
+                                viewModel.sendIntent(
+                                    ProfileIntent.SelectTimeFrame(
+                                        tf
+                                    )
+                                )
+                            },
                             onLogout = { viewModel.sendIntent(ProfileIntent.Logout) },
                             onEditProfile = { viewModel.sendIntent(ProfileIntent.NavigateToEditProfile) },
                             onDeleteAccount = { viewModel.sendIntent(ProfileIntent.RequestDeleteAccount) }
@@ -145,8 +181,11 @@ fun ProfileTopAppBar(isLoggedIn: Boolean) {
 
 @Composable
 fun ProfileContent(
+    // Ensure this signature matches the previous step
     user: User,
     stats: ProfileStats?,
+    selectedTimeFrame: StatsTimeFrame,
+    onTimeFrameSelected: (StatsTimeFrame) -> Unit,
     onLogout: () -> Unit,
     onEditProfile: () -> Unit,
     onDeleteAccount: () -> Unit,
@@ -159,17 +198,124 @@ fun ProfileContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // User Info Header
         UserInfoSection(user = user)
-
-        // Statistics Section
-        StatsSection(stats = stats)
-
-        // Actions Section
+        TimeFrameSelector(
+            selectedTimeFrame = selectedTimeFrame,
+            onTimeFrameSelected = onTimeFrameSelected
+        )
+        // Pass the full stats object
+        DisplayedStatsSection(stats = stats, selectedTimeFrame = selectedTimeFrame)
         ActionsSection(
             onEditProfile = onEditProfile,
             onDeleteAccount = onDeleteAccount,
             onLogout = onLogout
+        )
+    }
+}
+
+@Composable
+fun TimeFrameSelector(
+    selectedTimeFrame: StatsTimeFrame,
+    onTimeFrameSelected: (StatsTimeFrame) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        StatsTimeFrame.entries.forEach { timeFrame ->
+            FilterChip(
+                selected = timeFrame == selectedTimeFrame,
+                onClick = { onTimeFrameSelected(timeFrame) },
+                label = { Text(timeFrame.displayName) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                leadingIcon = if (timeFrame == selectedTimeFrame) {
+                    {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = "Selected",
+                            Modifier.size(FilterChipDefaults.IconSize)
+                        )
+                    }
+                } else null,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.primary
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    selectedBorderColor = MaterialTheme.colorScheme.primary,
+                    borderWidth = 1.dp,
+                    selectedBorderWidth = 1.5.dp,
+                    enabled = true,
+                    selected = timeFrame == selectedTimeFrame
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun DisplayedStatsSection(stats: ProfileStats?, selectedTimeFrame: StatsTimeFrame) {
+    // Select the correct data based on the time frame
+    // Change the return type of the remember block to List<Any?>
+    val dataList: List<Any?> = remember(stats, selectedTimeFrame) {
+        when (selectedTimeFrame) {
+            StatsTimeFrame.WEEKLY -> listOf( // Use listOf instead of Triple
+                stats?.completedTasksDailyForWeek,
+                stats?.successRateDailyForWeek,
+                stats?.totalCompletedWeekly,
+                stats?.overallSuccessRateWeekly
+            )
+
+            StatsTimeFrame.MONTHLY -> listOf( // Use listOf instead of Triple
+                stats?.completedTasksWeeklyForMonth,
+                stats?.successRateWeeklyForMonth,
+                stats?.totalCompletedMonthly,
+                stats?.overallSuccessRateMonthly
+            )
+
+            StatsTimeFrame.YEARLY -> listOf( // Use listOf instead of Triple
+                stats?.completedTasksMonthlyForYear,
+                stats?.successRateMonthlyForYear,
+                stats?.totalCompletedYearly,
+                stats?.overallSuccessRateYearly
+            )
+        }
+    }
+
+    // Extract and cast the values from the list (add type safety checks)
+    // Note: The specific type <LocalDate> or <YearMonth> depends on the timeframe
+    val completedTasksData = when (selectedTimeFrame) {
+        StatsTimeFrame.WEEKLY -> dataList[0] as? TimeSeriesStat<LocalDate>
+        StatsTimeFrame.MONTHLY -> dataList[0] as? TimeSeriesStat<LocalDate> // Key is week start date
+        StatsTimeFrame.YEARLY -> dataList[0] as? TimeSeriesStat<YearMonth>
+    }
+    val successRateData = when (selectedTimeFrame) {
+        StatsTimeFrame.WEEKLY -> dataList[1] as? TimeSeriesStat<LocalDate>
+        StatsTimeFrame.MONTHLY -> dataList[1] as? TimeSeriesStat<LocalDate> // Key is week start date
+        StatsTimeFrame.YEARLY -> dataList[1] as? TimeSeriesStat<YearMonth>
+    }
+    val totalCompleted = dataList[2] as? Int
+    val overallSuccess = dataList[3] as? Float
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Pass the correctly typed data to StatCard
+        StatCard(
+            title = "Completed Tasks (${selectedTimeFrame.displayName})",
+            value = totalCompleted?.toString() ?: "-",
+            timeSeriesData = completedTasksData, // Pass potentially null TimeSeriesStat
+            selectedTimeFrame = selectedTimeFrame,
+            isPercentage = false
+        )
+        StatCard(
+            title = "Success Rate (${selectedTimeFrame.displayName})",
+            value = "${String.format("%.1f", overallSuccess ?: 0f)}%",
+            timeSeriesData = successRateData, // Pass potentially null TimeSeriesStat
+            selectedTimeFrame = selectedTimeFrame,
+            isPercentage = true
         )
     }
 }
@@ -201,23 +347,58 @@ fun UserInfoSection(user: User) {
 }
 
 @Composable
-fun StatsSection(stats: ProfileStats?) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        StatCard(
-            title = "Completed Tasks (Weekly)",
-            value = stats?.completedTasksWeekly?.toString() ?: "-"
-        )
-        StatCard(
-            title = "Success Rate (Weekly)",
-            value = "${String.format("%.1f", stats?.successRateWeekly ?: 0f)}%"
-        )
-        // Add Monthly/Yearly toggles later if needed
-        // StatCard(title = "Estimated vs Real Time", value = "N/A") // Add later
-    }
-}
+fun <K : Comparable<K>> StatCard(
+    // Generic type K for the time key
+    title: String,
+    value: String,
+    timeSeriesData: TimeSeriesStat<K>?,
+    selectedTimeFrame: StatsTimeFrame,
+    isPercentage: Boolean, // To format Y-axis correctly
+) {
+    // Vico chart setup
+    val chartEntryModelProducer = remember { ChartEntryModelProducer() }
+    val chartStyle = m3ChartStyle(
+        axisLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        axisGuidelineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+        axisLineColor = MaterialTheme.colorScheme.outline
 
-@Composable
-fun StatCard(title: String, value: String) {
+    )
+
+    // Update chart data when timeSeriesData changes
+    LaunchedEffect(timeSeriesData) {
+        val entries =
+            timeSeriesData?.entries?.entries?.sortedBy { it.key }?.mapIndexed { index, entry ->
+                entryOf(index.toFloat(), entry.value) // Use index for X-axis
+            } ?: emptyList()
+        chartEntryModelProducer.setEntries(entries)
+    }
+
+    // Axis formatters
+    val bottomAxisValueFormatter =
+        AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, chartValues ->
+            val data = timeSeriesData?.entries?.entries?.sortedBy { it.key }
+            val index = value.toInt()
+            if (data != null && index >= 0 && index < data.size) {
+                when (val key = data.elementAt(index).key) {
+                    is LocalDate -> when (selectedTimeFrame) {
+                        StatsTimeFrame.WEEKLY -> key.format(DateTimeFormatter.ofPattern("E")) // Day initial for weekly
+                        StatsTimeFrame.MONTHLY -> key.format(DateTimeFormatter.ofPattern("dd")) // Week start day for monthly
+                        else -> ""
+                    }
+
+                    is YearMonth -> key.format(DateTimeFormatter.ofPattern("MMM")) // Month abbr for yearly
+                    else -> ""
+                }
+            } else {
+                ""
+            }
+        }
+
+    val startAxisValueFormatter =
+        AxisValueFormatter<AxisPosition.Vertical.Start> { value, chartValues ->
+            if (isPercentage) "${value.toInt()}%" else value.toInt().toString()
+        }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -235,29 +416,74 @@ fun StatCard(title: String, value: String) {
             Spacer(Modifier.height(4.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.displaySmall, // Larger display for the number
+                style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
-            Spacer(Modifier.height(8.dp))
-            // Placeholder for graph or weekly/monthly toggle
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .background(
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                        RoundedCornerShape(4.dp)
+            Spacer(Modifier.height(12.dp))
+
+            // --- Vico Chart ---
+            if (timeSeriesData != null && timeSeriesData.entries.isNotEmpty()) {
+                ProvideChartStyle(chartStyle = chartStyle) { // Apply M3 style
+                    Chart(
+                        chart = lineChart(
+                            lines = listOf(
+                                LineChart.LineSpec(
+                                    lineColor = MaterialTheme.colorScheme.primary.hashCode(), // Use primary color
+                                    lineBackgroundShader = verticalGradient(
+                                        arrayOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0f)
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        chartModelProducer = chartEntryModelProducer,
+                        startAxis = rememberStartAxis(
+                            valueFormatter = startAxisValueFormatter,
+                            guideline = LineComponent(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                                    .hashCode(),
+                                strokeWidthDp = 1f,
+                                dynamicShader = verticalGradient(
+                                    arrayOf(
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0f)
+                                    )
+                                ),
+                            )
+                        ),
+                        bottomAxis = rememberBottomAxis(
+                            valueFormatter = bottomAxisValueFormatter,
+                            guideline = null // No vertical guidelines from bottom axis
+                        ),
+                        chartScrollState = rememberChartScrollState(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp) // Adjust height as needed
                     )
-            )
-            Text(
-                text = "weekly", // Placeholder toggle
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .padding(top = 4.dp)
-            )
+                }
+            } else {
+                // Placeholder or message when no data
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                            RoundedCornerShape(4.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No data for this period",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            // Removed the static "weekly" text
         }
     }
 }

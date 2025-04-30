@@ -9,6 +9,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.elena.autoplanner.data.local.entities.TaskEntity
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDateTime
 
 @Dao
 interface TaskDao {
@@ -97,4 +98,12 @@ interface TaskDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTasksForUser(tasks: List<TaskEntity>)
+
+    @Query("UPDATE tasks SET isCompleted = :isCompleted, completionDateTime = :completionDateTime, lastUpdated = :timestamp WHERE id = :localId")
+    suspend fun updateTaskCompletion(
+        localId: Int,
+        isCompleted: Boolean,
+        completionDateTime: LocalDateTime?, // Add this parameter
+        timestamp: Long,
+    )
 }

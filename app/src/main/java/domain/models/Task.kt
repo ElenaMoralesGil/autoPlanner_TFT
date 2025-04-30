@@ -32,7 +32,7 @@ data class Task private constructor(
     val reminderPlan: ReminderPlan?,
     val repeatPlan: RepeatPlan?,
     val subtasks: List<Subtask>,
-
+    val completionDateTime: LocalDateTime? = null,
     @Transient var internalFlags: TaskInternalFlags? = null,
     val scheduledStartDateTime: LocalDateTime? = null,
     val scheduledEndDateTime: LocalDateTime? = null,
@@ -54,11 +54,21 @@ data class Task private constructor(
         }
     }
 
-    fun isExpired(): Boolean =
-        endDateConf?.dateTime?.isBefore(LocalDateTime.now()) ?: (startDateConf.dateTime?.isBefore(
-            LocalDateTime.now()
-        ) == true && durationConf?.totalMinutes == null)
-
+    fun isExpired(): Boolean {
+        val now = LocalDateTime.now()
+        return if (endDateConf?.dateTime != null) {
+            // Primary check: If there's an end date, is it before now?
+            endDateConf.dateTime.isBefore(now)
+        } else if (startDateConf.dateTime != null && durationConf?.totalMinutes == null) {
+            // Fallback check (no end date, no duration):
+            // Is the task's start date strictly before today's date?
+            // This treats tasks with only a start date like events that expire once the day passes.
+            startDateConf.dateTime.toLocalDate().isBefore(now.toLocalDate())
+        } else {
+            // Not expired if it has a duration or no dates defined in a way that makes it expired.
+            false
+        }
+    }
     fun isDueOn(date: LocalDate): Boolean =
         startDateConf.dateTime?.toLocalDate() == date
 
@@ -105,7 +115,7 @@ data class Task private constructor(
         private var reminderPlan: ReminderPlan? = null
         private var repeatPlan: RepeatPlan? = null
         private var subtasks: List<Subtask> = emptyList()
-
+        private var completionDateTime: LocalDateTime? = null
         private var scheduledStartDateTime: LocalDateTime? = null
         private var scheduledEndDateTime: LocalDateTime? = null
 
@@ -121,7 +131,8 @@ data class Task private constructor(
         fun reminderPlan(reminderPlan: ReminderPlan?) = apply { this.reminderPlan = reminderPlan }
         fun repeatPlan(repeatPlan: RepeatPlan?) = apply { this.repeatPlan = repeatPlan }
         fun subtasks(subtasks: List<Subtask>) = apply { this.subtasks = subtasks }
-
+        fun completionDateTime(dateTime: LocalDateTime?) =
+            apply { this.completionDateTime = dateTime }
         fun scheduledStartDateTime(dateTime: LocalDateTime?) =
             apply { this.scheduledStartDateTime = dateTime }
 
@@ -146,7 +157,8 @@ data class Task private constructor(
                 repeatPlan = repeatPlan,
                 subtasks = subtasks,
                 scheduledStartDateTime = scheduledStartDateTime,
-                scheduledEndDateTime = scheduledEndDateTime
+                scheduledEndDateTime = scheduledEndDateTime,
+                completionDateTime = completionDateTime,
 
             )
             task.validate()
@@ -176,6 +188,7 @@ data class Task private constructor(
                 .subtasks(task.subtasks)
                 .scheduledStartDateTime(task.scheduledStartDateTime)
                 .scheduledEndDateTime(task.scheduledEndDateTime)
+                .completionDateTime(task.completionDateTime)
         }
     }
 }

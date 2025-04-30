@@ -16,6 +16,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.tasks.await
 import java.io.IOException
+import java.time.LocalDateTime
 
 class TaskRepositoryImpl(
     private val context: Context,
@@ -495,20 +496,26 @@ class TaskRepositoryImpl(
     ): TaskResult<Unit> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
         val timestamp = System.currentTimeMillis() // Use local time for local update
+
+        // Determine the completion time: now if completed, null otherwise
+        val completionDateTime: LocalDateTime? = if (isCompleted) LocalDateTime.now() else null
+
         try {
             val localEntity = taskDao.getTaskWithRelationsByLocalId(localId)?.task
                 ?: return@withContext TaskResult.Error(
-                    context.getString(
-                        R.string.task_not_found,
-                        localId
-                    )
+                    context.getString(R.string.task_not_found, localId)
                 )
 
-            // Update locally first
-            taskDao.updateTaskCompletion(localId, isCompleted, timestamp)
+            // Update locally first, passing the completionDateTime
+            taskDao.updateTaskCompletion(
+                localId,
+                isCompleted,
+                completionDateTime,
+                timestamp
+            ) // Pass completionDateTime
             Log.d(
                 TAG,
-                "updateTaskCompletion: Updated local task $localId completion to $isCompleted"
+                "updateTaskCompletion: Updated local task $localId completion to $isCompleted, completionTime: $completionDateTime"
             )
 
             // If logged in and task is synced, update Firestore
@@ -517,19 +524,29 @@ class TaskRepositoryImpl(
                     TAG,
                     "updateTaskCompletion: Updating Firestore task ${localEntity.firestoreId} completion to $isCompleted"
                 )
+                // Prepare data for Firestore update, including completionDateTime
+                val firestoreUpdateData = mutableMapOf<String, Any?>(
+                    "isCompleted" to isCompleted,
+                    "lastUpdated" to FieldValue.serverTimestamp()
+                )
+                // Add completionDateTime only if it's not null, otherwise remove it (or set to null if your structure allows)
+                if (completionDateTime != null) {
+                    firestoreUpdateData["completionDateTime"] = completionDateTime.toTimestamp()
+                } else {
+                    // Option 1: Set to null explicitly if your Firestore structure expects it
+                    // firestoreUpdateData["completionDateTime"] = null
+                    // Option 2: Remove the field if null means it shouldn't exist (using FieldValue.delete())
+                    firestoreUpdateData["completionDateTime"] = FieldValue.delete()
+                }
+
                 getUserTasksCollection(user.uid).document(localEntity.firestoreId)
-                    .update(
-                        mapOf(
-                            "isCompleted" to isCompleted,
-                            "lastUpdated" to FieldValue.serverTimestamp() // Use server timestamp for remote
-                        )
-                    ).await()
+                    .update(firestoreUpdateData) // Update with the map
+                    .await()
             }
 
             TaskResult.Success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "updateTaskCompletion($localId) error", e)
-            // Local update succeeded, Firestore failed. Listener should eventually correct local state.
             TaskResult.Error(mapExceptionMessage(e), e)
         }
     }

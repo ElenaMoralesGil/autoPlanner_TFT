@@ -38,25 +38,27 @@ class ProfileViewModel(
                 if (user != null) {
                     loadStats() // Load stats if user is logged in
                 } else {
-                    setState { copy(stats = null) } // Clear stats if logged out
+                    setState { copy(stats = null, isLoading = false) }
                 }
             }
         }
     }
 
+
     private fun loadStats() {
         viewModelScope.launch {
+            // Indicate loading stats specifically
             setState { copy(isLoading = true, error = null) }
             when (val result = getProfileStatsUseCase()) {
                 is TaskResult.Success -> {
                     setState { copy(stats = result.data, isLoading = false) }
                 }
-
                 is TaskResult.Error -> {
                     setState {
                         copy(
                             error = "Failed to load stats: ${result.message}",
-                            isLoading = false
+                            isLoading = false,
+                            stats = null // Clear stats on error
                         )
                     }
                     setEffect(ProfileEffect.ShowSnackbar("Error loading profile statistics."))
@@ -68,15 +70,16 @@ class ProfileViewModel(
     override suspend fun handleIntent(intent: ProfileIntent) {
         when (intent) {
             is ProfileIntent.LoadData -> {
-                // Triggered manually if needed, otherwise observeUser handles it
                 if (currentState.isLoggedIn) {
                     loadStats()
+                } else {
+                    setState { copy(isLoading = false, error = "Please log in to view stats.") }
                 }
             }
 
             is ProfileIntent.Logout -> {
+                setState { copy(isLoading = true) }
                 logoutUseCase()
-                // State update handled by observeUser
                 setEffect(ProfileEffect.ShowSnackbar("Logged out successfully."))
             }
 
@@ -112,6 +115,10 @@ class ProfileViewModel(
             is ProfileIntent.NavigateToLogin -> setEffect(ProfileEffect.NavigateToLoginScreen)
             is ProfileIntent.NavigateToRegister -> setEffect(ProfileEffect.NavigateToRegisterScreen)
             is ProfileIntent.NavigateToEditProfile -> setEffect(ProfileEffect.NavigateToEditProfileScreen) // Placeholder
+            is ProfileIntent.SelectTimeFrame -> {
+                setState { copy(selectedTimeFrame = intent.timeFrame) }
+            }
+
         }
     }
 }

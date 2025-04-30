@@ -34,7 +34,7 @@ foundationAndroid = "1.7.8"
 animationCoreAndroid = "1.7.8"
 composeTesting = "1.0.0-alpha03"
 protoliteWellKnownTypes = "18.0.1"
-
+vico = "1.16.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -81,6 +81,16 @@ androidx-animation-core-android = { group = "androidx.compose.animation", name =
 androidx-compose-testing = { group = "androidx.xr.compose", name = "compose-testing", version.ref = "composeTesting" }
 protolite-well-known-types = { group = "com.google.firebase", name = "protolite-well-known-types", version.ref = "protoliteWellKnownTypes" }
 
+vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
+
+# For Material 2 theming in Jetpack Compose.
+vico-compose-m2 = { group = "com.patrykandpatrick.vico", name = "compose-m2", version.ref = "vico" }
+
+# For Material 3 theming in Jetpack Compose.
+vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+
+# For the view system.
+vico-views = { group = "com.patrykandpatrick.vico", name = "views", version.ref = "vico" }
 [plugins]
 ksp = { id = "com.google.devtools.ksp", version = "2.0.0-1.0.21" }
 android-application = { id = "com.android.application", version.ref = "agp" }

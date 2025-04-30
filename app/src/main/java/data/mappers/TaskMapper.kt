@@ -1,5 +1,6 @@
 package com.elena.autoplanner.data.mappers
 
+import com.elena.autoplanner.data.local.dao.TaskWithRelations
 import com.elena.autoplanner.data.local.entities.ReminderEntity
 import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
 import com.elena.autoplanner.data.local.entities.SubtaskEntity
@@ -62,6 +63,7 @@ class TaskMapper {
             .subtasks(subtasks.map { subtaskMapper.mapToDomain(it) })
             .scheduledStartDateTime(taskEntity.scheduledStartDateTime)
             .scheduledEndDateTime(taskEntity.scheduledEndDateTime)
+            .completionDateTime(taskEntity.completionDateTime)
             .build()
     }
 
@@ -81,7 +83,9 @@ class TaskMapper {
             durationMinutes = domain.durationConf?.totalMinutes,
             scheduledStartDateTime = domain.scheduledStartDateTime,
             scheduledEndDateTime = domain.scheduledEndDateTime,
+            completionDateTime = domain.completionDateTime,
             lastUpdated = System.currentTimeMillis() // Default, repository might override
         )
     }
+
 }

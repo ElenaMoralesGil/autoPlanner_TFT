@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.data.local.MIGRATION_6_7
+import com.elena.autoplanner.data.local.MIGRATION_7_8
 import com.elena.autoplanner.data.local.TaskDatabase
 import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
@@ -79,7 +80,7 @@ val appModule = module {
             TaskDatabase::class.java,
             "task_database"
         )
-            .addMigrations(MIGRATION_6_7)
+            .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
             .addCallback(roomCallback)
             .build()
     }

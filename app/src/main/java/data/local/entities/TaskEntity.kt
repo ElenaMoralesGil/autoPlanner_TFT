@@ -27,5 +27,6 @@ data class TaskEntity(
     val durationMinutes: Int?,
     val scheduledStartDateTime: LocalDateTime? = null,
     val scheduledEndDateTime: LocalDateTime? = null,
+    val completionDateTime: LocalDateTime? = null,
     val lastUpdated: Long = System.currentTimeMillis(),
 )

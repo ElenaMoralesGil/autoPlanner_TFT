@@ -48,4 +48,10 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_tasks_firestoreId ON tasks(firestoreId)")
     }
 }
+val MIGRATION_7_8 = object : Migration(7, 8) { // Assuming current version is 7
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Use TEXT because Room stores LocalDateTime as String via TypeConverter
+        db.execSQL("ALTER TABLE tasks ADD COLUMN completionDateTime TEXT")
+    }
+}
 
