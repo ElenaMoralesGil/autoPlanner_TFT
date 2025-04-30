@@ -1,71 +1,122 @@
 package com.elena.autoplanner.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.viewModelScope
+import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.results.AuthResult
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.auth.DeleteAccountUseCase
 import com.elena.autoplanner.domain.usecases.auth.GetCurrentUserUseCase
 import com.elena.autoplanner.domain.usecases.auth.LogoutUseCase
 import com.elena.autoplanner.domain.usecases.profile.GetProfileStatsUseCase
+import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.presentation.effects.ProfileEffect
 import com.elena.autoplanner.presentation.intents.ProfileIntent
 import com.elena.autoplanner.presentation.states.ProfileState
+import com.elena.autoplanner.presentation.states.StatsTimeFrame
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
-    private val getProfileStatsUseCase: GetProfileStatsUseCase,
+    private val getProfileStatsUseCase: GetProfileStatsUseCase, // Injected UseCase
     private val logoutUseCase: LogoutUseCase,
     private val deleteAccountUseCase: DeleteAccountUseCase,
+    private val getTasksUseCase: GetTasksUseCase,
 ) : BaseViewModel<ProfileIntent, ProfileState, ProfileEffect>() {
-
-    override fun createInitialState(): ProfileState = ProfileState()
+    private var statsUpdateJob: Job? = null
+    override fun createInitialState(): ProfileState =
+        ProfileState(selectedTimeFrame = StatsTimeFrame.WEEKLY)
 
     init {
-        observeUser()
+        observeUserAndTasks()
     }
 
-    private fun observeUser() {
+    private fun observeUserAndTasks() {
         viewModelScope.launch {
+            setState { copy(isLoading = true) }
             getCurrentUserUseCase().collectLatest { user ->
-                setState {
-                    copy(
-                        user = user,
-                        isLoading = false
-                    )
-                } // Stop loading once user status is known
+                statsUpdateJob?.cancel()
+                statsUpdateJob = null
+
                 if (user != null) {
-                    loadStats() // Load stats if user is logged in
+                    setState { copy(user = user) }
+                    statsUpdateJob = viewModelScope.launch {
+                        Log.d("ProfileViewModel", "Starting to observe tasks for stats...")
+                        getTasksUseCase()
+                            .distinctUntilChanged()
+                            .catch { e ->
+                                Log.e("ProfileViewModel", "Error observing tasks", e)
+                                setState {
+                                    copy(
+                                        isLoading = false,
+                                        error = "Error loading task data for stats."
+                                    )
+                                }
+                            }
+                            .collect { tasks ->
+                                Log.d(
+                                    "ProfileViewModel",
+                                    "Task list changed (${tasks.size} tasks), recalculating stats..."
+                                )
+                                calculateAndSetStats(tasks) // Pass the collected list
+                            }
+                    }
                 } else {
-                    setState { copy(stats = null, isLoading = false) }
+                    setState { copy(user = null, stats = null, isLoading = false, error = null) }
                 }
             }
         }
     }
 
+    private suspend fun calculateAndSetStats(tasks: List<Task>) {
+        try {
+            // Call the injected use case, passing the task list
+            val statsResult = getProfileStatsUseCase(tasks)
+            // The use case now directly returns ProfileStats, not TaskResult
+            setState { copy(stats = statsResult, isLoading = false, error = null) }
+        } catch (e: Exception) {
+            // Handle potential exceptions during calculation within the use case
+            setState {
+                copy(
+                    error = "Failed to update stats: ${e.message}",
+                    isLoading = false
+                )
+            }
+            Log.e("ProfileViewModel", "Error calculating stats: ${e.message}")
+            setEffect(ProfileEffect.ShowSnackbar("Couldn't refresh stats."))
+        }
+    }
 
     private fun loadStats() {
         viewModelScope.launch {
-            // Indicate loading stats specifically
             setState { copy(isLoading = true, error = null) }
-            when (val result = getProfileStatsUseCase()) {
-                is TaskResult.Success -> {
-                    setState { copy(stats = result.data, isLoading = false) }
+            try {
+                // 1. Get the current tasks
+                val tasks = getTasksUseCase().firstOrNull()
+                if (tasks != null) {
+                    // 2. Calculate stats using the fetched tasks
+                    calculateAndSetStats(tasks)
+                } else {
+                    setState { copy(isLoading = false, error = "Could not load tasks.") }
                 }
-                is TaskResult.Error -> {
-                    setState {
-                        copy(
-                            error = "Failed to load stats: ${result.message}",
-                            isLoading = false,
-                            stats = null // Clear stats on error
-                        )
-                    }
-                    setEffect(ProfileEffect.ShowSnackbar("Error loading profile statistics."))
+            } catch (e: Exception) {
+                setState {
+                    copy(
+                        error = "Failed to load stats: ${e.message}",
+                        isLoading = false,
+                        stats = null
+                    )
                 }
+                setEffect(ProfileEffect.ShowSnackbar("Error loading profile statistics."))
             }
         }
     }
+
 
     override suspend fun handleIntent(intent: ProfileIntent) {
         when (intent) {

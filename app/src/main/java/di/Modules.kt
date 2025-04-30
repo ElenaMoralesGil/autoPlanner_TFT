@@ -145,7 +145,7 @@ val useCaseModule = module {
     single { LogoutUseCase(get()) }
     single { DeleteAccountUseCase(get()) }
     // Profile Use Cases
-    single { GetProfileStatsUseCase(get()) }
+    single { GetProfileStatsUseCase() }
 }
 
 val viewModelModule = module {
@@ -188,7 +188,7 @@ val viewModelModule = module {
         )
     }
 
-    viewModel { ProfileViewModel(get(), get(), get(), get()) }
+    viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
     viewModel { LoginViewModel(get()) }
     viewModel { RegisterViewModel(get()) }
 }

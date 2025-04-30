@@ -323,15 +323,6 @@ fun DisplayedStatsSection(stats: ProfileStats?, selectedTimeFrame: StatsTimeFram
 @Composable
 fun UserInfoSection(user: User) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Image(
-            painter = ColorPainter(MaterialTheme.colorScheme.surfaceVariant), // Placeholder
-            contentDescription = "User Avatar",
-            modifier = Modifier
-                .size(80.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentScale = ContentScale.Crop
-        )
         Spacer(Modifier.height(8.dp))
         Text(
             text = user.displayName ?: "Welcome", // Display name or default
