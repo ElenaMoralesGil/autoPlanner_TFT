@@ -1,8 +1,8 @@
 package com.elena.autoplanner.data.repository
 
 import com.elena.autoplanner.domain.models.User
-import com.elena.autoplanner.domain.repository.AuthResult
-import com.elena.autoplanner.domain.repository.UserRepository
+import com.elena.autoplanner.domain.results.AuthResult
+import com.elena.autoplanner.domain.repositories.UserRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException

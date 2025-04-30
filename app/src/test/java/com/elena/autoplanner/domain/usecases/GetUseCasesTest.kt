@@ -1,7 +1,7 @@
 package com.elena.autoplanner.domain.usecases
 
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.repository.TaskRepository
+import com.elena.autoplanner.domain.repositories.TaskRepository
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf

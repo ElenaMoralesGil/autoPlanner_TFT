@@ -12,8 +12,8 @@ import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
 import com.elena.autoplanner.data.repository.TaskRepositoryImpl
 import com.elena.autoplanner.data.repository.UserRepositoryImpl
-import com.elena.autoplanner.domain.repository.TaskRepository
-import com.elena.autoplanner.domain.repository.UserRepository
+import com.elena.autoplanner.domain.repositories.TaskRepository
+import com.elena.autoplanner.domain.repositories.UserRepository
 import com.elena.autoplanner.domain.usecases.auth.DeleteAccountUseCase
 import com.elena.autoplanner.domain.usecases.auth.GetCurrentUserUseCase
 import com.elena.autoplanner.domain.usecases.auth.LoginUseCase

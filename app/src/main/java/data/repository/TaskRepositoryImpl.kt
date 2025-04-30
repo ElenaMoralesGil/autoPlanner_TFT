@@ -8,9 +8,9 @@ import com.elena.autoplanner.data.local.dao.*
 import com.elena.autoplanner.data.local.entities.TaskEntity
 import com.elena.autoplanner.data.mappers.*
 import com.elena.autoplanner.domain.models.*
-import com.elena.autoplanner.domain.repository.TaskRepository
-import com.elena.autoplanner.domain.repository.TaskResult
-import com.elena.autoplanner.domain.repository.UserRepository
+import com.elena.autoplanner.domain.repositories.TaskRepository
+import com.elena.autoplanner.domain.results.TaskResult
+import com.elena.autoplanner.domain.repositories.UserRepository
 import com.google.firebase.firestore.* // Import Firestore classes
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*

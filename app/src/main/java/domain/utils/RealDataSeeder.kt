@@ -7,7 +7,7 @@ import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
-import com.elena.autoplanner.domain.repository.TaskRepository
+import com.elena.autoplanner.domain.repositories.TaskRepository
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 

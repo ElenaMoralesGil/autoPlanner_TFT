@@ -2,8 +2,8 @@ package com.elena.autoplanner.domain.usecases.profile
 
 import com.elena.autoplanner.domain.models.ProfileStats
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.repository.TaskRepository
-import com.elena.autoplanner.domain.repository.TaskResult
+import com.elena.autoplanner.domain.repositories.TaskRepository
+import com.elena.autoplanner.domain.results.TaskResult
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters

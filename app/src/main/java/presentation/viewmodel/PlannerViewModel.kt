@@ -16,7 +16,7 @@ import com.elena.autoplanner.domain.models.ResolutionOption
 import com.elena.autoplanner.domain.models.ScheduleScope
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
-import com.elena.autoplanner.domain.repository.TaskResult
+import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase

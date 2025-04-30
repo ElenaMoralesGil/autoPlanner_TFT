@@ -1,4 +1,4 @@
-package com.elena.autoplanner.domain.repository
+package com.elena.autoplanner.domain.results
 
 sealed class TaskResult<out T> {
     data class Success<T>(val data: T) : TaskResult<T>()

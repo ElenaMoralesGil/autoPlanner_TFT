@@ -1,6 +1,7 @@
-package com.elena.autoplanner.domain.repository
+package com.elena.autoplanner.domain.repositories
 
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.results.TaskResult
 import kotlinx.coroutines.flow.Flow
 
 interface TaskRepository {

@@ -1,7 +1,7 @@
 package com.elena.autoplanner.domain.usecases.subtasks
 
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.repository.TaskResult
+import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 

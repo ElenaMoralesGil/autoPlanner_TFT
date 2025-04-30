@@ -1,6 +1,7 @@
-package com.elena.autoplanner.domain.repository
+package com.elena.autoplanner.domain.repositories
 
 import com.elena.autoplanner.domain.models.User
+import com.elena.autoplanner.domain.results.AuthResult
 import kotlinx.coroutines.flow.Flow
 
 interface UserRepository {

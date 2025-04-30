@@ -2,8 +2,8 @@ package com.elena.autoplanner.domain.usecases.tasks
 
 import android.util.Log
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.repository.TaskRepository
-import com.elena.autoplanner.domain.repository.TaskResult
+import com.elena.autoplanner.domain.repositories.TaskRepository
+import com.elena.autoplanner.domain.results.TaskResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map

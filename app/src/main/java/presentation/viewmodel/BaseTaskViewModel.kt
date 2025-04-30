@@ -3,7 +3,7 @@ package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.repository.TaskResult
+import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch

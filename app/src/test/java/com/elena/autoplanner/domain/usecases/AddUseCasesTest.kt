@@ -1,7 +1,7 @@
 package com.elena.autoplanner.domain.usecases
 
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.repository.TaskRepository
+import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.AddTaskUseCase
 import io.mockk.Runs

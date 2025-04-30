@@ -1,7 +1,7 @@
 package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.elena.autoplanner.domain.repository.AuthResult
+import com.elena.autoplanner.domain.results.AuthResult
 import com.elena.autoplanner.domain.usecases.auth.RegisterUseCase
 import com.elena.autoplanner.presentation.effects.RegisterEffect
 import com.elena.autoplanner.presentation.intents.RegisterIntent

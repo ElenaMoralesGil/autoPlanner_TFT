@@ -1,8 +1,8 @@
 package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.elena.autoplanner.domain.repository.AuthResult
-import com.elena.autoplanner.domain.repository.TaskResult
+import com.elena.autoplanner.domain.results.AuthResult
+import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.auth.DeleteAccountUseCase
 import com.elena.autoplanner.domain.usecases.auth.GetCurrentUserUseCase
 import com.elena.autoplanner.domain.usecases.auth.LogoutUseCase

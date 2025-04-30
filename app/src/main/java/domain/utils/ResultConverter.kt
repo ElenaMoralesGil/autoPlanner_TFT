@@ -1,6 +1,6 @@
 package com.elena.autoplanner.domain.utils
 
-import com.elena.autoplanner.domain.repository.TaskResult
+import com.elena.autoplanner.domain.results.TaskResult
 
 object ResultConverter {
 
