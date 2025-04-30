@@ -32,31 +32,36 @@ class TaskMapper {
         val repeatConfigMapper = RepeatConfigMapper()
         val subtaskMapper = SubtaskMapper()
 
+        // Helper to safely get DayPeriod, defaulting to NONE
+        fun getDayPeriod(periodString: String?): DayPeriod {
+            return try {
+                periodString?.let { DayPeriod.valueOf(it) } ?: DayPeriod.NONE
+            } catch (e: IllegalArgumentException) {
+                DayPeriod.NONE // Handle invalid enum strings
+            }
+        }
+
+        val startDateConf = taskEntity.startDateTime?.let { // Create if startDateTime exists
+            TimePlanning(
+                dateTime = it,
+                dayPeriod = getDayPeriod(taskEntity.startDayPeriod) // Use helper
+            )
+        }
+
+        val endDateConf = taskEntity.endDateTime?.let { // Create if endDateTime exists
+            TimePlanning(
+                dateTime = it,
+                dayPeriod = getDayPeriod(taskEntity.endDayPeriod) // Use helper
+            )
+        }
+
         return Task.Builder()
             .id(taskEntity.id)
             .name(taskEntity.name)
             .isCompleted(taskEntity.isCompleted)
             .priority(mapPriority(taskEntity.priority))
-            .startDateConf(taskEntity.startDateTime?.let {
-                taskEntity.startDayPeriod?.let { period ->
-                    DayPeriod.valueOf(period)
-                }?.let { it1 ->
-                    TimePlanning(
-                        dateTime = it,
-                        dayPeriod = it1
-                    )
-                }
-            })
-            .endDateConf(taskEntity.endDateTime?.let {
-                taskEntity.endDayPeriod?.let { period ->
-                    DayPeriod.valueOf(period)
-                }?.let { it1 ->
-                    TimePlanning(
-                        dateTime = it,
-                        dayPeriod = it1
-                    )
-                }
-            })
+            .startDateConf(startDateConf) // Assign the potentially created object
+            .endDateConf(endDateConf)     // Assign the potentially created object
             .durationConf(taskEntity.durationMinutes?.let { DurationPlan(it) })
             .reminderPlan(reminders.firstOrNull()?.let { reminderMapper.mapToDomain(it) })
             .repeatPlan(repeatConfigs.firstOrNull()?.let { repeatConfigMapper.mapToDomain(it) })
@@ -67,25 +72,35 @@ class TaskMapper {
             .build()
     }
 
+
     fun mapToEntity(domain: Task): TaskEntity {
-        // The repository will handle setting userId and firestoreId based on context
         return TaskEntity(
-            id = domain.id, // Use the domain ID (which might be local or Firestore hash)
-            // userId = null, // Let repository set this
-            // firestoreId = null, // Let repository set this
+            id = domain.id,
             name = domain.name,
             isCompleted = domain.isCompleted,
             priority = domain.priority.name,
-            startDateTime = domain.startDateConf?.dateTime, // Adjusted access
-            startDayPeriod = domain.startDateConf?.dayPeriod?.name, // Adjusted access
+            startDateTime = domain.startDateConf?.dateTime,
+            startDayPeriod = domain.startDateConf?.dayPeriod?.name,
             endDateTime = domain.endDateConf?.dateTime,
             endDayPeriod = domain.endDateConf?.dayPeriod?.name,
             durationMinutes = domain.durationConf?.totalMinutes,
             scheduledStartDateTime = domain.scheduledStartDateTime,
             scheduledEndDateTime = domain.scheduledEndDateTime,
             completionDateTime = domain.completionDateTime,
-            lastUpdated = System.currentTimeMillis() // Default, repository might override
+            lastUpdated = System.currentTimeMillis()
         )
     }
 
+    fun TaskWithRelations.toDomainTask(): Task {
+        val taskMapper = TaskMapper() // Or inject if needed elsewhere
+        val domainTask = taskMapper.mapToDomain(
+            taskEntity = this.task,
+            reminders = this.reminders,
+            repeatConfigs = this.repeatConfigs,
+            subtasks = this.subtasks
+        )
+        // Ensure the domain Task's ID is the local Room ID
+        return domainTask.copy(id = this.task.id)
+    }
 }
+

@@ -8,11 +8,10 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -62,7 +62,6 @@ fun TaskCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -70,15 +69,24 @@ fun TaskCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (animatedOffset > 0) {
-                EditAction(modifier = Modifier.weight(0.2f))
+                EditAction(
+                    modifier = Modifier
+                        .weight(0.2f)
+                        .fillMaxHeight()
+                )
             }
             if (animatedOffset < 0) {
-                DeleteAction(modifier = Modifier.weight(0.2f))
+                DeleteAction(
+                    modifier = Modifier
+                        .weight(0.2f)
+                        .fillMaxHeight()
+                )
             }
         }
 
         Card(
             modifier = Modifier
+                .fillMaxWidth()
                 .offset { IntOffset(animatedOffset.roundToInt(), 0) }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
@@ -113,14 +121,15 @@ fun TaskCard(
         ) {
             Row(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
+                        .padding(top = 4.dp)
+                        .size(10.dp)
                         .background(
                             color = when (task.priority) {
                                 Priority.HIGH -> MaterialTheme.colorScheme.error
@@ -149,16 +158,12 @@ fun TaskCard(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-
-                    if (task.startDateConf != null || task.durationConf != null ||
-                        task.subtasks.isNotEmpty() || task.isExpired()
-                    ) {
-                        TaskMetadata(task = task)
-                    }
+                    TaskMetadata(task = task, modifier = Modifier.padding(top = 4.dp))
                 }
 
                 Checkbox(
                     checked = task.isCompleted,
+                    modifier = Modifier.padding(start = 4.dp),
                     onCheckedChange = onCheckedChange,
                     colors = CheckboxDefaults.colors(
                         checkedColor = MaterialTheme.colorScheme.primary,

@@ -1,9 +1,13 @@
+// src/main/java/presentation/ui/screens/tasks/TasksScreen/TaskMetadata.kt
 package com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.R
@@ -14,12 +18,102 @@ import com.elena.autoplanner.presentation.utils.DateTimeFormatters
 import java.time.LocalTime
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TaskMetadata(task: Task) {
+fun TaskMetadata(task: Task, modifier: Modifier = Modifier) {
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+
+        val dateStringToDisplay = remember(task.startDateConf, task.endDateConf) {
+            buildString {
+                val startDateTime = task.startDateConf?.dateTime
+                val endDateTime = task.endDateConf?.dateTime
+                val startPeriod = task.startDateConf?.dayPeriod
+                val endPeriod = task.endDateConf?.dayPeriod
+
+                val dateFormatter = DateTimeFormatters.dateFormatter
+
+                val startDateText = startDateTime?.format(dateFormatter)
+                val endDateText = endDateTime?.format(dateFormatter)
+                val startTimeText = startDateTime?.takeIf { it.toLocalTime() != LocalTime.MIDNIGHT }
+                    ?.let { DateTimeFormatters.formatTime(it) }
+                val endTimeText = endDateTime?.takeIf { it.toLocalTime() != LocalTime.MIDNIGHT }
+                    ?.let { DateTimeFormatters.formatTime(it) }
+
+                val startPeriodDisplay =
+                    startPeriod?.takeIf { it != DayPeriod.NONE && it != DayPeriod.ALLDAY }?.let {
+                        "(${
+                            it.name.lowercase()
+                                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                        })"
+                    }
+                val allDayDisplay = if (startPeriod == DayPeriod.ALLDAY) " (All day)" else null
+
+                if (startDateText != null) {
+                    append(startDateText)
+                    if (startTimeText != null) append(" $startTimeText")
+                    if (startPeriodDisplay != null) append(" $startPeriodDisplay")
+                    if (allDayDisplay != null) append(allDayDisplay)
+
+                    if (endDateText != null && endDateText != startDateText) {
+                        append(" - $endDateText")
+                        if (endTimeText != null) append(" $endTimeText")
+                        val endPeriodDisplay =
+                            endPeriod?.takeIf { it != DayPeriod.NONE && it != DayPeriod.ALLDAY && it != startPeriod }
+                                ?.let {
+                                    "(${
+                                        it.name.lowercase().replaceFirstChar {
+                                            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+                                        }
+                                    })"
+                                }
+                        if (endPeriodDisplay != null) append(" $endPeriodDisplay")
+                    } else if (endDateText != null && endTimeText != null && endTimeText != startTimeText) {
+                        append(" - $endTimeText")
+                        val endPeriodDisplay =
+                            endPeriod?.takeIf { it != DayPeriod.NONE && it != DayPeriod.ALLDAY && it != startPeriod }
+                                ?.let {
+                                    "(${
+                                        it.name.lowercase().replaceFirstChar {
+                                            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+                                        }
+                                    })"
+                                }
+                        if (endPeriodDisplay != null) append(" $endPeriodDisplay")
+                    }
+                } else if (endDateText != null) {
+                    append("Due: $endDateText")
+                    if (endTimeText != null) append(" $endTimeText")
+                    val endPeriodDisplay =
+                        endPeriod?.takeIf { it != DayPeriod.NONE && it != DayPeriod.ALLDAY }?.let {
+                            "(${
+                                it.name.lowercase()
+                                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                            })"
+                        }
+                    if (endPeriodDisplay != null) append(" $endPeriodDisplay")
+                }
+            }.trim()
+        }
+
+        if (dateStringToDisplay.isNotEmpty()) {
+            TaskChip(
+                icon = painterResource(R.drawable.ic_calendar),
+                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                text = dateStringToDisplay
+            )
+        }
+
+        task.durationConf?.totalMinutes?.takeIf { it > 0 }?.let {
+            TaskChip(
+                icon = painterResource(R.drawable.ic_duration),
+                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                text = DateTimeFormatters.formatDurationShort(task.durationConf)
+            )
+        }
 
         if (task.subtasks.isNotEmpty()) {
             TaskChip(
@@ -36,80 +130,17 @@ fun TaskMetadata(task: Task) {
                     Priority.HIGH -> MaterialTheme.colorScheme.error
                     Priority.MEDIUM -> MaterialTheme.colorScheme.tertiary
                     Priority.LOW -> MaterialTheme.colorScheme.secondary
-                    else -> MaterialTheme.colorScheme.primary
+                    Priority.NONE -> MaterialTheme.colorScheme.primary
                 },
                 text = task.priority.name.lowercase()
             )
         }
 
-        task.durationConf?.let {
-            TaskChip(
-                icon = painterResource(R.drawable.ic_duration),
-                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                text = DateTimeFormatters.formatDurationShort(it)
-            )
-        }
-
-
-        if (task.isExpired()) {
+        if (task.isExpired() && !task.isCompleted) {
             TaskChip(
                 icon = painterResource(R.drawable.expired),
                 iconTint = MaterialTheme.colorScheme.error,
                 text = "Expired"
-            )
-        }
-
-        task.startDateConf?.let { startTimePlanning ->
-            val dateText = buildString {
-
-                append(DateTimeFormatters.formatDateShort(startTimePlanning))
-
-                startTimePlanning.dateTime?.let { dateTime ->
-                    if (dateTime.toLocalTime() != LocalTime.MIDNIGHT) {
-                        append(" ${DateTimeFormatters.formatTime(dateTime)}")
-                    }
-                }
-                startTimePlanning.dayPeriod?.takeIf { it != DayPeriod.NONE && it != DayPeriod.ALLDAY }
-                    ?.let { period ->
-                        append(
-                            " (${
-                            period.name.lowercase()
-                                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-                        })"
-                        )
-                    }
-
-                if (startTimePlanning.dayPeriod == DayPeriod.ALLDAY) {
-                    append(" (All day)")
-                }
-
-                task.endDateConf?.let { endTimePlanning ->
-                    append(" - ")
-
-                    append(DateTimeFormatters.formatDateShort(endTimePlanning))
-
-                    endTimePlanning.dateTime?.let { dateTime ->
-                        if (dateTime.toLocalTime() != LocalTime.MIDNIGHT) {
-                            append(" ${DateTimeFormatters.formatTime(dateTime)}")
-                        }
-                    }
-
-                    endTimePlanning.dayPeriod?.takeIf {
-                        it != DayPeriod.NONE && it != DayPeriod.ALLDAY && it != startTimePlanning.dayPeriod
-                    }?.let { period ->
-                        append(
-                            " (${
-                            period.name.lowercase()
-                                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-                        })"
-                        )
-                    }
-                }
-            }
-            TaskChip(
-                icon = painterResource(R.drawable.ic_calendar),
-                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                text = dateText
             )
         }
     }

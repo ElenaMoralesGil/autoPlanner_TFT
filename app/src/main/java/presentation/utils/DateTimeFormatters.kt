@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 object DateTimeFormatters {
-    private val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+    internal val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
     fun formatDateTime(dateTime: LocalDateTime): String {
         val formatter = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm")
