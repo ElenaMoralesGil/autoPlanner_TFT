@@ -1,4 +1,4 @@
-package com.elena.autoplanner.data.repository
+package com.elena.autoplanner.data.repositories
 
 import android.content.Context
 import android.database.sqlite.SQLiteException
@@ -52,6 +52,19 @@ class TaskRepositoryImpl(
 
     init {
         observeUserLoginState()
+    }
+
+    override suspend fun deleteAllLocalOnly(): TaskResult<Unit> = withContext(dispatcher) {
+        try {
+            Log.w(TAG, "deleteAllLocalOnly: Deleting tasks where userId is NULL.")
+            taskDao.deleteAllLocalOnlyTasks()
+            // Note: This assumes related entities (reminders, etc.) for local-only tasks
+            // either don't exist or are handled by cascade delete correctly.
+            TaskResult.Success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "deleteAllLocalOnly error", e)
+            TaskResult.Error(mapExceptionMessage(e), e)
+        }
     }
 
     private fun observeUserLoginState() {
@@ -448,8 +461,6 @@ class TaskRepositoryImpl(
         try {
             if (user != null) {
                 Log.w(TAG, "deleteAll: Deleting ALL Firestore tasks for user ${user.uid}")
-                // Efficiently delete all documents (requires Cloud Function or careful batching)
-                // Simple batch delete (can be slow/costly for large collections):
                 val querySnapshot =
                     getUserTasksCollection(user.uid).limit(500).get().await() // Limit batch size
                 if (querySnapshot.size() > 0) {

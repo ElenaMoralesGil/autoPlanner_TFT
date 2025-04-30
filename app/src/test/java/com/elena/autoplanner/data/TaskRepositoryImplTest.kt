@@ -10,7 +10,7 @@ import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
 import com.elena.autoplanner.data.local.entities.SubtaskEntity
 import com.elena.autoplanner.data.local.entities.TaskEntity
 import com.elena.autoplanner.data.mappers.toDomain
-import com.elena.autoplanner.data.repository.TaskRepositoryImpl
+import com.elena.autoplanner.data.repositories.TaskRepositoryImpl
 import com.elena.autoplanner.domain.exceptions.TaskNotFoundException
 import com.elena.autoplanner.domain.models.DayOfWeek
 import com.elena.autoplanner.domain.models.IntervalUnit

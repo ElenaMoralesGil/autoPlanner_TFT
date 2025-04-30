@@ -10,8 +10,8 @@ import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
-import com.elena.autoplanner.data.repository.TaskRepositoryImpl
-import com.elena.autoplanner.data.repository.UserRepositoryImpl
+import com.elena.autoplanner.data.repositories.TaskRepositoryImpl
+import com.elena.autoplanner.data.repositories.UserRepositoryImpl
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.repositories.UserRepository
 import com.elena.autoplanner.domain.usecases.auth.DeleteAccountUseCase

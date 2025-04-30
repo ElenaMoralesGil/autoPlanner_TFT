@@ -1,12 +1,14 @@
-package com.elena.autoplanner.data.repository
+package com.elena.autoplanner.data.repositories
 
 import com.elena.autoplanner.domain.models.User
 import com.elena.autoplanner.domain.results.AuthResult
 import com.elena.autoplanner.domain.repositories.UserRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -73,7 +75,7 @@ class UserRepositoryImpl(
                 } else {
                     val errorMsg = task.exception?.localizedMessage ?: "Failed to delete account."
                     // Check if re-authentication is required
-                    if (task.exception is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+                    if (task.exception is FirebaseAuthRecentLoginRequiredException) {
                         continuation.resume(AuthResult.Error("Re-authentication required to delete account."))
                     } else {
                         continuation.resume(AuthResult.Error(errorMsg))
@@ -82,7 +84,7 @@ class UserRepositoryImpl(
             }
     }
 
-    private fun com.google.firebase.auth.FirebaseUser.toDomainUser(): User {
+    private fun FirebaseUser.toDomainUser(): User {
         return User(
             uid = this.uid,
             email = this.email,

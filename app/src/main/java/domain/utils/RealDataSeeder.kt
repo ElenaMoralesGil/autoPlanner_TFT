@@ -1,5 +1,6 @@
 package com.elena.autoplanner.domain.utils
 
+import android.util.Log
 import com.elena.autoplanner.FeatureFlags
 import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.DurationPlan
@@ -8,6 +9,7 @@ import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.repositories.TaskRepository
+import com.elena.autoplanner.domain.results.TaskResult
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 
@@ -16,7 +18,18 @@ class RealDataSeeder(
 ) : DataSeeder {
 
     override suspend fun seedTasks(count: Int) {
-        taskRepository.deleteAll()
+        when (val deleteResult = taskRepository.deleteAllLocalOnly()) {
+            is TaskResult.Success -> Log.i(
+                "RealDataSeeder",
+                "Cleared previous local-only seed data."
+            )
+
+            is TaskResult.Error -> Log.e(
+                "RealDataSeeder",
+                "Error clearing seed data: ${deleteResult.message}"
+            )
+        }
+
 
         delay(100)
 
@@ -91,7 +104,15 @@ class RealDataSeeder(
                 .subtasks(subtasks)
                 .build()
 
-            taskRepository.saveTask(sampleTask)
+            when (val saveResult = taskRepository.saveTask(sampleTask)) {
+                is TaskResult.Success -> { /* Log success if needed */
+                }
+
+                is TaskResult.Error -> Log.e(
+                    "RealDataSeeder",
+                    "Error saving seeded task $index: ${saveResult.message}"
+                )
+            }
         }
     }
 
