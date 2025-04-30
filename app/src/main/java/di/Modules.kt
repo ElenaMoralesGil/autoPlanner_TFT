@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.elena.autoplanner.data.local.MIGRATION_6_7
 import com.elena.autoplanner.data.local.TaskDatabase
 import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
@@ -46,7 +47,13 @@ import com.elena.autoplanner.presentation.viewmodel.RegisterViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
+import com.google.firebase.Firebase
 import com.google.firebase.auth.*
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.firestore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -72,7 +79,7 @@ val appModule = module {
             TaskDatabase::class.java,
             "task_database"
         )
-            .fallbackToDestructiveMigration(false)
+            .addMigrations(MIGRATION_6_7)
             .addCallback(roomCallback)
             .build()
     }
@@ -88,10 +95,15 @@ val appModule = module {
             taskDao = get(),
             reminderDao = get(),
             repeatConfigDao = get(),
-            subtaskDao = get()
+            subtaskDao = get(),
+            userRepository = get(),
+            firestore = get(),
+            repoScope = get()
         )
     }
     single { FirebaseAuth.getInstance() }
+    single<FirebaseFirestore> { Firebase.firestore }
+    single<CoroutineScope> { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     single<UserRepository> { UserRepositoryImpl(firebaseAuth = get()) }
 }
 

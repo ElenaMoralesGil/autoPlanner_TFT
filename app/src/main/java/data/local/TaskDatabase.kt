@@ -3,6 +3,8 @@ package com.elena.autoplanner.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
@@ -19,8 +21,8 @@ import com.elena.autoplanner.data.local.entities.TaskEntity
         RepeatConfigEntity::class,
         SubtaskEntity::class
     ],
-    version = 6,
-    exportSchema = false
+    version = 7,
+    exportSchema = true
 )
 @TypeConverters(
     Converters::class,
@@ -30,11 +32,20 @@ import com.elena.autoplanner.data.local.entities.TaskEntity
 )
 abstract class TaskDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
-
     abstract fun reminderDao(): ReminderDao
-
     abstract fun repeatConfigDao(): RepeatConfigDao
-
     abstract fun subtaskDao(): SubtaskDao
+}
+
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+
+        db.execSQL("ALTER TABLE tasks ADD COLUMN userId TEXT")
+        db.execSQL("ALTER TABLE tasks ADD COLUMN firestoreId TEXT")
+        db.execSQL("ALTER TABLE tasks ADD COLUMN lastUpdated INTEGER NOT NULL DEFAULT 0")
+
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_tasks_userId ON tasks(userId)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_tasks_firestoreId ON tasks(firestoreId)")
+    }
 }
 

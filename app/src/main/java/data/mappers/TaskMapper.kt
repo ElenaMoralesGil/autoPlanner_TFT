@@ -66,18 +66,22 @@ class TaskMapper {
     }
 
     fun mapToEntity(domain: Task): TaskEntity {
+        // The repository will handle setting userId and firestoreId based on context
         return TaskEntity(
-            id = domain.id,
+            id = domain.id, // Use the domain ID (which might be local or Firestore hash)
+            // userId = null, // Let repository set this
+            // firestoreId = null, // Let repository set this
             name = domain.name,
             isCompleted = domain.isCompleted,
             priority = domain.priority.name,
-            startDateTime = domain.startDateConf.dateTime,
-            startDayPeriod = domain.startDateConf.dayPeriod.name,
+            startDateTime = domain.startDateConf?.dateTime, // Adjusted access
+            startDayPeriod = domain.startDateConf?.dayPeriod?.name, // Adjusted access
             endDateTime = domain.endDateConf?.dateTime,
             endDayPeriod = domain.endDateConf?.dayPeriod?.name,
             durationMinutes = domain.durationConf?.totalMinutes,
             scheduledStartDateTime = domain.scheduledStartDateTime,
-            scheduledEndDateTime = domain.scheduledEndDateTime
+            scheduledEndDateTime = domain.scheduledEndDateTime,
+            lastUpdated = System.currentTimeMillis() // Default, repository might override
         )
     }
 }

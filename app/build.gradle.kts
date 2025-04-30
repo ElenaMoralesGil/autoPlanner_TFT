@@ -87,6 +87,7 @@ dependencies {
     implementation(libs.androidx.material3.android)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
+    implementation(libs.firebase.firestore)
     implementation(libs.play.services.auth)
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.foundation.android)
