@@ -22,4 +22,9 @@ sealed class TaskEditIntent : Intent {
     data class RemoveSubtask(val subtaskId: Int) : TaskEditIntent()
     object SaveTask : TaskEditIntent()
     object Cancel : TaskEditIntent()
+
+    data class AssignList(val listId: Long?) : TaskEditIntent() // Null to remove from list
+    data class AssignSection(val sectionId: Long?) : TaskEditIntent() // Null to remove from section
+    data object LoadListsForSelection : TaskEditIntent()
+    data class LoadSectionsForSelection(val listId: Long?) : TaskEditIntent()
 }
