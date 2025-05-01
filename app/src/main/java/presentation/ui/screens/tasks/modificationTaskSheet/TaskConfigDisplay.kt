@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet
 
+import android.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,9 @@ fun TaskConfigDisplay(
     reminder: ReminderPlan?,
     repeat: RepeatPlan?,
     priority: Priority,
+    listName: String?,
+    sectionName: String?,
+    listColor: Color?,
 ) {
     Card(
         modifier = Modifier
@@ -94,6 +98,16 @@ fun TaskConfigDisplay(
                     value = priority.name.lowercase(Locale.ROOT)
                         .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() },
                     color = getPriorityColor(priority)
+                )
+            }
+
+            listName?.let {
+                ConfigItem(
+                    painter = painterResource(R.drawable.ic_lists),
+                    label = "List",
+                    value = if (sectionName != null) "$it / $sectionName" else it,
+                    color = (listColor
+                        ?: MaterialTheme.colorScheme.secondary) as androidx.compose.ui.graphics.Color // Use list color
                 )
             }
         }

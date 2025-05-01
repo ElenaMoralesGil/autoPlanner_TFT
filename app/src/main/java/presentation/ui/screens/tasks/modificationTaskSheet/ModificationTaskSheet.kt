@@ -21,6 +21,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,10 +30,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.Priority
+import com.elena.autoplanner.domain.models.TaskList
 import com.elena.autoplanner.presentation.intents.TaskEditIntent
+import com.elena.autoplanner.presentation.ui.screens.more.ListSelectionDialog
+import com.elena.autoplanner.presentation.ui.screens.more.SectionSelectionDialog
 import com.elena.autoplanner.presentation.ui.screens.tasks.TimeConfigSheet
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import kotlinx.coroutines.launch
@@ -52,6 +57,25 @@ fun ModificationTaskSheet(
     val isEditMode = state?.isNewTask == false
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
+    var showListSelectionDialog by remember { mutableStateOf(false) }
+    var showSectionSelectionDialog by remember { mutableStateOf(false) }
+    var listForSectionSelection by remember { mutableStateOf<TaskList?>(null) }
+
+    LaunchedEffect(showListSelectionDialog) {
+        if (showListSelectionDialog) {
+            taskEditViewModel.sendIntent(TaskEditIntent.LoadListsForSelection)
+        }
+    }
+    // Fetch sections when needed
+    LaunchedEffect(showSectionSelectionDialog, listForSectionSelection) {
+        if (showSectionSelectionDialog && listForSectionSelection != null) {
+            taskEditViewModel.sendIntent(
+                TaskEditIntent.LoadSectionsForSelection(
+                    listForSectionSelection!!.id
+                )
+            )
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -113,12 +137,12 @@ fun ModificationTaskSheet(
             ConfigurationOptionsRow(
                 onTimeClick = { showTimeConfigSheet = true },
                 onPriorityClick = { showPriorityDialog = true },
-                onListsClick = { },
+                onListsClick = { showListSelectionDialog = true },
                 onSubtasksClick = { showSubtasksSection = !showSubtasksSection }
             )
 
 
-            if (hasAnyConfig(state)) {
+            if (hasAnyConfig(state) || state?.listId != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 state?.let {
                     TaskConfigDisplay(
@@ -127,12 +151,56 @@ fun ModificationTaskSheet(
                         duration = it.durationConf,
                         reminder = it.reminderPlan,
                         repeat = it.repeatPlan,
-                        priority = it.priority
+                        priority = it.priority,
+                        listName = it.availableLists.find { l -> l.id == it.listId }?.name,
+                        sectionName = it.availableSections.find { s -> s.id == it.sectionId }?.name,
+                        listColor = it.availableLists.find { l -> l.id == it.listId }?.colorHex?.let { hex ->
+                            try {
+                                Color(android.graphics.Color.parseColor(hex))
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
                     )
                 }
             }
 
 
+            if (showListSelectionDialog) {
+                ListSelectionDialog(
+                    isLoading = state?.isLoadingSelection ?: false,
+                    lists = state?.availableLists ?: emptyList(),
+                    selectedListId = state?.listId,
+                    onDismiss = { showListSelectionDialog = false },
+                    onListSelected = { list ->
+                        taskEditViewModel.sendIntent(TaskEditIntent.AssignList(list?.id))
+                        showListSelectionDialog = false
+                        if (list != null) {
+                            listForSectionSelection = list
+                            showSectionSelectionDialog = true
+                        } else {
+                            listForSectionSelection = null
+                        }
+                    },
+                    onCreateNewList = { /* TODO: Open CreateEditListDialog */
+                    }
+                )
+            }
+
+            if (showSectionSelectionDialog && listForSectionSelection != null) {
+                SectionSelectionDialog(
+                    isLoading = state?.isLoadingSelection ?: false,
+                    listName = listForSectionSelection!!.name,
+                    sections = state?.availableSections ?: emptyList(),
+                    selectedSectionId = state?.sectionId,
+                    onDismiss = { showSectionSelectionDialog = false },
+                    onSectionSelected = { section ->
+                        taskEditViewModel.sendIntent(TaskEditIntent.AssignSection(section?.id))
+                        showSectionSelectionDialog = false
+                    },
+                    onCreateNewSection = { /* TODO: Open CreateEditSectionDialog */ }
+                )
+            }
             if (showSubtasksSection) {
                 AnimatedVisibility(visible = showSubtasksSection) {
                     Column {
