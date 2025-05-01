@@ -1,6 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet
 
-import android.graphics.Color
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -107,7 +107,7 @@ fun TaskConfigDisplay(
                     label = "List",
                     value = if (sectionName != null) "$it / $sectionName" else it,
                     color = (listColor
-                        ?: MaterialTheme.colorScheme.secondary) as androidx.compose.ui.graphics.Color // Use list color
+                        ?: MaterialTheme.colorScheme.secondary)
                 )
             }
         }

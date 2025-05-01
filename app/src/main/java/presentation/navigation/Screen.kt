@@ -5,10 +5,10 @@ sealed class Screen(val route: String) {
         fun createRoute(listId: Long? = null): String {
             return if (listId != null) "tasks?listId=$listId" else "tasks"
         }
+        const val routeBase = "tasks"
     }
     object Calendar : Screen("calendar")
     object Profile : Screen("profile")
-    object More : Screen("more")
     object Planner : Screen("planner")
     object Login : Screen("login")
     object Register : Screen("register")

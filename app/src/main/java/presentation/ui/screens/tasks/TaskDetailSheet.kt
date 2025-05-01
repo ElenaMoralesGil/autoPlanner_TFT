@@ -121,7 +121,7 @@ fun TaskDetailSheet(
                     priority = task.priority,
                     listName = task.listName,
                     sectionName = task.sectionName,
-                    listColor = task.listColor as Color?,
+                    listColor = task.listColor,
                 )
 
                 SubtasksSection(

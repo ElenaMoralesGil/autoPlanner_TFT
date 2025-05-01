@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet
 
+import android.graphics.Color.parseColor
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,6 +42,7 @@ import com.elena.autoplanner.presentation.ui.screens.more.SectionSelectionDialog
 import com.elena.autoplanner.presentation.ui.screens.tasks.TimeConfigSheet
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import kotlinx.coroutines.launch
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,11 +158,11 @@ fun ModificationTaskSheet(
                         sectionName = it.availableSections.find { s -> s.id == it.sectionId }?.name,
                         listColor = it.availableLists.find { l -> l.id == it.listId }?.colorHex?.let { hex ->
                             try {
-                                Color(android.graphics.Color.parseColor(hex))
+                                Color(hex.toColorInt())
                             } catch (e: Exception) {
                                 null
                             }
-                        } as android.graphics.Color?
+                        }
                     )
                 }
             }

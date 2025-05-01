@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -75,14 +76,16 @@ fun CreateEditListDialog(
 
                 Text("Select Color:", style = MaterialTheme.typography.bodyMedium)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     predefinedColors.forEach { color ->
                         ColorCircle(
                             color = color,
                             isSelected = color == selectedColor,
-                            onClick = { selectedColor = color }
+                            onClick = { selectedColor = color },
                         )
                     }
                 }
@@ -109,7 +112,7 @@ private fun ColorCircle(
 ) {
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(30.dp)
             .clip(CircleShape)
             .background(color)
             .clickable(onClick = onClick)
