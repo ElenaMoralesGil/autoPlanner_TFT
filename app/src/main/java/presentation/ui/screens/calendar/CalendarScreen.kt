@@ -107,11 +107,6 @@ fun CalendarScreen(
         }
     }
 
-    // Load tasks when screen is displayed
-    LaunchedEffect(Unit) {
-        taskListViewModel.sendIntent(TaskListIntent.LoadTasks)
-    }
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -217,8 +212,6 @@ fun CalendarScreen(
                     when (effect) {
                         is TaskDetailEffect.NavigateBack -> {
                             selectedTaskId = null
-                            // Refresh the task list
-                            taskListViewModel.sendIntent(TaskListIntent.LoadTasks)
                         }
 
                         is TaskDetailEffect.NavigateToEdit -> {
@@ -272,8 +265,6 @@ fun CalendarScreen(
                                 selectedTaskId = taskToEdit?.id
                             }
                             taskToEdit = null
-                            // Refresh the task list
-                            taskListViewModel.sendIntent(TaskListIntent.LoadTasks)
                         }
 
                         is TaskEditEffect.ShowSnackbar -> {

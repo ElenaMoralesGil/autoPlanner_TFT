@@ -1,7 +1,11 @@
 package com.elena.autoplanner.presentation.navigation
 
 sealed class Screen(val route: String) {
-    object Tasks : Screen("tasks")
+    object Tasks : Screen("tasks?listId={listId}") {
+        fun createRoute(listId: Long? = null): String {
+            return if (listId != null) "tasks?listId=$listId" else "tasks"
+        }
+    }
     object Calendar : Screen("calendar")
     object Profile : Screen("profile")
     object More : Screen("more")

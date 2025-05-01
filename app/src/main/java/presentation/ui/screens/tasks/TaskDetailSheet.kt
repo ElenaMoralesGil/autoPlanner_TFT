@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
+import android.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.elena.autoplanner.presentation.effects.TaskDetailEffect
 import com.elena.autoplanner.presentation.intents.TaskDetailIntent
 import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.SubtasksSection
 import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.TaskConfigDisplay
@@ -49,14 +51,14 @@ fun TaskDetailSheet(
     LaunchedEffect(viewModel) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
-                is com.elena.autoplanner.presentation.effects.TaskDetailEffect.NavigateBack -> {
+                is TaskDetailEffect.NavigateBack -> {
                     onDismiss()
                 }
 
-                is com.elena.autoplanner.presentation.effects.TaskDetailEffect.NavigateToEdit -> {
+                is TaskDetailEffect.NavigateToEdit -> {
                 }
 
-                is com.elena.autoplanner.presentation.effects.TaskDetailEffect.ShowSnackbar -> {
+                is TaskDetailEffect.ShowSnackbar -> {
                 }
             }
         }
@@ -116,7 +118,10 @@ fun TaskDetailSheet(
                     duration = task.durationConf,
                     reminder = task.reminderPlan,
                     repeat = task.repeatPlan,
-                    priority = task.priority
+                    priority = task.priority,
+                    listName = task.listName,
+                    sectionName = task.sectionName,
+                    listColor = task.listColor as Color?,
                 )
 
                 SubtasksSection(

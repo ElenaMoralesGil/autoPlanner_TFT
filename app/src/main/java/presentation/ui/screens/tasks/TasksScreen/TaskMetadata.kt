@@ -115,6 +115,14 @@ fun TaskMetadata(task: Task, modifier: Modifier = Modifier) {
             )
         }
 
+        if (task.listId != null) {
+            TaskChip(
+                icon = painterResource(R.drawable.ic_lists),
+                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                text = task.listName ?: "List"
+            )
+        }
+
         if (task.subtasks.isNotEmpty()) {
             TaskChip(
                 icon = painterResource(R.drawable.ic_subtasks),

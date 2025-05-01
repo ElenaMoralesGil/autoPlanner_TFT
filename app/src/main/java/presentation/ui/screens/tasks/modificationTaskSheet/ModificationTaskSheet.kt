@@ -160,7 +160,7 @@ fun ModificationTaskSheet(
                             } catch (e: Exception) {
                                 null
                             }
-                        }
+                        } as android.graphics.Color?
                     )
                 }
             }

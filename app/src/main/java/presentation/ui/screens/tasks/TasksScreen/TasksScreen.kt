@@ -29,17 +29,21 @@ import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 @Composable
 fun TasksScreen(
     onNavigateToPlanner: () -> Unit,
+    onNavigateToList: (Long?) -> Unit,
+    listViewModel: TaskListViewModel = koinViewModel(),
 ) {
-    // Use TaskListViewModel as the main ViewModel for this screen
-    val listViewModel: TaskListViewModel = koinViewModel()
 
-    // State management
+    val currentListId by listViewModel.state.map { it?.currentListId }
+        .collectAsState(initial = null)
+    val currentListName by listViewModel.state.map { it?.currentListName }
+        .collectAsState(initial = null)
     val state by listViewModel.state.collectAsState()
     var showAddEditSheet by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
@@ -57,13 +61,11 @@ fun TasksScreen(
                 is TaskListEffect.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(effect.message)
                 }
+
+                is TaskListEffect.ShowEditListDialog -> TODO()
+                is TaskListEffect.ShowEditSectionsDialog -> TODO()
             }
         }
-    }
-
-    // Initial load of tasks
-    LaunchedEffect(Unit) {
-        listViewModel.sendIntent(TaskListIntent.LoadTasks)
     }
 
     Scaffold(
@@ -73,13 +75,18 @@ fun TasksScreen(
             state?.let {
                 TasksTopBar(
                     state = it,
+                    currentListName = currentListName,
                     onStatusSelected = { status ->
                         listViewModel.sendIntent(TaskListIntent.UpdateStatusFilter(status))
                     },
                     onTimeFrameSelected = { timeFrame ->
                         listViewModel.sendIntent(TaskListIntent.UpdateTimeFrameFilter(timeFrame))
                     },
-                    onPlannerClick = onNavigateToPlanner
+                    onPlannerClick = onNavigateToPlanner,
+                    onShowAllTasks = { listViewModel.sendIntent(TaskListIntent.ViewAllTasks) },
+                    onEditList = { listViewModel.sendIntent(TaskListIntent.RequestEditList) },
+                    onEditSections = { listViewModel.sendIntent(TaskListIntent.RequestEditSections) }
+
                 )
             }
         },
@@ -134,8 +141,7 @@ fun TasksScreen(
                 when (effect) {
                     is TaskDetailEffect.NavigateBack -> {
                         selectedTaskId = null
-                        // Refresh task list to reflect changes
-                        listViewModel.sendIntent(TaskListIntent.LoadTasks)
+
                     }
 
                     is TaskDetailEffect.NavigateToEdit -> {
@@ -181,8 +187,6 @@ fun TasksScreen(
                             selectedTaskId = taskToEdit?.id
                         }
                         taskToEdit = null
-                        // Refresh task list to reflect changes
-                        listViewModel.sendIntent(TaskListIntent.LoadTasks)
                     }
 
                     is TaskEditEffect.ShowSnackbar -> {

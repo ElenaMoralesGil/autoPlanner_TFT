@@ -1,18 +1,24 @@
 package com.elena.autoplanner.di
 
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.data.local.MIGRATION_6_7
 import com.elena.autoplanner.data.local.MIGRATION_7_8
+import com.elena.autoplanner.data.local.MIGRATION_8_9
 import com.elena.autoplanner.data.local.TaskDatabase
+import com.elena.autoplanner.data.local.dao.ListDao
 import com.elena.autoplanner.data.local.dao.ReminderDao
 import com.elena.autoplanner.data.local.dao.RepeatConfigDao
+import com.elena.autoplanner.data.local.dao.SectionDao
 import com.elena.autoplanner.data.local.dao.SubtaskDao
 import com.elena.autoplanner.data.local.dao.TaskDao
+import com.elena.autoplanner.data.repositories.ListRepositoryImpl
 import com.elena.autoplanner.data.repositories.TaskRepositoryImpl
 import com.elena.autoplanner.data.repositories.UserRepositoryImpl
+import com.elena.autoplanner.domain.repositories.ListRepository
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.repositories.UserRepository
 import com.elena.autoplanner.domain.usecases.auth.DeleteAccountUseCase
@@ -21,6 +27,13 @@ import com.elena.autoplanner.domain.usecases.auth.LoginUseCase
 import com.elena.autoplanner.domain.usecases.auth.LogoutUseCase
 import com.elena.autoplanner.domain.usecases.auth.ReauthenticateUseCase
 import com.elena.autoplanner.domain.usecases.auth.RegisterUseCase
+import com.elena.autoplanner.domain.usecases.lists.GetAllListsUseCase
+import com.elena.autoplanner.domain.usecases.lists.GetAllSectionsUseCase
+import com.elena.autoplanner.domain.usecases.lists.GetListsInfoUseCase
+import com.elena.autoplanner.domain.usecases.lists.GetSectionsUseCase
+import com.elena.autoplanner.domain.usecases.lists.GetTasksByListUseCase
+import com.elena.autoplanner.domain.usecases.lists.SaveListUseCase
+import com.elena.autoplanner.domain.usecases.lists.SaveSectionUseCase
 import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.planner.OverdueTaskHandler
 import com.elena.autoplanner.domain.usecases.planner.RecurrenceExpander
@@ -45,6 +58,7 @@ import com.elena.autoplanner.domain.usecases.tasks.ValidateTaskUseCase
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.EditProfileViewModel
 import com.elena.autoplanner.presentation.viewmodel.LoginViewModel
+import com.elena.autoplanner.presentation.viewmodel.MoreViewModel
 import com.elena.autoplanner.presentation.viewmodel.PlannerViewModel
 import com.elena.autoplanner.presentation.viewmodel.ProfileViewModel
 import com.elena.autoplanner.presentation.viewmodel.RegisterViewModel
@@ -83,7 +97,7 @@ val appModule = module {
             TaskDatabase::class.java,
             "task_database"
         )
-            .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
+            .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
             .addCallback(roomCallback)
             .build()
     }
@@ -92,6 +106,8 @@ val appModule = module {
     single<ReminderDao> { get<TaskDatabase>().reminderDao() }
     single<RepeatConfigDao> { get<TaskDatabase>().repeatConfigDao() }
     single<SubtaskDao> { get<TaskDatabase>().subtaskDao() }
+    single<ListDao> { get<TaskDatabase>().listDao() }
+    single<SectionDao> { get<TaskDatabase>().sectionDao() }
 
     single<TaskRepository> {
         TaskRepositoryImpl(
@@ -109,6 +125,13 @@ val appModule = module {
     single<FirebaseFirestore> { Firebase.firestore }
     single<CoroutineScope> { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     single<UserRepository> { UserRepositoryImpl(firebaseAuth = get()) }
+    single<ListRepository> {
+        ListRepositoryImpl(
+            context = androidContext(),
+            listDao = get(),
+            sectionDao = get()
+        )
+    } // Add ListRepository
 }
 
 
@@ -151,6 +174,13 @@ val useCaseModule = module {
     single { GetProfileStatsUseCase() }
     single { UpdateProfileUseCase(get()) }
 
+    single { GetTasksByListUseCase(get(), get()) }
+    single { GetListsInfoUseCase(get()) }
+    single { GetAllListsUseCase(get()) }
+    single { SaveListUseCase(get()) }
+    single { GetSectionsUseCase(get()) }
+    single { GetAllSectionsUseCase(get()) }
+    single { SaveSectionUseCase(get()) }
 }
 
 val viewModelModule = module {
@@ -163,17 +193,19 @@ val viewModelModule = module {
             saveTaskUseCase = get()
         )
     }
-
-    viewModel {
+    viewModel { MoreViewModel(get(), get()) } // Add MoreViewModel
+    viewModel { (handle: SavedStateHandle) -> // Koin provides SavedStateHandle
         TaskListViewModel(
-            getTasksUseCase = get(),
+            getTasksByListUseCase = get(),
             filterTasksUseCase = get(),
             toggleTaskCompletionUseCase = get(),
             deleteTaskUseCase = get(),
-            saveTaskUseCase = get()
+            saveTaskUseCase = get(),
+            saveListUseCase = get(),
+            saveSectionUseCase = get(),
+            savedStateHandle = handle // Pass the handle
         )
     }
-
     viewModel { (taskId: Int) ->
         TaskDetailViewModel(
             getTaskUseCase = get(),
@@ -186,13 +218,15 @@ val viewModelModule = module {
         )
     }
 
-    viewModel {
+    viewModel { (taskId: Int) -> // TaskEditViewModel might also need SavedStateHandle if it depends on nav args
         TaskEditViewModel(
             getTaskUseCase = get(),
-            saveTaskUseCase = get()
+            saveTaskUseCase = get(),
+            getAllListsUseCase = get(),
+            getAllSectionsUseCase = get()
+            // savedStateHandle = get() // Add if needed
         )
     }
-
     viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
     viewModel { LoginViewModel(get()) }
     viewModel { RegisterViewModel(get()) }

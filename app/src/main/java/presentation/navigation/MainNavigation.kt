@@ -2,9 +2,12 @@ package com.elena.autoplanner.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.elena.autoplanner.presentation.ui.screens.auth.LoginScreen
 import com.elena.autoplanner.presentation.ui.screens.auth.RegisterScreen
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarScreen
@@ -25,10 +28,23 @@ fun MainNavigation(
         startDestination = Screen.Tasks.route,
         modifier = modifier
     ) {
-        composable(Screen.Tasks.route) {
+        composable(
+            route = Screen.Tasks.route,
+            arguments = listOf(navArgument("listId") {
+                type = NavType.StringType // Read as String
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            // ViewModel will get listId via SavedStateHandle automatically
             TasksScreen(
-                onNavigateToPlanner = {
-                    navController.navigate(Screen.Planner.route)
+                onNavigateToPlanner = { navController.navigate(Screen.Planner.route) },
+                // This callback might not be needed if ViewModel handles navigation state
+                onNavigateToList = { listId ->
+                    navController.navigate(Screen.Tasks.createRoute(listId)) {
+                        // Optional: Configure popUpTo behavior if needed
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -45,7 +61,21 @@ fun MainNavigation(
             )
         }
         composable(Screen.More.route) {
-            MoreScreen()
+            MoreScreen(
+                onNavigateToTasks = { listId ->
+                    // Navigate to Tasks screen, passing the listId
+                    navController.navigate(Screen.Tasks.createRoute(listId)) {
+                        // Pop up to the start destination of the graph to avoid building up backstack.
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        // Avoid multiple copies of the same destination when reselecting the same item
+                        launchSingleTop = true
+                        // Restore state when reselecting a previously visited item
+                        restoreState = true
+                    }
+                }
+            )
         }
         composable(Screen.Planner.route) {
             AutoPlannerScreen(
