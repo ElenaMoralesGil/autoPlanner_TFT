@@ -62,7 +62,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = koinViewModel(),
     onNavigateToLogin: () -> Unit,
     onNavigateToRegister: () -> Unit,
-    // onNavigateToEditProfile: () -> Unit // Add later
+    onNavigateToEditProfile: () -> Unit, // Add later
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -78,7 +78,9 @@ fun ProfileScreen(
                 is ProfileEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
                 is ProfileEffect.NavigateToLoginScreen -> onNavigateToLogin()
                 is ProfileEffect.NavigateToRegisterScreen -> onNavigateToRegister()
-                is ProfileEffect.NavigateToEditProfileScreen -> {} // onNavigateToEditProfile()
+                is ProfileEffect.NavigateToEditProfileScreen -> {
+                    onNavigateToEditProfile()
+                } // onNavigateToEditProfile()
                 is ProfileEffect.ReAuthenticationRequired -> {
                     snackbarHostState.showSnackbar("Please log in again to delete your account.")
                     onNavigateToLogin() // Force re-login
@@ -325,12 +327,12 @@ fun UserInfoSection(user: User) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(8.dp))
         Text(
-            text = user.displayName ?: "Welcome", // Display name or default
+            text = "Welcome",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            text = user.email ?: "No email",
+            text = (user.displayName ?: user.email).toString(),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

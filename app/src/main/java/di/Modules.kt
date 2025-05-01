@@ -19,6 +19,7 @@ import com.elena.autoplanner.domain.usecases.auth.DeleteAccountUseCase
 import com.elena.autoplanner.domain.usecases.auth.GetCurrentUserUseCase
 import com.elena.autoplanner.domain.usecases.auth.LoginUseCase
 import com.elena.autoplanner.domain.usecases.auth.LogoutUseCase
+import com.elena.autoplanner.domain.usecases.auth.ReauthenticateUseCase
 import com.elena.autoplanner.domain.usecases.auth.RegisterUseCase
 import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.planner.OverdueTaskHandler
@@ -28,6 +29,7 @@ import com.elena.autoplanner.domain.usecases.planner.TaskPlacer
 import com.elena.autoplanner.domain.usecases.planner.TaskPrioritizer
 import com.elena.autoplanner.domain.usecases.planner.TimelineManager
 import com.elena.autoplanner.domain.usecases.profile.GetProfileStatsUseCase
+import com.elena.autoplanner.domain.usecases.profile.UpdateProfileUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
@@ -41,6 +43,7 @@ import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.UpdateTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ValidateTaskUseCase
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
+import com.elena.autoplanner.presentation.viewmodel.EditProfileViewModel
 import com.elena.autoplanner.presentation.viewmodel.LoginViewModel
 import com.elena.autoplanner.presentation.viewmodel.PlannerViewModel
 import com.elena.autoplanner.presentation.viewmodel.ProfileViewModel
@@ -144,8 +147,10 @@ val useCaseModule = module {
     single { RegisterUseCase(get()) }
     single { LogoutUseCase(get()) }
     single { DeleteAccountUseCase(get()) }
-    // Profile Use Cases
+    single { ReauthenticateUseCase(get()) }
     single { GetProfileStatsUseCase() }
+    single { UpdateProfileUseCase(get()) }
+
 }
 
 val viewModelModule = module {
@@ -191,4 +196,5 @@ val viewModelModule = module {
     viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
     viewModel { LoginViewModel(get()) }
     viewModel { RegisterViewModel(get()) }
+    viewModel { EditProfileViewModel(get(), get(), get()) }
 }

@@ -9,6 +9,7 @@ import com.elena.autoplanner.presentation.ui.screens.auth.LoginScreen
 import com.elena.autoplanner.presentation.ui.screens.auth.RegisterScreen
 import com.elena.autoplanner.presentation.ui.screens.calendar.CalendarScreen
 import com.elena.autoplanner.presentation.ui.screens.more.MoreScreen
+import com.elena.autoplanner.presentation.ui.screens.profile.EditProfileScreen
 import com.elena.autoplanner.presentation.ui.screens.profile.ProfileScreen
 
 import com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen.TasksScreen
@@ -37,8 +38,10 @@ fun MainNavigation(
         composable(Screen.Profile.route) {
             ProfileScreen(
                 onNavigateToLogin = { navController.navigate(Screen.Login.route) },
-                onNavigateToRegister = { navController.navigate(Screen.Register.route) }
-                // Add onNavigateToEditProfile later
+                onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+                onNavigateToEditProfile = {
+                    navController.navigate(Screen.EditProfile.route)
+                }
             )
         }
         composable(Screen.More.route) {
@@ -70,6 +73,16 @@ fun MainNavigation(
                         popUpTo(Screen.Register.route) {
                             inclusive = true
                         }
+                    }
+                }
+            )
+        }
+        composable(Screen.EditProfile.route) {
+            EditProfileScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onReAuthenticationNeeded = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.EditProfile.route) { inclusive = true }
                     }
                 }
             )
