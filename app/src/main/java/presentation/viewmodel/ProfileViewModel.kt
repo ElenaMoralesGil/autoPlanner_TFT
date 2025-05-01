@@ -96,20 +96,38 @@ class ProfileViewModel(
         viewModelScope.launch {
             setState { copy(isLoading = true, error = null) }
             try {
-                // 1. Get the current tasks
+                // *** Step 1: Fetch the LATEST user data FIRST ***
+                val latestUser = getCurrentUserUseCase().firstOrNull()
+                if (latestUser == null) {
+                    // Handle case where user might have logged out in the meantime
+                    setState {
+                        copy(
+                            isLoading = false,
+                            error = "User not logged in.",
+                            user = null,
+                            stats = null
+                        )
+                    }
+                    return@launch
+                }
+                // Update the user state immediately with the latest fetched data
+                setState { copy(user = latestUser) } // This ensures ProfileScreen gets the latest name
+
+                // *** Step 2: Fetch tasks (assuming it uses the current user context implicitly) ***
                 val tasks = getTasksUseCase().firstOrNull()
                 if (tasks != null) {
-                    // 2. Calculate stats using the fetched tasks
-                    calculateAndSetStats(tasks)
+                    // *** Step 3: Calculate stats based on fetched tasks ***
+                    calculateAndSetStats(tasks) // This will set isLoading = false inside
                 } else {
-                    setState { copy(isLoading = false, error = "Could not load tasks.") }
+                    setState { copy(isLoading = false, error = "Could not load tasks for stats.") }
                 }
             } catch (e: Exception) {
+                Log.e("ProfileViewModel", "Error in loadStats", e)
                 setState {
                     copy(
-                        error = "Failed to load stats: ${e.message}",
+                        error = "Failed to load profile data: ${e.message}",
                         isLoading = false,
-                        stats = null
+                        stats = null // Clear stats on error
                     )
                 }
                 setEffect(ProfileEffect.ShowSnackbar("Error loading profile statistics."))

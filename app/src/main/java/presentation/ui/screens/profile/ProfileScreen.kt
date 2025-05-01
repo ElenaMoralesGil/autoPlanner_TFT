@@ -1,6 +1,7 @@
 package com.elena.autoplanner.presentation.ui.screens.profile
 
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -37,7 +38,6 @@ import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-// Add this import at the top of ProfileScreen.kt
 import com.patrykandpatrick.vico.compose.m3.style.m3ChartStyle
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
@@ -67,8 +67,14 @@ fun ProfileScreen(
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(state?.user) {
-        if (state?.user != null && state?.stats == null && state?.isLoading == false) {
+
+    LaunchedEffect(state?.user?.uid) { // Key on UID to trigger on login/logout
+        if (state?.user != null) {
+            // User is logged in, ensure data is loaded/refreshed
+            Log.d(
+                "ProfileScreen",
+                "User detected (UID: ${state?.user?.uid}), sending LoadData intent."
+            )
             viewModel.sendIntent(ProfileIntent.LoadData)
         }
     }
