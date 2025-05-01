@@ -38,6 +38,9 @@ fun Task.toFirebaseMap(userId: String): Map<String, Any?> {
         "scheduledStartDateTime" to scheduledStartDateTime?.toTimestamp(),
         "scheduledEndDateTime" to scheduledEndDateTime?.toTimestamp(),
         "completionDateTime" to completionDateTime?.toTimestamp(),
+        "listId" to this.listId,
+        "sectionId" to this.sectionId,
+        "displayOrder" to this.displayOrder,
         "lastUpdated" to FieldValue.serverTimestamp()
     ).filterValues { it != null }
 
@@ -119,6 +122,9 @@ fun DocumentSnapshot.toTask(localIdFallback: Int? = null): Task? {
             .scheduledStartDateTime((data["scheduledStartDateTime"] as? Timestamp)?.toLocalDateTime())
             .scheduledEndDateTime((data["scheduledEndDateTime"] as? Timestamp)?.toLocalDateTime())
             .completionDateTime((data["completionDateTime"] as? Timestamp)?.toLocalDateTime()) // <-- Add this line
+            .listId(getLong("listId")) // getLong returns null if field doesn't exist or is not Long
+            .sectionId(getLong("sectionId"))
+            .displayOrder(getLong("displayOrder")?.toInt() ?: 0)
             .build()
     } catch (e: Exception) {
         Log.e("FirebaseMapper", "Error mapping Firestore document ${id} to Task", e)

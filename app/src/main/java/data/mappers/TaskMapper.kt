@@ -27,6 +27,8 @@ class TaskMapper {
         reminders: List<ReminderEntity> = emptyList(),
         repeatConfigs: List<RepeatConfigEntity> = emptyList(),
         subtasks: List<SubtaskEntity> = emptyList(),
+        listName: String? = null,
+        sectionName: String? = null,
     ): Task {
         val reminderMapper = ReminderMapper()
         val repeatConfigMapper = RepeatConfigMapper()
@@ -69,6 +71,8 @@ class TaskMapper {
             .scheduledStartDateTime(taskEntity.scheduledStartDateTime)
             .scheduledEndDateTime(taskEntity.scheduledEndDateTime)
             .completionDateTime(taskEntity.completionDateTime)
+            .listName(listName)
+            .sectionName(sectionName)
             .build()
     }
 
@@ -87,20 +91,12 @@ class TaskMapper {
             scheduledStartDateTime = domain.scheduledStartDateTime,
             scheduledEndDateTime = domain.scheduledEndDateTime,
             completionDateTime = domain.completionDateTime,
-            lastUpdated = System.currentTimeMillis()
+            lastUpdated = System.currentTimeMillis(),
+            listId = domain.listId,
+            sectionId = domain.sectionId,
+            displayOrder = domain.displayOrder,
+            // Map userId and firestoreId if they exist on the domain model (needed for sync)
         )
-    }
-
-    fun TaskWithRelations.toDomainTask(): Task {
-        val taskMapper = TaskMapper() // Or inject if needed elsewhere
-        val domainTask = taskMapper.mapToDomain(
-            taskEntity = this.task,
-            reminders = this.reminders,
-            repeatConfigs = this.repeatConfigs,
-            subtasks = this.subtasks
-        )
-        // Ensure the domain Task's ID is the local Room ID
-        return domainTask.copy(id = this.task.id)
     }
 }
 

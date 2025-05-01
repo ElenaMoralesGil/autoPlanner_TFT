@@ -59,8 +59,6 @@ class TaskRepositoryImpl(
         try {
             Log.w(TAG, "deleteAllLocalOnly: Deleting tasks where userId is NULL.")
             taskDao.deleteAllLocalOnlyTasks()
-            // Note: This assumes related entities (reminders, etc.) for local-only tasks
-            // either don't exist or are handled by cascade delete correctly.
             TaskResult.Success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "deleteAllLocalOnly error", e)
@@ -559,6 +557,7 @@ class TaskRepositoryImpl(
                 reminderDao.deleteRemindersForTask(localTaskId)
                 repeatConfigDao.deleteRepeatConfigsForTask(localTaskId)
                 subtaskDao.deleteSubtasksForTask(localTaskId)
+
 
                 // Insert new local relations based on the domain model
                 task.reminderPlan?.let {

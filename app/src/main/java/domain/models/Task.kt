@@ -1,5 +1,6 @@
 package com.elena.autoplanner.domain.models
 
+import androidx.compose.ui.graphics.Color
 import com.elena.autoplanner.domain.exceptions.TaskValidationException
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -36,6 +37,12 @@ data class Task private constructor(
     @Transient var internalFlags: TaskInternalFlags? = null,
     val scheduledStartDateTime: LocalDateTime? = null,
     val scheduledEndDateTime: LocalDateTime? = null,
+    val listId: Long? = null,
+    val sectionId: Long? = null,
+    val displayOrder: Int = 0,
+    @Transient val listName: String? = null, // Transient: Not stored in DB directly
+    @Transient val sectionName: String? = null, // Transient
+    @Transient val listColor: Color? = null, // Transient
 
     ) {
     fun validate() {
@@ -119,6 +126,13 @@ data class Task private constructor(
         private var scheduledStartDateTime: LocalDateTime? = null
         private var scheduledEndDateTime: LocalDateTime? = null
 
+        private var listId: Long? = null
+        private var sectionId: Long? = null
+        private var displayOrder: Int = 0
+        private var listName: String? = null
+        private var sectionName: String? = null
+        private var listColor: Color? = null
+
         fun id(id: Int) = apply { this.id = id }
         fun name(name: String) = apply { this.name = name }
         fun isCompleted(isCompleted: Boolean) = apply { this.isCompleted = isCompleted }
@@ -139,7 +153,15 @@ data class Task private constructor(
         fun scheduledEndDateTime(dateTime: LocalDateTime?) =
             apply { this.scheduledEndDateTime = dateTime }
 
+        fun listId(listId: Long?) = apply { this.listId = listId }
+        fun sectionId(sectionId: Long?) = apply { this.sectionId = sectionId }
+        fun displayOrder(displayOrder: Int) = apply { this.displayOrder = displayOrder }
+        fun listName(name: String?) = apply { this.listName = name }
+        fun sectionName(name: String?) = apply { this.sectionName = name }
+        fun listColor(color: Color?) = apply { this.listColor = color }
+
         fun build(): Task {
+            val finalSectionId = if (listId == null) null else sectionId
             val effectiveStartDate = startDateConf ?: TimePlanning(
                 dateTime = LocalDateTime.now(),
                 dayPeriod = DayPeriod.NONE
@@ -159,6 +181,12 @@ data class Task private constructor(
                 scheduledStartDateTime = scheduledStartDateTime,
                 scheduledEndDateTime = scheduledEndDateTime,
                 completionDateTime = completionDateTime,
+                listId = listId,
+                sectionId = finalSectionId,
+                displayOrder = displayOrder,
+                listName = listName,
+                sectionName = sectionName,
+                listColor = listColor,
 
             )
             task.validate()
@@ -189,6 +217,12 @@ data class Task private constructor(
                 .scheduledStartDateTime(task.scheduledStartDateTime)
                 .scheduledEndDateTime(task.scheduledEndDateTime)
                 .completionDateTime(task.completionDateTime)
+                .listId(task.listId)
+                .sectionId(task.sectionId)
+                .displayOrder(task.displayOrder)
+                .listName(task.listName)
+                .sectionName(task.sectionName)
+                .listColor(task.listColor)
         }
     }
 }
