@@ -12,4 +12,7 @@ data class TaskListState(
     val currentListId: Long? = null, // ID of the list being viewed (null for default view)
     val currentListName: String? = null,
     val currentListColor: String? = null, // Color of the list being viewed
+    val currentSectionName: String? = null,
+    val currentSectionId: Long? = null, // ID of the section being viewed
+
 )

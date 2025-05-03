@@ -193,7 +193,7 @@ val viewModelModule = module {
             saveTaskUseCase = get()
         )
     }
-    viewModel { MoreViewModel(get(), get()) } // Add MoreViewModel
+    viewModel { MoreViewModel(get(), get(), get(), get()) } // Add MoreViewModel
     viewModel { (handle: SavedStateHandle) -> // Koin provides SavedStateHandle
         TaskListViewModel(
             getTasksByListUseCase = get(),
@@ -203,6 +203,7 @@ val viewModelModule = module {
             saveTaskUseCase = get(),
             saveListUseCase = get(),
             saveSectionUseCase = get(),
+            getAllSectionsUseCase = get(),
             savedStateHandle = handle // Pass the handle
         )
     }
@@ -223,7 +224,9 @@ val viewModelModule = module {
             getTaskUseCase = get(),
             saveTaskUseCase = get(),
             getAllListsUseCase = get(),
-            getAllSectionsUseCase = get()
+            getAllSectionsUseCase = get(),
+            saveListUseCase = get(),      // Add this
+            saveSectionUseCase = get()
             // savedStateHandle = get() // Add if needed
         )
     }

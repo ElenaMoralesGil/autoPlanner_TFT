@@ -28,21 +28,25 @@ fun MainNavigation(
         modifier = modifier
     ) {
         composable(
-            route = Screen.Tasks.route,
-            arguments = listOf(navArgument("listId") {
-                type = NavType.StringType // Read as String
-                nullable = true
-                defaultValue = null
-            })
-        ) { backStackEntry ->
+            route = Screen.Tasks.route, // Use the updated route definition
+            arguments = listOf(
+                navArgument("listId") {
+                    type = NavType.StringType // Read as String
+                    nullable = true
+                    defaultValue = null
+                },
+                // Add argument for sectionId
+                navArgument("sectionId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry -> // <-- Correct: backStackEntry is the parameter here
+            // Call TasksScreen directly inside the composable's content lambda
             TasksScreen(
                 onNavigateToPlanner = { navController.navigate(Screen.Planner.route) },
-                // This callback might not be needed if ViewModel handles navigation state
-                onNavigateToList = { listId ->
-                    navController.navigate(Screen.Tasks.createRoute(listId)) {
-                        launchSingleTop = true
-                    }
-                }
+                navController = navController // Pass the navController
             )
         }
         composable(Screen.Calendar.route) {

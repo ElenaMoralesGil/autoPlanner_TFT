@@ -87,14 +87,22 @@ fun MainApp() {
                 // --- Use the new Drawer Content composable ---
                 MoreDrawerContent(
                     drawerState = drawerState,
-                    onNavigateToTasks = { listId ->
-                        // Navigation logic is now handled here or passed up
-                        navController.navigate(Screen.Tasks.createRoute(listId)) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                    onNavigateToTasks = { listId, sectionId -> // listId will be Long?, sectionId will be Long?
+                        scope.launch {
+                            Log.d(
+                                "MainActivity",
+                                "onNavigateToTasks triggered: listId=$listId, sectionId=$sectionId"
+                            ) // <-- ADD LOGGING
+                            drawerState.close()
+                            val route = Screen.Tasks.createRoute(listId, sectionId)
+                            Log.d("MainActivity", "Navigating to route: $route") // <-- ADD LOGGING
+                            navController.navigate(route) { // Use the generated route
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
                     }
                 )

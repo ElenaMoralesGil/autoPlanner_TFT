@@ -7,4 +7,6 @@ sealed class MoreIntent : Intent {
     data class CreateList(val name: String, val colorHex: String) : MoreIntent()
     data class ToggleListExpansion(val listId: Long) : MoreIntent()
     data object RequestCreateList : MoreIntent()
+    data class CreateSection(val listId: Long, val sectionName: String) : MoreIntent()
+    data class LoadSections(val listId: Long) : MoreIntent()
 }

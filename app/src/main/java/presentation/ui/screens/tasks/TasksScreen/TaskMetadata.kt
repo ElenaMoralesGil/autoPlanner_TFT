@@ -107,19 +107,19 @@ fun TaskMetadata(task: Task, modifier: Modifier = Modifier) {
             )
         }
 
+        task.listName?.let { listName ->
+            TaskChip(
+                icon = painterResource(R.drawable.ic_lists),
+                iconTint = task.listColor ?: MaterialTheme.colorScheme.secondary,
+                text = listName
+            )
+        }
+
         task.durationConf?.totalMinutes?.takeIf { it > 0 }?.let {
             TaskChip(
                 icon = painterResource(R.drawable.ic_duration),
                 iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                 text = DateTimeFormatters.formatDurationShort(task.durationConf)
-            )
-        }
-
-        if (task.listId != null) {
-            TaskChip(
-                icon = painterResource(R.drawable.ic_lists),
-                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                text = task.listName ?: "List"
             )
         }
 

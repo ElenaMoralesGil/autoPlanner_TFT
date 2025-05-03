@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.Priority
+import com.elena.autoplanner.domain.models.ReminderMode
 import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
 import com.elena.autoplanner.domain.models.TimePlanning
@@ -67,7 +68,8 @@ fun TaskConfigDisplay(
                 )
             }
 
-            duration?.let {
+            duration?.takeIf { it.totalMinutes != null && it.totalMinutes > 0 }
+                ?.let { // Only show if > 0
                 ConfigItem(
                     painter = painterResource(R.drawable.ic_duration),
                     label = "Duration",
@@ -75,7 +77,7 @@ fun TaskConfigDisplay(
                 )
             }
 
-            reminder?.let {
+            reminder?.takeIf { it.mode != ReminderMode.NONE }?.let { // Only show if not NONE
                 ConfigItem(
                     painter = painterResource(R.drawable.ic_reminder),
                     label = "Reminder",
@@ -83,14 +85,14 @@ fun TaskConfigDisplay(
                 )
             }
 
-            repeat?.let {
+            repeat?.takeIf { it.frequencyType != com.elena.autoplanner.domain.models.FrequencyType.NONE }
+                ?.let { // Only show if not NONE
                 ConfigItem(
                     painter = painterResource(R.drawable.ic_repeat),
                     label = "Repeat",
                     value = formatRepeatForDisplay(it)
                 )
             }
-
             if (priority != Priority.NONE) {
                 ConfigItem(
                     painter = painterResource(R.drawable.priority),
@@ -101,13 +103,14 @@ fun TaskConfigDisplay(
                 )
             }
 
-            listName?.let {
+
+            listName?.let { name ->
+                val displayValue = if (sectionName != null) "$name / $sectionName" else name
                 ConfigItem(
                     painter = painterResource(R.drawable.ic_lists),
                     label = "List",
-                    value = if (sectionName != null) "$it / $sectionName" else it,
-                    color = (listColor
-                        ?: MaterialTheme.colorScheme.secondary)
+                    value = displayValue,
+                    color = listColor ?: MaterialTheme.colorScheme.secondary
                 )
             }
         }

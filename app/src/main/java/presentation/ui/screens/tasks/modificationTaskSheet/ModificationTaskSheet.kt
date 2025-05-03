@@ -43,6 +43,8 @@ import com.elena.autoplanner.presentation.ui.screens.tasks.TimeConfigSheet
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import kotlinx.coroutines.launch
 import androidx.core.graphics.toColorInt
+import com.elena.autoplanner.presentation.ui.screens.more.CreateEditListDialog
+import com.elena.autoplanner.presentation.ui.screens.more.CreateEditSectionDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +64,8 @@ fun ModificationTaskSheet(
     var showListSelectionDialog by remember { mutableStateOf(false) }
     var showSectionSelectionDialog by remember { mutableStateOf(false) }
     var listForSectionSelection by remember { mutableStateOf<TaskList?>(null) }
-
+    var showCreateListDialog by remember { mutableStateOf(false) }
+    var showCreateSectionDialog by remember { mutableStateOf(false) }
     LaunchedEffect(showListSelectionDialog) {
         if (showListSelectionDialog) {
             taskEditViewModel.sendIntent(TaskEditIntent.LoadListsForSelection)
@@ -182,9 +185,13 @@ fun ModificationTaskSheet(
                             showSectionSelectionDialog = true
                         } else {
                             listForSectionSelection = null
+                            showSectionSelectionDialog =
+                                false // Hide section dialog if no list selected
                         }
                     },
-                    onCreateNewList = { /* TODO: Open CreateEditListDialog */
+                    onCreateNewList = {
+                        showListSelectionDialog = false // Close selection dialog
+                        showCreateListDialog = true // Open creation dialog
                     }
                 )
             }
@@ -200,9 +207,46 @@ fun ModificationTaskSheet(
                         taskEditViewModel.sendIntent(TaskEditIntent.AssignSection(section?.id))
                         showSectionSelectionDialog = false
                     },
-                    onCreateNewSection = { /* TODO: Open CreateEditSectionDialog */ }
+                    onCreateNewSection = {
+                        showSectionSelectionDialog = false // Close selection dialog
+                        showCreateSectionDialog = true // Open creation dialog
+                    }
                 )
             }
+
+            if (showCreateListDialog) {
+                CreateEditListDialog(
+                    onDismiss = { showCreateListDialog = false },
+                    onConfirm = { name, colorHex ->
+                        // Send intent to VM to create and assign
+                        taskEditViewModel.sendIntent(
+                            TaskEditIntent.CreateAndAssignList(
+                                name,
+                                colorHex
+                            )
+                        )
+                        showCreateListDialog = false
+                    }
+                )
+            }
+
+            if (showCreateSectionDialog && listForSectionSelection != null) {
+                CreateEditSectionDialog(
+                    listName = listForSectionSelection!!.name, // Pass list name for context
+                    onDismiss = { showCreateSectionDialog = false },
+                    onConfirm = { name ->
+                        // Send intent to VM to create and assign
+                        taskEditViewModel.sendIntent(
+                            TaskEditIntent.CreateAndAssignSection(
+                                name,
+                                listForSectionSelection!!.id
+                            )
+                        )
+                        showCreateSectionDialog = false
+                    }
+                )
+            }
+
             if (showSubtasksSection) {
                 AnimatedVisibility(visible = showSubtasksSection) {
                     Column {

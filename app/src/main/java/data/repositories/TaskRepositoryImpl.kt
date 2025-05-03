@@ -401,6 +401,10 @@ class TaskRepositoryImpl(
                     firestoreId = null,
                     lastUpdated = System.currentTimeMillis()
                 )
+                Log.d(
+                    TAG,
+                    "Saving Task Entity - ID: ${localEntity.id}, ListID: ${localEntity.listId}, SectionID: ${localEntity.sectionId}"
+                )
                 val savedLocalId = if (isNewTask) {
                     taskDao.insertTask(localEntity).toInt()
                 } else {
@@ -599,6 +603,23 @@ class TaskRepositoryImpl(
             reminders = this.reminders,
             repeatConfigs = this.repeatConfigs,
             subtasks = this.subtasks
+        )
+        // Crucially, ensure the domain Task's ID is the local Room ID
+        return domainTask.copy(id = this.task.id)
+    }
+    private fun TaskWithRelations.toDomainTask(listDetails: Map<Long, Pair<String, String?>> = emptyMap()): Task {
+        val listInfo = this.task.listId?.let { listDetails[it] }
+        val listName = listInfo?.first
+        val listColorHex = listInfo?.second // Get hex color
+
+        val domainTask = taskMapper.mapToDomain(
+            taskEntity = this.task,
+            reminders = this.reminders,
+            repeatConfigs = this.repeatConfigs,
+            subtasks = this.subtasks,
+            listName = listName, // Pass list name
+            // sectionName = sectionName, // TODO: Fetch section name if needed
+            listColorHex = listColorHex // Pass hex color
         )
         // Crucially, ensure the domain Task's ID is the local Room ID
         return domainTask.copy(id = this.task.id)

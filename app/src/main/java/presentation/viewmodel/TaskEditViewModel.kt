@@ -1,11 +1,16 @@
 package com.elena.autoplanner.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TaskList
+import com.elena.autoplanner.domain.models.TaskSection
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.lists.GetAllListsUseCase
 import com.elena.autoplanner.domain.usecases.lists.GetAllSectionsUseCase
+import com.elena.autoplanner.domain.usecases.lists.SaveListUseCase
+import com.elena.autoplanner.domain.usecases.lists.SaveSectionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.presentation.effects.TaskEditEffect
@@ -19,9 +24,12 @@ class TaskEditViewModel(
     private val saveTaskUseCase: SaveTaskUseCase,
     private val getAllListsUseCase: GetAllListsUseCase,
     private val getAllSectionsUseCase: GetAllSectionsUseCase,
+    private val saveListUseCase: SaveListUseCase,         // Inject
+    private val saveSectionUseCase: SaveSectionUseCase,
 ) : BaseTaskViewModel<TaskEditIntent, TaskEditState, TaskEditEffect>() {
 
     override fun createInitialState(): TaskEditState = TaskEditState()
+
 
     override suspend fun handleIntent(intent: TaskEditIntent) {
         when (intent) {
@@ -38,7 +46,6 @@ class TaskEditViewModel(
             is TaskEditIntent.RemoveSubtask -> removeSubtask(intent.subtaskId)
             is TaskEditIntent.SaveTask -> saveTask()
             is TaskEditIntent.Cancel -> setEffect(TaskEditEffect.NavigateBack)
-
             is TaskEditIntent.AssignList -> assignList(intent.listId)
             is TaskEditIntent.AssignSection -> assignSection(intent.sectionId)
             is TaskEditIntent.LoadListsForSelection -> loadListsForSelection()
@@ -47,46 +54,45 @@ class TaskEditViewModel(
                     it
                 )
             }
+
+            is TaskEditIntent.CreateAndAssignList -> createAndAssignList(
+                intent.name,
+                intent.colorHex
+            )
+
+            is TaskEditIntent.CreateAndAssignSection -> createAndAssignSection(
+                intent.name,
+                intent.listId
+            )
         }
     }
 
     private fun loadTask(taskId: Int) {
         if (taskId == 0) {
-            setState {
-                createInitialState().copy(
-                    isNewTask = true,
-                    isLoading = false,
-                    //startDateConf = com.elena.autoplanner.domain.models.TimePlanning(dateTime = LocalDateTime.now())
-                )
-            }
+            setState { createInitialState().copy(isNewTask = true, isLoading = false) }
             return
         }
-
         viewModelScope.launch {
             setState { copy(isLoading = true) }
-
             executeTaskOperation(
                 setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
                 operation = { getTaskUseCase(taskId) },
                 onSuccess = { task ->
                     setState {
                         copy(
-                            isLoading = false,
-                            isNewTask = false,
-                            taskId = task.id,
-                            name = task.name,
-                            priority = task.priority,
-                            startDateConf = task.startDateConf,
-                            endDateConf = task.endDateConf,
-                            durationConf = task.durationConf,
-                            reminderPlan = task.reminderPlan,
-                            repeatPlan = task.repeatPlan,
-                            subtasks = task.subtasks,
-                            listId = task.listId,
-                            sectionId = task.sectionId,
+                            isLoading = false, isNewTask = false, taskId = task.id,
+                            name = task.name, priority = task.priority,
+                            startDateConf = task.startDateConf, endDateConf = task.endDateConf,
+                            durationConf = task.durationConf, reminderPlan = task.reminderPlan,
+                            repeatPlan = task.repeatPlan, subtasks = task.subtasks,
+                            listId = task.listId, // Load existing listId
+                            sectionId = task.sectionId, // Load existing sectionId
                             error = null
                         )
                     }
+                    // Optionally load lists/sections here if needed immediately
+                    // loadListsForSelection()
+                    // task.listId?.let { loadSectionsForSelection(it) }
                 },
                 onError = { errorMessage ->
                     setState { copy(isLoading = false, error = errorMessage) }
@@ -141,18 +147,6 @@ class TaskEditViewModel(
 
             setState { copy(isLoading = true) }
 
-            val newStartDateTime = state.startDateConf?.dateTime
-            val newDurationMinutes = state.durationConf?.totalMinutes?.toLong()
-
-            // Calculate the new scheduled end time IF start and duration exist
-            val newScheduledEndDateTime =
-                if (newStartDateTime != null && newDurationMinutes != null) {
-                    newStartDateTime.plusMinutes(newDurationMinutes)
-                } else {
-                    // If start or duration is cleared, clear the scheduled end time too
-                    null
-                }
-
             val taskToSave = Task.Builder()
                 .id(state.taskId)
                 .name(state.name)
@@ -163,10 +157,8 @@ class TaskEditViewModel(
                 .reminderPlan(state.reminderPlan)
                 .repeatPlan(state.repeatPlan)
                 .subtasks(state.subtasks)
-                .scheduledStartDateTime(null)
-                .scheduledEndDateTime(null)
-                .listId(state.listId)
-                .sectionId(state.sectionId)
+                .listId(state.listId) // Include listId
+                .sectionId(state.sectionId) // Include sectionId
                 .build()
 
             executeTaskOperation(
@@ -186,25 +178,36 @@ class TaskEditViewModel(
     }
 
     private fun assignList(listId: Long?) {
+        Log.d("TaskEditVM", "Assigning List ID: $listId")
+        val oldListId = currentState.listId
         setState {
             copy(
                 listId = listId,
-                // Reset section if list is changed or removed
-                sectionId = if (listId == null || listId != this.listId) null else this.sectionId
+                // Reset section if list changes or is removed
+                sectionId = if (listId == null || listId != oldListId) null else this.sectionId,
+                // Clear available sections if list changes or is removed
+                availableSections = if (listId == null || listId != oldListId) emptyList() else this.availableSections
             )
+        }
+        // If a new list is selected, load its sections
+        if (listId != null && listId != oldListId) {
+            loadSectionsForSelection(listId)
         }
     }
 
     private fun assignSection(sectionId: Long?) {
-        // Only allow assigning section if a list is selected
+        Log.d("TaskEditVM", "Assigning Section ID: $sectionId")
         if (currentState.listId != null) {
             setState { copy(sectionId = sectionId) }
+        } else {
+            Log.w("TaskEditVM", "Attempted to assign section without a list selected.")
+            setEffect(TaskEditEffect.ShowSnackbar("Please select a list first."))
         }
     }
 
     private fun loadListsForSelection() {
         viewModelScope.launch {
-            setState { copy(isLoadingSelection = true) } // Add isLoadingSelection to state
+            setState { copy(isLoadingSelection = true) }
             when (val result = getAllListsUseCase()) {
                 is TaskResult.Success -> setState {
                     copy(
@@ -212,7 +215,6 @@ class TaskEditViewModel(
                         isLoadingSelection = false
                     )
                 }
-
                 is TaskResult.Error -> {
                     setState { copy(isLoadingSelection = false) }
                     setEffect(TaskEditEffect.ShowSnackbar("Error loading lists: ${result.message}"))
@@ -223,12 +225,7 @@ class TaskEditViewModel(
 
     private fun loadSectionsForSelection(listId: Long) {
         viewModelScope.launch {
-            setState {
-                copy(
-                    isLoadingSelection = true,
-                    availableSections = emptyList()
-                )
-            } // Clear previous sections
+            setState { copy(isLoadingSelection = true, availableSections = emptyList()) }
             when (val result = getAllSectionsUseCase(listId)) {
                 is TaskResult.Success -> setState {
                     copy(
@@ -236,11 +233,51 @@ class TaskEditViewModel(
                         isLoadingSelection = false
                     )
                 }
-
                 is TaskResult.Error -> {
                     setState { copy(isLoadingSelection = false) }
                     setEffect(TaskEditEffect.ShowSnackbar("Error loading sections: ${result.message}"))
                 }
+            }
+        }
+    }
+
+    private suspend fun createAndAssignList(name: String, colorHex: String) {
+        setState { copy(isLoadingSelection = true) }
+        val newList = TaskList(name = name, colorHex = colorHex)
+        when (val saveResult = saveListUseCase(newList)) {
+            is TaskResult.Success -> {
+                val newListId = saveResult.data
+                Log.d("TaskEditVM", "Created new list with ID: $newListId. Assigning to task.")
+                assignList(newListId) // Assign the newly created list ID
+                loadListsForSelection() // Refresh list selection options
+                setState { copy(isLoadingSelection = false) }
+            }
+
+            is TaskResult.Error -> {
+                setState { copy(isLoadingSelection = false) }
+                setEffect(TaskEditEffect.ShowSnackbar("Error creating list: ${saveResult.message}"))
+            }
+        }
+    }
+
+    private suspend fun createAndAssignSection(name: String, listId: Long) {
+        setState { copy(isLoadingSelection = true) }
+        val newSection = TaskSection(listId = listId, name = name)
+        when (val saveResult = saveSectionUseCase(newSection)) {
+            is TaskResult.Success -> {
+                val newSectionId = saveResult.data
+                Log.d(
+                    "TaskEditVM",
+                    "Created new section with ID: $newSectionId. Assigning to task."
+                )
+                assignSection(newSectionId) // Assign the newly created section ID
+                loadSectionsForSelection(listId) // Refresh section selection options
+                setState { copy(isLoadingSelection = false) }
+            }
+
+            is TaskResult.Error -> {
+                setState { copy(isLoadingSelection = false) }
+                setEffect(TaskEditEffect.ShowSnackbar("Error creating section: ${saveResult.message}"))
             }
         }
     }

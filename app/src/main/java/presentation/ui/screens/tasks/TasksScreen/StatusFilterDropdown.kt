@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -12,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import com.elena.autoplanner.R
 import com.elena.autoplanner.presentation.states.TaskStatus
@@ -33,7 +35,10 @@ fun StatusFilterDropdown(
             )
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+            expanded = expanded,
+            onDismissRequest = { expanded = false }) {
             TaskStatus.entries.forEach { status ->
                 DropdownMenuItem(
                     text = { Text(status.displayName) },

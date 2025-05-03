@@ -1,5 +1,7 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen
 
+import androidx.compose.animation.animateBounds
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -12,7 +14,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.R
 import com.elena.autoplanner.presentation.states.TimeFrame
 
@@ -33,7 +38,9 @@ fun TimeFrameFilterDropdown(
             )
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+            expanded = expanded, onDismissRequest = { expanded = false }) {
             TimeFrame.entries.forEach { timeFrame ->
                 DropdownMenuItem(
                     text = { Text(timeFrame.displayName) },

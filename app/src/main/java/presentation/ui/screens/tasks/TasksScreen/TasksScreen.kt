@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -14,6 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.effects.TaskDetailEffect
 import com.elena.autoplanner.presentation.effects.TaskEditEffect
@@ -36,9 +39,15 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun TasksScreen(
     onNavigateToPlanner: () -> Unit,
-    onNavigateToList: (Long?) -> Unit,
     listViewModel: TaskListViewModel = koinViewModel(),
+    navController: androidx.navigation.NavHostController = rememberNavController(),
 ) {
+
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val arguments = navBackStackEntry?.arguments
+
+    val listIdArg = arguments?.getString("listId")?.toLongOrNull()
+    val sectionIdArg = arguments?.getString("sectionId")?.toLongOrNull()
 
     val currentListId by listViewModel.state.map { it?.currentListId }
         .collectAsState(initial = null)
@@ -75,7 +84,7 @@ fun TasksScreen(
             state?.let {
                 TasksTopBar(
                     state = it,
-                    currentListName = currentListName,
+                    currentListName = it.currentListName,
                     onStatusSelected = { status ->
                         listViewModel.sendIntent(TaskListIntent.UpdateStatusFilter(status))
                     },
@@ -125,7 +134,7 @@ fun TasksScreen(
                         }
                     }
                 }
-            }
+            } ?: Column(modifier = Modifier.padding(innerPadding)) { LoadingIndicator() }
         }
     )
 

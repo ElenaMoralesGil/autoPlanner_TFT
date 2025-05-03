@@ -1,5 +1,7 @@
 package com.elena.autoplanner.presentation.ui.screens.more
 
+import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,47 +28,45 @@ import com.elena.autoplanner.presentation.viewmodel.MoreViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import androidx.core.graphics.toColorInt // Import hex parser
+import com.elena.autoplanner.domain.models.TaskSection
 
 @Composable
 fun MoreDrawerContent(
     modifier: Modifier = Modifier,
     viewModel: MoreViewModel = koinViewModel(),
-    drawerState: DrawerState, // To close the drawer
-    onNavigateToTasks: (listId: Long?) -> Unit, // Callback to navigate
+    drawerState: DrawerState,
+    onNavigateToTasks: (listId: Long?, sectionId: Long?) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
-    val snackbarHostState =
-        remember { SnackbarHostState() } // Local snackbar for drawer? Or use main scaffold's?
+    val snackbarHostState = remember { SnackbarHostState() }
     var showCreateListDialog by remember { mutableStateOf(false) }
+    var showCreateSectionDialogForListId by remember { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
 
-    // Handle effects specific to the drawer content if needed
+    val totalTaskCount = remember(state?.lists) {
+        state?.lists?.sumOf { it.taskCount } ?: 0
+    }
+
     LaunchedEffect(viewModel) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
-                is MoreEffect.NavigateToTasks -> { // This effect might be redundant now
-                    // Close drawer first, then navigate
-                    scope.launch {
-                        drawerState.close()
-                        onNavigateToTasks(effect.listId)
-                    }
+                is MoreEffect.NavigateToTasks -> { /* Handled by onClick */
                 }
-
                 is MoreEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
                 is MoreEffect.ShowCreateListDialog -> showCreateListDialog = true
             }
         }
     }
 
-    // Main Drawer UI
+    val color = MaterialTheme.colorScheme.secondary
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .fillMaxWidth(0.85f) // Occupy 85% of screen width
+            .fillMaxWidth(0.85f)
             .background(MaterialTheme.colorScheme.surface)
-            .padding(vertical = 16.dp) // Add vertical padding
+            .padding(vertical = 16.dp)
     ) {
-        // Header (Optional)
         Text(
             "Lists & More",
             style = MaterialTheme.typography.titleLarge,
@@ -75,108 +75,210 @@ fun MoreDrawerContent(
         )
         HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
 
-        // Content Area
-        Box(modifier = Modifier.weight(1f)) {
-            if (state?.isLoading == true && state?.lists?.isEmpty() == true) {
-                LoadingIndicator()
-            } else if (state?.error != null) {
-                Text(
-                    "Error: ${state?.error}",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(16.dp)
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 70.dp) // Padding for FAB
-                ) {
-                    // "All Tasks" Item
-                    item {
-                        ListItemRow(
-                            name = "All Tasks",
-                            taskCount = state?.lists?.sumOf { it.taskCount } ?: 0,
-                            color = MaterialTheme.colorScheme.secondary,
-                            isExpanded = false, // Not expandable
-                            onClick = {
-                                scope.launch {
-                                    drawerState.close()
-                                    onNavigateToTasks(null) // Navigate with null ID
-                                }
-                            },
-                            onExpandToggle = {}
-                        )
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        )
-                    }
-
-                    // User Lists Section Header
-                    item {
-                        ListSectionHeader(title = "My Lists")
-                    }
-
-                    // User Lists
-                    items(state?.lists ?: emptyList(), key = { it.list.id }) { listInfo ->
-                        ListItemRow(
-                            name = listInfo.list.name,
-                            taskCount = listInfo.taskCount,
-                            color = try {
-                                Color(android.graphics.Color.parseColor(listInfo.list.colorHex))
-                            } catch (e: Exception) {
-                                MaterialTheme.colorScheme.secondary
-                            },
-                            isExpanded = state?.expandedListIds?.contains(listInfo.list.id) == true,
-                            onClick = {
-                                scope.launch {
-                                    drawerState.close()
-                                    // Send SelectList intent *after* closing drawer if needed by VM
-                                    // viewModel.sendIntent(MoreIntent.SelectList(listInfo.list.id))
-                                    onNavigateToTasks(listInfo.list.id) // Navigate directly
-                                }
-                            },
-                            onExpandToggle = {
-                                viewModel.sendIntent(
-                                    MoreIntent.ToggleListExpansion(
-                                        listInfo.list.id
-                                    )
-                                )
-                            }
-                        )
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        )
-                        // TODO: Add AnimatedVisibility for sections if listInfo.isExpanded
-                    }
-
-                    // Create List Button (inside the list)
-                    item {
-                        TextButton(
-                            onClick = { viewModel.sendIntent(MoreIntent.RequestCreateList) },
-                            modifier = Modifier.padding(start = 16.dp, top = 8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Create List",
-                                modifier = Modifier.size(18.dp)
+        state?.let { currentState ->
+            Box(modifier = Modifier.weight(1f)) {
+                if (currentState.isLoading && currentState.lists.isEmpty()) {
+                    LoadingIndicator()
+                } else if (currentState.error != null) {
+                    Text(
+                        "Error: ${currentState.error}",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(16.dp)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 70.dp)
+                    ) {
+                        item {
+                            ListItemRow(
+                                name = "All Tasks",
+                                taskCount = totalTaskCount,
+                                color = MaterialTheme.colorScheme.secondary,
+                                isExpanded = false,
+                                showExpandIcon = false,
+                                onClick = {
+                                    scope.launch {
+                                        drawerState.close()
+                                        onNavigateToTasks(null, null)
+                                    }
+                                },
+                                onExpandToggle = {}
                             )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Create new list")
+                            HorizontalDivider(
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
                         }
-                    }
 
-                    // TODO: Add Widgets Section Header and Content later
+                        item { ListSectionHeader(title = "My Lists") }
+
+                        // --- User Lists ---
+                        items(currentState.lists, key = { it.list.id }) { listInfo ->
+                            // Wrap List Item Row and AnimatedVisibility in a Column
+                            Column {
+                                val listColor = remember(listInfo.list.colorHex) {
+                                    try {
+                                        Color(listInfo.list.colorHex.toColorInt())
+                                    } catch (e: Exception) {
+                                        color
+                                    }
+                                }
+                                val isListExpanded =
+                                    currentState.expandedListIds.contains(listInfo.list.id)
+
+                                ListItemRow(
+                                    name = listInfo.list.name,
+                                    taskCount = listInfo.taskCount,
+                                    color = listColor,
+                                    isExpanded = isListExpanded,
+                                    showExpandIcon = true, // Can refine later based on section count if needed
+                                    onClick = {
+                                        scope.launch {
+                                            drawerState.close()
+                                            onNavigateToTasks(listInfo.list.id, null)
+                                        }
+                                    },
+                                    onExpandToggle = {
+                                        viewModel.sendIntent(MoreIntent.ToggleListExpansion(listInfo.list.id))
+                                    }
+                                )
+
+                                HorizontalDivider(
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                )
+
+                                // --- Animated Section Display (Now inside ColumnScope) ---
+                                AnimatedVisibility(visible = isListExpanded) {
+                                    Column(
+                                        modifier = Modifier.background(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(
+                                                alpha = 0.1f
+                                            )
+                                        )
+                                    ) {
+                                        if (currentState.isLoadingSectionsFor == listInfo.list.id) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 8.dp, horizontal = 32.dp),
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(
+                                                        20.dp
+                                                    )
+                                                )
+                                            }
+                                        } else {
+                                            val sections: List<TaskSection>? =
+                                                currentState.sectionsByListId[listInfo.list.id]
+                                            when {
+                                                sections == null && currentState.isLoadingSectionsFor != listInfo.list.id -> {
+                                                    currentState.sectionError?.let { errorMsg ->
+                                                        Text(
+                                                            errorMsg,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.error,
+                                                            modifier = Modifier.padding(
+                                                                start = 32.dp,
+                                                                top = 8.dp,
+                                                                bottom = 8.dp
+                                                            )
+                                                        )
+                                                    }
+                                                }
+
+                                                sections?.isEmpty() == true -> {
+                                                    Text(
+                                                        "No sections",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        modifier = Modifier.padding(
+                                                            start = 32.dp,
+                                                            top = 8.dp,
+                                                            bottom = 8.dp
+                                                        )
+                                                    )
+                                                }
+
+                                                sections != null -> {
+                                                    sections.forEach { section ->
+                                                        SectionItemRow(
+                                                            name = section.name,
+                                                            onClick = {
+                                                                scope.launch {
+                                                                    drawerState.close()
+                                                                    onNavigateToTasks(
+                                                                        listInfo.list.id,
+                                                                        section.id
+                                                                    )
+                                                                }
+                                                            }
+                                                        )
+                                                        HorizontalDivider(
+                                                            thickness = 0.5.dp,
+                                                            color = MaterialTheme.colorScheme.outline.copy(
+                                                                alpha = 0.1f
+                                                            ),
+                                                            modifier = Modifier.padding(start = 32.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            // Add "Create Section" Button
+                                            TextButton(
+                                                onClick = {
+                                                    showCreateSectionDialogForListId =
+                                                        listInfo.list.id
+                                                },
+                                                modifier = Modifier.padding(start = 24.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Add,
+                                                    contentDescription = "Create Section",
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(Modifier.width(6.dp))
+                                                Text(
+                                                    "Create section",
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                        }
+                                    }
+                                } // --- End Animated Section Display ---
+                            } // End Column wrapper
+                        } // End items loop
+
+                        // --- Create List Button ---
+                        item {
+                            TextButton(
+                                onClick = { viewModel.sendIntent(MoreIntent.RequestCreateList) },
+                                modifier = Modifier.padding(start = 16.dp, top = 8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = "Create List",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("Create new list")
+                            }
+                        }
+                    } // End LazyColumn
                 }
+            } // End Box
+        } ?: run {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LoadingIndicator()
             }
         }
-        // Snackbar Host inside the drawer if needed
-        // SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
-    }
+    } // End Main Column
 
-    // Create List Dialog (remains the same)
+    // --- Dialogs ---
     if (showCreateListDialog) {
         CreateEditListDialog(
             onDismiss = { showCreateListDialog = false },
@@ -186,6 +288,19 @@ fun MoreDrawerContent(
             }
         )
     }
+
+    showCreateSectionDialogForListId?.let { listIdForDialog ->
+        val listName = state?.lists?.find { it.list.id == listIdForDialog }?.list?.name ?: "List"
+        CreateEditSectionDialog(
+            listName = listName,
+            onDismiss = { showCreateSectionDialogForListId = null },
+            onConfirm = { sectionName ->
+                viewModel.sendIntent(MoreIntent.CreateSection(listIdForDialog, sectionName))
+                showCreateSectionDialogForListId = null
+            }
+        )
+    }
+    // --- End Dialogs ---
 }
 
 @Composable
@@ -197,11 +312,10 @@ fun ListSectionHeader(title: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp) // Consistent padding
     )
 }
 
-// ListItemRow remains largely the same, maybe minor padding/style adjustments
 @Composable
 fun ListItemRow(
     name: String,
@@ -210,46 +324,77 @@ fun ListItemRow(
     isExpanded: Boolean,
     onClick: () -> Unit,
     onExpandToggle: () -> Unit,
-    // Add parameter to hide expand icon for "All Tasks"
-    showExpandIcon: Boolean = true,
+    showExpandIcon: Boolean = true, // Default to true
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp), // Consistent padding
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Color Indicator
         Box(
             modifier = Modifier
                 .size(8.dp)
                 .background(color, CircleShape)
         )
+
         Spacer(Modifier.width(16.dp))
+
+        // List Name (takes available space)
         Text(
             text = name,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurface // Ensure text color contrast
         )
+
+        // Task Count
         Text(
             text = taskCount.toString(),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant // Subtler color for count
         )
+
+        // Expand/Collapse Icon (Conditional)
         if (showExpandIcon) {
             IconButton(
                 onClick = onExpandToggle,
-                modifier = Modifier.size(36.dp)
-            ) { // Smaller touch target
+                modifier = Modifier.size(36.dp) // Slightly larger touch target
+            ) {
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    modifier = Modifier.size(20.dp) // Smaller icon
+                    modifier = Modifier.size(20.dp), // Smaller icon visual
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant // Use a standard tint
                 )
             }
         } else {
-            Spacer(Modifier.width(36.dp)) // Keep alignment consistent
+            // Add a spacer to maintain alignment when icon is hidden
+            Spacer(Modifier.width(36.dp))
         }
+    }
+}
+
+@Composable
+fun SectionItemRow(
+    name: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 32.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

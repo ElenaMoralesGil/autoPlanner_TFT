@@ -1,5 +1,7 @@
 package com.elena.autoplanner.data.mappers
 
+import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 import com.elena.autoplanner.data.local.dao.TaskWithRelations
 import com.elena.autoplanner.data.local.entities.ReminderEntity
 import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
@@ -14,11 +16,10 @@ import com.elena.autoplanner.domain.models.TimePlanning
 class TaskMapper {
 
     fun mapPriority(priorityString: String): Priority {
-        return when (priorityString) {
-            "HIGH" -> Priority.HIGH
-            "MEDIUM" -> Priority.MEDIUM
-            "LOW" -> Priority.LOW
-            else -> Priority.NONE
+        return try {
+            Priority.valueOf(priorityString)
+        } catch (e: IllegalArgumentException) {
+            Priority.NONE
         }
     }
 
@@ -29,6 +30,7 @@ class TaskMapper {
         subtasks: List<SubtaskEntity> = emptyList(),
         listName: String? = null,
         sectionName: String? = null,
+        listColorHex: String? = null,
     ): Task {
         val reminderMapper = ReminderMapper()
         val repeatConfigMapper = RepeatConfigMapper()
@@ -57,6 +59,14 @@ class TaskMapper {
             )
         }
 
+        val listColor = listColorHex?.let { hex ->
+            try {
+                Color(hex.toColorInt())
+            } catch (e: Exception) {
+                null // Handle invalid hex
+            }
+        }
+
         return Task.Builder()
             .id(taskEntity.id)
             .name(taskEntity.name)
@@ -73,6 +83,7 @@ class TaskMapper {
             .completionDateTime(taskEntity.completionDateTime)
             .listName(listName)
             .sectionName(sectionName)
+            .listColor(listColor)
             .build()
     }
 
@@ -95,8 +106,8 @@ class TaskMapper {
             listId = domain.listId,
             sectionId = domain.sectionId,
             displayOrder = domain.displayOrder,
-            // Map userId and firestoreId if they exist on the domain model (needed for sync)
-        )
+
+            )
     }
 }
 

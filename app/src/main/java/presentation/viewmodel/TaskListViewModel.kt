@@ -1,11 +1,13 @@
 package com.elena.autoplanner.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TaskList
 import com.elena.autoplanner.domain.models.TaskSection
 import com.elena.autoplanner.domain.results.TaskResult
+import com.elena.autoplanner.domain.usecases.lists.GetAllSectionsUseCase
 import com.elena.autoplanner.domain.usecases.lists.GetTasksByListUseCase
 import com.elena.autoplanner.domain.usecases.lists.SaveListUseCase
 import com.elena.autoplanner.domain.usecases.lists.SaveSectionUseCase
@@ -22,7 +24,6 @@ import com.elena.autoplanner.presentation.states.TimeFrame
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import android.util.Log
 
 class TaskListViewModel(
     private val getTasksByListUseCase: GetTasksByListUseCase,
@@ -32,124 +33,160 @@ class TaskListViewModel(
     private val saveTaskUseCase: SaveTaskUseCase,
     private val saveListUseCase: SaveListUseCase,
     private val saveSectionUseCase: SaveSectionUseCase,
+    private val getAllSectionsUseCase: GetAllSectionsUseCase,
     private val savedStateHandle: SavedStateHandle, // Keep injection
 ) : BaseViewModel<TaskListIntent, TaskListState, TaskListEffect>() {
 
     private var taskLoadingJob: Job? = null
-
-    // --- CORRECTED createInitialState ---
-    // It MUST NOT access savedStateHandle here.
-    override fun createInitialState(): TaskListState = TaskListState(
-        // Initialize with default values only
-        currentListId = null, // Start with null, will be updated in init
-        currentListName = null,
-        currentListColor = null,
-        isLoading = true // Start in loading state until init finishes
-    )
+    override fun createInitialState(): TaskListState = TaskListState(isLoading = true)
 
     init {
         Log.d("TaskListVM", "ViewModel Init Start")
-        // Now savedStateHandle is guaranteed to be non-null here
-
-        // Get the initial listId *safely* after construction
-        val initialListId = savedStateHandle.get<String?>("listId")?.toLongOrNull()
-        Log.d("TaskListVM", "Initial listId from handle in init: $initialListId")
-
-        // Set the initial listId in the state *once*
-        // Note: BaseViewModel's init already sets the state using createInitialState.
-        // We update it here with the value from SavedStateHandle.
-        setState { copy(currentListId = initialListId, isLoading = true) } // Ensure loading is true
-
-        // Observe the SavedStateHandle for subsequent navigation changes
         viewModelScope.launch {
-            savedStateHandle.getStateFlow<String?>("listId", initialListId?.toString())
-                .map { it?.toLongOrNull() } // Convert String? from nav args to Long?
-                .distinctUntilChanged() // Only react to actual changes
-                .collectLatest { listId ->
-                    Log.d("TaskListVM", "Observed listId change in collectLatest: $listId")
-                    // Update state and trigger load
-                    // Check if it's different from current state to avoid redundant loads on init
-                    if (listId != currentState.currentListId || currentState.tasks.isEmpty()) {
+            combine(
+                savedStateHandle.getStateFlow<String?>("listId", null).map { it?.toLongOrNull() },
+                savedStateHandle.getStateFlow<String?>("sectionId", null).map { it?.toLongOrNull() }
+            ) { listId, sectionId ->
+                Pair(listId, sectionId)
+            }
+                .distinctUntilChanged()
+                .collectLatest { (listId, sectionId) ->
+                    Log.d(
+                        "TaskListVM",
+                        "SavedStateHandle observed change: listId=$listId, sectionId=$sectionId. Current state IDs: list=${currentState.currentListId}, section=${currentState.currentSectionId}, isLoading=${currentState.isLoading}"
+                    )
+
+                    val listIdChanged = listId != currentState.currentListId
+                    val sectionIdChanged = sectionId != currentState.currentSectionId
+                    val isInitialLoadingState =
+                        currentState.tasks.isEmpty() && currentState.isLoading
+                    val shouldLoad = listIdChanged || sectionIdChanged || isInitialLoadingState
+                    // Check the condition carefully
+
+                    Log.d(
+                        "TaskListVM",
+                        "Change detection: listIdChanged=$listIdChanged, sectionIdChanged=$sectionIdChanged, needsInitialLoad=$shouldLoad"
+                    )
+
+                    if (shouldLoad) {
+                        Log.d(
+                            "TaskListVM",
+                            "IDs changed or initial load needed. Setting state and calling loadTasks."
+                        )
+
+                        if (!currentState.isLoading) {
+                            setState { copy(isLoading = true) }
+                        }
                         setState {
                             copy(
                                 currentListId = listId,
-                                currentListName = null, // Reset name/color on ID change
-                                currentListColor = null,
-                                isLoading = true // Set loading true before fetching
+                                currentSectionId = sectionId,
+                                isLoading = true // Set loading true when starting load
                             )
                         }
-                        loadTasks(listId)
+                        loadTasks(listId, sectionId)
                     } else {
-                        // If listId hasn't actually changed (e.g., during initial setup),
-                        // ensure loading is false if it was set true initially
-                        if (currentState.isLoading) {
-                            setState { copy(isLoading = false) }
-                        }
                         Log.d(
                             "TaskListVM",
-                            "Skipping load, listId ($listId) hasn't changed or tasks already loaded."
+                            "Skipping load, IDs haven't changed or already loaded/loading."
                         )
+                        // If it was loading but IDs didn't change, maybe stop loading?
+                        if (currentState.isLoading) {
+                            Log.d("TaskListVM", "Stopping potentially redundant loading state.")
+                            // setState { copy(isLoading = false) } // Be careful with this, might cause flicker if data *is* coming
+                        }
                     }
                 }
         }
         Log.d("TaskListVM", "ViewModel Init End")
     }
 
-
     override suspend fun handleIntent(intent: TaskListIntent) {
         when (intent) {
-            // Filtering Intents
             is TaskListIntent.UpdateStatusFilter -> updateStatusFilter(intent.status)
             is TaskListIntent.UpdateTimeFrameFilter -> updateTimeFrameFilter(intent.timeFrame)
-
-            // Task Modification Intents
             is TaskListIntent.ToggleTaskCompletion -> toggleTaskCompletion(
                 intent.taskId,
                 intent.completed
             )
-            is TaskListIntent.DeleteTask -> handleDeleteTask(intent.taskId)
-            is TaskListIntent.UpdateTask -> handleUpdateTask(intent.task) // For drag-drop, etc.
 
-            // Navigation Intents
             is TaskListIntent.SelectTask -> setEffect(NavigateToTaskDetail(intent.taskId))
-            is TaskListIntent.ViewList -> {
-                Log.d("TaskListVM", "Intent: ViewList ${intent.listId}")
-                // Update SavedStateHandle (as String) which triggers the flow collection
+            is TaskListIntent.UpdateTask -> handleUpdateTask(intent.task)
+            is TaskListIntent.DeleteTask -> handleDeleteTask(intent.taskId)
+            // Navigation Intents update SavedStateHandle
+            is TaskListIntent.ViewList -> { // Navigating to a list clears the section
                 savedStateHandle["listId"] = intent.listId.toString()
-            }
-            is TaskListIntent.ViewAllTasks -> {
-                Log.d("TaskListVM", "Intent: ViewAllTasks")
-                // Set listId to null (as String) in SavedStateHandle
-                savedStateHandle["listId"] = null
+                savedStateHandle["sectionId"] = null
             }
 
-            // List/Section Editing Intents (triggered from this screen's menu)
+            is TaskListIntent.ViewAllTasks -> { // Navigating to all tasks clears list and section
+                savedStateHandle["listId"] = null
+                savedStateHandle["sectionId"] = null
+            }
+            // Handle ViewSection intent
+            is TaskListIntent.ViewSection -> {
+                savedStateHandle["listId"] = intent.listId.toString()
+                savedStateHandle["sectionId"] = intent.sectionId.toString()
+            }
+
             is TaskListIntent.RequestEditList -> currentState.currentListId?.let {
-                setEffect(ShowEditListDialog(it))
+                setEffect(
+                    ShowEditListDialog(it)
+                )
             }
+
             is TaskListIntent.RequestEditSections -> currentState.currentListId?.let {
-                setEffect(ShowEditSectionsDialog(it))
+                setEffect(
+                    ShowEditSectionsDialog(it)
+                )
             }
+
             is TaskListIntent.SaveList -> saveList(intent.list)
             is TaskListIntent.SaveSection -> saveSection(intent.section)
-            is TaskListIntent.LoadTasks -> { // Keep this case, but call the correct load function
-                Log.w(
+            is TaskListIntent.LoadTasks -> {
+                Log.d("TaskListVM", "LoadTasks Intent received. Reloading for current state IDs.")
+                loadTasks(currentState.currentListId, currentState.currentSectionId)
+            }
+
+            is TaskListIntent.ArgumentsChanged -> {
+                Log.d(
                     "TaskListVM",
-                    "Received LoadTasks intent. Reloading for current listId: ${currentState.currentListId}"
+                    "ArgumentsChanged Intent received: listId=${intent.listId}, sectionId=${intent.sectionId}"
                 )
-                loadTasks(currentState.currentListId) // Reload for the current list
+                // Only load if IDs actually changed from the current state to prevent redundant loads
+                if (intent.listId != currentState.currentListId || intent.sectionId != currentState.currentSectionId || currentState.tasks.isEmpty()) {
+                    Log.d("TaskListVM", "IDs changed or tasks empty, calling loadTasks.")
+                    loadTasks(intent.listId, intent.sectionId)
+                } else {
+                    Log.d("TaskListVM", "IDs haven't changed, skipping loadTasks call.")
+                    // If it was loading, stop it now as the trigger was potentially redundant
+                    if (currentState.isLoading) {
+                        setState { copy(isLoading = false) }
+                    }
+                }
             }
         }
     }
 
-    private fun loadTasks(listId: Long?) {
+    private fun loadTasks(listId: Long?, sectionId: Long?) {
         taskLoadingJob?.cancel()
         taskLoadingJob = viewModelScope.launch {
-            Log.d("TaskListVM", "loadTasks triggered for listId: $listId")
-            // Ensure loading state is set if not already
+            Log.d(
+                "TaskListVM",
+                "loadTasks function started for listId: $listId, sectionId: $sectionId"
+            )
             if (!currentState.isLoading) {
-                setState { copy(isLoading = true, error = null) }
+                setState {
+                    copy(
+                        isLoading = true,
+                        error = null,
+                        currentListId = listId,
+                        currentSectionId = sectionId
+                    )
+                }
             }
+
+            // Fetch tasks for the list
             getTasksByListUseCase(listId)
                 .catch { error ->
                     Log.e("TaskListVM", "Error loading tasks for list $listId", error)
@@ -161,67 +198,84 @@ class TaskListViewModel(
                     }
                     setEffect(ShowSnackbar("Error loading tasks: ${error.localizedMessage}"))
                 }
-                .collect { (list, tasks) ->
+                .collect { (list, tasksForList) ->
                     Log.d(
                         "TaskListVM",
-                        "Loaded ${tasks.size} tasks for list: ${list?.name ?: "All Tasks"}"
+                        "Collected from use case: List Name='${list?.name ?: "All"}', Task Count=${tasksForList.size}"
                     )
-                    // Update list details along with tasks
+
+                    // Filter by Section ID if provided
+                    val tasksToShow = if (sectionId != null && listId != null) {
+                        tasksForList.filter { it.sectionId == sectionId }
+                    } else {
+                        tasksForList
+                    }
+
+                    // --- Fetch Section Name if sectionId is not null ---
+                    var sectionName: String? = null
+                    if (sectionId != null && listId != null) {
+                        when (val sectionsResult = getAllSectionsUseCase(listId)) {
+                            is TaskResult.Success -> {
+                                sectionName = sectionsResult.data.find { it.id == sectionId }?.name
+                            }
+
+                            is TaskResult.Error -> {
+                                Log.w(
+                                    "TaskListVM",
+                                    "Could not fetch section name for $sectionId: ${sectionsResult.message}"
+                                )
+                                // Optionally show a snackbar or just display ID
+                            }
+                        }
+                    }
+
+                    Log.d(
+                        "TaskListVM",
+                        "Updating state: listId=${list?.id}, sectionId=$sectionId, listName=${list?.name}, sectionName=$sectionName, taskCount=${tasksToShow.size}"
+                    )
                     setState {
                         copy(
+                            currentListId = list?.id,
+                            currentSectionId = sectionId,
                             currentListName = list?.name,
                             currentListColor = list?.colorHex,
-                            // Apply filters immediately after getting tasks
-                            tasks = tasks,
+                            currentSectionName = sectionName, // Store fetched section name
+                            tasks = tasksToShow,
                             filteredTasks = filterTasksUseCase(
-                                tasks,
-                                currentState.statusFilter,
-                                currentState.timeFrameFilter
+                                tasksToShow,
+                                statusFilter,
+                                timeFrameFilter
                             ),
-                            isLoading = false, // Set loading false here
+                            isLoading = false,
                             error = null
                         )
                     }
-                    // applyFilters(tasks) // applyFilters is now integrated into the setState above
                 }
         }
     }
 
-    // applyFilters is now integrated into the loadTasks collect block
-    // private fun applyFilters(tasks: List<Task>) { ... }
 
     private fun updateStatusFilter(status: TaskStatus) {
-        // Re-apply filter to the currently loaded tasks
-        val filteredTasks = filterTasksUseCase(
-            currentState.tasks, // Use the unfiltered list
-            status,
-            currentState.timeFrameFilter
-        )
+        val filteredTasks =
+            filterTasksUseCase(currentState.tasks, status, currentState.timeFrameFilter)
         setState { copy(statusFilter = status, filteredTasks = filteredTasks) }
     }
 
     private fun updateTimeFrameFilter(timeFrame: TimeFrame) {
-        // Re-apply filter to the currently loaded tasks
-        val filteredTasks = filterTasksUseCase(
-            currentState.tasks, // Use the unfiltered list
-            currentState.statusFilter,
-            timeFrame
-        )
+        val filteredTasks =
+            filterTasksUseCase(currentState.tasks, currentState.statusFilter, timeFrame)
         setState { copy(timeFrameFilter = timeFrame, filteredTasks = filteredTasks) }
     }
 
     private fun toggleTaskCompletion(taskId: Int, completed: Boolean) {
         viewModelScope.launch {
             updateTaskCompletionInState(taskId, completed) // Optimistic update
-
             when (val result = toggleTaskCompletionUseCase(taskId, completed)) {
                 is TaskResult.Success -> {
-                    // Flow should update list automatically if data source changes.
-                    // If not, uncommenting loadTasks might be needed, but prefer relying on flow.
-                    // loadTasks(currentState.currentListId)
                     val message = if (completed) "Task completed" else "Task marked incomplete"
                     setEffect(ShowSnackbar(message))
                 }
+
                 is TaskResult.Error -> {
                     updateTaskCompletionInState(taskId, !completed) // Revert
                     setState { copy(error = result.message) }
@@ -231,12 +285,10 @@ class TaskListViewModel(
         }
     }
 
-    // Helper for optimistic updates
     private fun updateTaskCompletionInState(taskId: Int, completed: Boolean) {
         val updatedTasks = currentState.tasks.map {
             if (it.id == taskId) it.copy(isCompleted = completed) else it
         }
-        // Re-apply filters immediately with the optimistically updated list
         val filtered = filterTasksUseCase(
             updatedTasks,
             currentState.statusFilter,
@@ -248,10 +300,7 @@ class TaskListViewModel(
     private fun handleDeleteTask(taskId: Int) {
         viewModelScope.launch {
             when (val result = deleteTaskUseCase(taskId)) {
-                is TaskResult.Success -> {
-                    // Flow should update list automatically
-                    setEffect(ShowSnackbar("Task deleted"))
-                }
+                is TaskResult.Success -> setEffect(ShowSnackbar("Task deleted"))
                 is TaskResult.Error -> {
                     setState { copy(error = result.message) }
                     setEffect(ShowSnackbar("Error deleting: ${result.message}"))
@@ -260,14 +309,10 @@ class TaskListViewModel(
         }
     }
 
-    // Used for drag/drop reordering etc.
     private fun handleUpdateTask(task: Task) {
         viewModelScope.launch {
             when (val result = saveTaskUseCase(task)) {
-                is TaskResult.Success -> {
-                    // Flow should update list automatically
-                    setEffect(ShowSnackbar("Task updated"))
-                }
+                is TaskResult.Success -> setEffect(ShowSnackbar("Task updated"))
                 is TaskResult.Error -> {
                     setState { copy(error = result.message) }
                     setEffect(ShowSnackbar("Error updating: ${result.message}"))
@@ -276,14 +321,15 @@ class TaskListViewModel(
         }
     }
 
+    // --- List/Section Save (remain the same) ---
     private suspend fun saveList(list: TaskList) {
         setState { copy(isLoading = true) }
         when (val result = saveListUseCase(list)) {
             is TaskResult.Success -> {
-                // Reload tasks to ensure list name/color is updated in the header
-                loadTasks(currentState.currentListId)
+                loadTasks(currentState.currentListId, currentState.currentSectionId) // Reload
                 setEffect(ShowSnackbar("List updated"))
             }
+
             is TaskResult.Error -> {
                 setState { copy(isLoading = false, error = result.message) }
                 setEffect(ShowSnackbar("Error updating list: ${result.message}"))
@@ -295,10 +341,10 @@ class TaskListViewModel(
         setState { copy(isLoading = true) }
         when (val result = saveSectionUseCase(section)) {
             is TaskResult.Success -> {
-                // Reload tasks if section affects grouping/filtering in the future.
-                loadTasks(currentState.currentListId)
+                loadTasks(currentState.currentListId, currentState.currentSectionId) // Reload
                 setEffect(ShowSnackbar("Section saved"))
             }
+
             is TaskResult.Error -> {
                 setState { copy(isLoading = false, error = result.message) }
                 setEffect(ShowSnackbar("Error saving section: ${result.message}"))

@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.R
 import com.elena.autoplanner.presentation.states.TaskListState
@@ -33,35 +34,51 @@ import com.elena.autoplanner.presentation.states.TimeFrame
 @Composable
 fun TasksTopBar(
     state: TaskListState,
-    currentListName: String?, // Add list name
+    currentListName: String?, // Receive list name from ViewModel state
     onStatusSelected: (TaskStatus) -> Unit,
     onTimeFrameSelected: (TimeFrame) -> Unit,
     onPlannerClick: () -> Unit,
-    onShowAllTasks: () -> Unit,
-    onEditList: () -> Unit,
-    onEditSections: () -> Unit,
+    onShowAllTasks: () -> Unit, // Callback to navigate to all tasks
+    onEditList: () -> Unit, // Callback to trigger list edit
+    onEditSections: () -> Unit, // Callback to trigger section edit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val isSpecificListSelected = state.currentListId != null
+
+    val titleText = buildString {
+        append(currentListName ?: "Tasks") // Start with list name or "Tasks"
+        state.currentSectionName?.let { sectionName ->
+            append(" / $sectionName") // Append section name if available
+        }
+    }
+
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         title = {
             Column {
-                Text(currentListName ?: "Tasks", style = MaterialTheme.typography.headlineSmall)
+                // Display the current list name or "Tasks"
+                Text(
+                    text = titleText, // Use the combined title
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 1, // Prevent title from taking too much space
+                    overflow = TextOverflow.Ellipsis
+                )
+                // Display filters below the title
                 Text(
                     buildFilterText(state),
                     Modifier.padding(start = 2.dp),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
                 )
             }
         },
         navigationIcon = {
-            if (state.currentListId != null) {
-                IconButton(onClick = onShowAllTasks) {
+            // Show back arrow only if viewing a specific list
+            if (isSpecificListSelected) {
+                IconButton(onClick = onShowAllTasks) { // Navigate back to all tasks
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Show All Tasks")
                 }
             }
@@ -69,14 +86,15 @@ fun TasksTopBar(
         actions = {
             StatusFilterDropdown(state.statusFilter, onStatusSelected)
             TimeFrameFilterDropdown(state.timeFrameFilter, onTimeFrameSelected)
-            IconButton(onClick = onPlannerClick) { // Call the callback on click
+            IconButton(onClick = onPlannerClick) {
                 Icon(
-                    painter = painterResource(id = R.drawable.autoplanner), // Use painterResource
+                    painter = painterResource(id = R.drawable.autoplanner),
                     contentDescription = "Auto Plan Schedule",
                 )
             }
 
-            if (state.currentListId != null) {
+            // Show list-specific options only when a list is selected
+            if (isSpecificListSelected) {
                 Box {
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "List Options")
@@ -87,11 +105,14 @@ fun TasksTopBar(
                     ) {
                         DropdownMenuItem(
                             text = { Text("Edit List") },
-                            onClick = { onEditList(); showMenu = false })
+                            onClick = { onEditList(); showMenu = false }
+                        )
                         DropdownMenuItem(
                             text = { Text("Edit Sections") },
-                            onClick = { onEditSections(); showMenu = false })
+                            onClick = { onEditSections(); showMenu = false }
+                        )
                         // Add Delete List option later if needed
+
                     }
                 }
             }

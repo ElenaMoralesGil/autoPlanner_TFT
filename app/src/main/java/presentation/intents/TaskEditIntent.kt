@@ -27,4 +27,6 @@ sealed class TaskEditIntent : Intent {
     data class AssignSection(val sectionId: Long?) : TaskEditIntent() // Null to remove from section
     data object LoadListsForSelection : TaskEditIntent()
     data class LoadSectionsForSelection(val listId: Long?) : TaskEditIntent()
+    data class CreateAndAssignList(val name: String, val colorHex: String) : TaskEditIntent()
+    data class CreateAndAssignSection(val name: String, val listId: Long) : TaskEditIntent()
 }
