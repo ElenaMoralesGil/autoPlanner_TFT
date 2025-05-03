@@ -37,3 +37,10 @@ replay_pid*
 .kotlin/
 /.idea/AndroidProjectSystem.xml
 /.idea/runConfigurations.xml
+/.idea/vcs.xml
+/.idea/misc.xml
+/.idea/gradle.xml
+/.idea/migrations.xml
+/.idea/compiler.xml
+/.idea/.name
+/.idea/.gitignore
