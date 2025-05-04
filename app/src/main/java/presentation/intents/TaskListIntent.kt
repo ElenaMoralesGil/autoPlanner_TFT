@@ -22,5 +22,4 @@ sealed class TaskListIntent : Intent {
     data object RequestEditSections : TaskListIntent()
     data class SaveList(val list: TaskList) : TaskListIntent()
     data class SaveSection(val section: TaskSection) : TaskListIntent()
-    data class ArgumentsChanged(val listId: Long?, val sectionId: Long?) : TaskListIntent()
 }

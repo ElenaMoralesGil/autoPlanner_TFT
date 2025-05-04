@@ -19,14 +19,17 @@ import androidx.navigation.compose.rememberNavController
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.utils.DataSeeder
+import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.navigation.MainNavigation
 import com.elena.autoplanner.presentation.navigation.Screen
 import com.elena.autoplanner.presentation.ui.components.BottomNavigationBar
 import com.elena.autoplanner.presentation.ui.screens.more.MoreDrawerContent
 import com.elena.autoplanner.presentation.ui.theme.AppTheme
+import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
+import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -69,61 +72,60 @@ class MainActivity : ComponentActivity() {
 fun MainApp() {
     AppTheme {
         val navController = rememberNavController()
-        // --- Drawer State ---
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
+        // --- Get the SINGLE ViewModel instance ---
+        val listViewModel: TaskListViewModel = koinViewModel()
 
-        // --- Back Handler to close drawer ---
-        if (drawerState.isOpen) {
-            BackHandler {
-                scope.launch { drawerState.close() }
-            }
-        }
+        // ... (Back Handler) ...
 
         ModalNavigationDrawer(
             drawerState = drawerState,
-            gesturesEnabled = drawerState.isOpen, // Only allow swipe-to-close when open
+            gesturesEnabled = drawerState.isOpen,
             drawerContent = {
-                // --- Use the new Drawer Content composable ---
                 MoreDrawerContent(
                     drawerState = drawerState,
-                    onNavigateToTasks = { listId, sectionId -> // listId will be Long?, sectionId will be Long?
+                    onNavigateToTasks = { listId, sectionId ->
                         scope.launch {
-                            Log.d(
-                                "MainActivity",
-                                "onNavigateToTasks triggered: listId=$listId, sectionId=$sectionId"
-                            ) // <-- ADD LOGGING
+                            // This logic correctly uses the 'listViewModel' instance from MainApp
+                            Log.d("MainActivity", "[ACTION] onNavigateToTasks triggered: listId=$listId, sectionId=$sectionId")
+                            val intent = when {
+                                listId != null && sectionId != null -> TaskListIntent.ViewSection(listId, sectionId)
+                                listId != null -> TaskListIntent.ViewList(listId)
+                                else -> TaskListIntent.ViewAllTasks
+                            }
+                            Log.d("MainActivity", "[ACTION] Sending intent to ViewModel: $intent")
+                            listViewModel.sendIntent(intent)
+
+                            Log.d("MainActivity", "[ACTION] Closing drawer")
                             drawerState.close()
+
                             val route = Screen.Tasks.createRoute(listId, sectionId)
-                            Log.d("MainActivity", "Navigating to route: $route") // <-- ADD LOGGING
-                            navController.navigate(route) { // Use the generated route
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
+                            Log.d("MainActivity", "[ACTION] Navigating to route: $route")
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
+                            Log.d("MainActivity", "[ACTION] Navigation command sent")
                         }
                     }
                 )
             }
         ) {
-            // --- Main App Scaffold ---
             Scaffold(
                 bottomBar = {
                     BottomNavigationBar(
                         navController = navController,
-                        onMoreClick = { // Pass callback to open drawer
-                            scope.launch {
-                                drawerState.open()
-                            }
-                        }
+                        onMoreClick = { scope.launch { drawerState.open() } }
                     )
                 }
             ) { innerPadding ->
+                // --- Pass the SINGLE instance down ---
                 MainNavigation(
                     navController = navController,
-                    modifier = Modifier.padding(innerPadding)
+                    modifier = Modifier.padding(innerPadding),
+                    taskListViewModel = listViewModel // <-- Pass the instance here
                 )
             }
         }

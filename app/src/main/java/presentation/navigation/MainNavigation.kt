@@ -16,11 +16,13 @@ import com.elena.autoplanner.presentation.ui.screens.profile.ProfileScreen
 
 import com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen.TasksScreen
 import com.elena.autoplanner.presentation.ui.screens.tasks.planner.AutoPlannerScreen
+import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
 
 @Composable
 fun MainNavigation(
     navController: NavHostController,
     modifier: Modifier = Modifier,
+    taskListViewModel: TaskListViewModel
 ) {
     NavHost(
         navController = navController,
@@ -42,9 +44,10 @@ fun MainNavigation(
                     defaultValue = null
                 }
             )
-        ) { backStackEntry -> // <-- Correct: backStackEntry is the parameter here
-            // Call TasksScreen directly inside the composable's content lambda
+        ) { backStackEntry ->
+
             TasksScreen(
+                listViewModel = taskListViewModel,
                 onNavigateToPlanner = { navController.navigate(Screen.Planner.route) },
                 navController = navController // Pass the navController
             )

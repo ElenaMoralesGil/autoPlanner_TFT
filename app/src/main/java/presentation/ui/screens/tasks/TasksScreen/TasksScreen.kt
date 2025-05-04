@@ -39,20 +39,10 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun TasksScreen(
     onNavigateToPlanner: () -> Unit,
-    listViewModel: TaskListViewModel = koinViewModel(),
-    navController: androidx.navigation.NavHostController = rememberNavController(),
+    listViewModel: TaskListViewModel,
+    navController: androidx.navigation.NavHostController,
 ) {
 
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val arguments = navBackStackEntry?.arguments
-
-    val listIdArg = arguments?.getString("listId")?.toLongOrNull()
-    val sectionIdArg = arguments?.getString("sectionId")?.toLongOrNull()
-
-    val currentListId by listViewModel.state.map { it?.currentListId }
-        .collectAsState(initial = null)
-    val currentListName by listViewModel.state.map { it?.currentListName }
-        .collectAsState(initial = null)
     val state by listViewModel.state.collectAsState()
     var showAddEditSheet by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
@@ -60,6 +50,7 @@ fun TasksScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Handle navigation effects from TaskListViewModel
+
     LaunchedEffect(listViewModel) {
         listViewModel.effect.collectLatest { effect ->
             when (effect) {
@@ -107,12 +98,30 @@ fun TasksScreen(
         },
         content = { innerPadding ->
             state?.let { currentState ->
+                Log.d("TasksScreen", "Rendering UI with State: requested(L=${currentState.requestedListId}, S=${currentState.requestedSectionId}), current(L=${currentState.currentListId}, S=${currentState.currentSectionId}), isLoading=${currentState.isLoading}, isNavigating=${currentState.isNavigating}, tasks=${currentState.filteredTasks.size}")
+                val isLoadingOrNavigating = currentState.isLoading || currentState.isNavigating || // <-- ADD isNavigating
+                        currentState.requestedListId != currentState.currentListId ||
+                        currentState.requestedSectionId != currentState.currentSectionId
+
+                Log.d("TasksScreen", "Calculated shouldShowLoading = $isLoadingOrNavigating")
+
                 Column(modifier = Modifier.padding(innerPadding)) {
                     when {
-                        currentState.isLoading -> LoadingIndicator()
-                        currentState.error != null -> ErrorMessage(currentState.error)
-                        currentState.filteredTasks.isEmpty() -> EmptyState()
+
+                        isLoadingOrNavigating -> {
+                            Log.d("TasksScreen", "--> Rendering LoadingIndicator (isLoadingOrNavigating=true)")
+                            LoadingIndicator()
+                        }
+                        currentState.error != null -> {
+                            Log.d("TasksScreen", "--> Rendering ErrorMessage")
+                            ErrorMessage(currentState.error)
+                        }
+                        currentState.tasks.isEmpty()-> {
+                            Log.d("TasksScreen", "--> Rendering EmptyState (tasks empty, not loading)")
+                            EmptyState()
+                        }
                         else -> {
+                            Log.d("TasksScreen", "--> Rendering TasksSectionContent (tasks: ${currentState.tasks.size}, filtered: ${currentState.filteredTasks.size})")
                             TasksSectionContent(
                                 state = currentState,
                                 onTaskChecked = { task, checked ->

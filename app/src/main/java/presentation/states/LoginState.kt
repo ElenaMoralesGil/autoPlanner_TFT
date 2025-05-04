@@ -1,4 +1,4 @@
-package com.elena.autoplanner.presentation.intents
+package com.elena.autoplanner.presentation.states
 
 data class LoginState(
     val email: String = "",

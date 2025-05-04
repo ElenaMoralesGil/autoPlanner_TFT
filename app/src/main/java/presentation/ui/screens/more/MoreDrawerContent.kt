@@ -51,8 +51,7 @@ fun MoreDrawerContent(
     LaunchedEffect(viewModel) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
-                is MoreEffect.NavigateToTasks -> { /* Handled by onClick */
-                }
+                is MoreEffect.NavigateToTasks -> {}
                 is MoreEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
                 is MoreEffect.ShowCreateListDialog -> showCreateListDialog = true
             }

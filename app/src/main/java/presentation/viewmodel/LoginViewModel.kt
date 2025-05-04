@@ -6,7 +6,7 @@ import com.elena.autoplanner.domain.results.AuthResult
 import com.elena.autoplanner.domain.usecases.auth.LoginUseCase
 import com.elena.autoplanner.presentation.effects.LoginEffect
 import com.elena.autoplanner.presentation.intents.LoginIntent
-import com.elena.autoplanner.presentation.intents.LoginState
+import com.elena.autoplanner.presentation.states.LoginState
 import kotlinx.coroutines.launch
 
 class LoginViewModel(
