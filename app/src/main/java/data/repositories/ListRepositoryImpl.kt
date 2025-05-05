@@ -1,7 +1,5 @@
 package com.elena.autoplanner.data.repositories
 
-import android.R
-import android.content.Context
 import android.util.Log
 import com.elena.autoplanner.data.local.dao.ListDao
 import com.elena.autoplanner.data.local.dao.SectionDao
@@ -19,7 +17,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class ListRepositoryImpl(
-    private val context: Context,
     private val listDao: ListDao,
     private val sectionDao: SectionDao,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,

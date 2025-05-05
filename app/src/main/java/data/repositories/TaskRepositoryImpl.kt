@@ -8,6 +8,7 @@ import com.elena.autoplanner.data.local.dao.*
 import com.elena.autoplanner.data.local.entities.TaskEntity
 import com.elena.autoplanner.data.mappers.*
 import com.elena.autoplanner.domain.models.*
+import com.elena.autoplanner.domain.repositories.ListRepository
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.repositories.UserRepository
@@ -26,7 +27,8 @@ class TaskRepositoryImpl(
     private val subtaskDao: SubtaskDao,
     private val userRepository: UserRepository,
     private val firestore: FirebaseFirestore,
-    private val repoScope: CoroutineScope, // Dedicated scope for repository background tasks
+    private val repoScope: CoroutineScope,
+    private val listRepository: ListRepository,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : TaskRepository {
 
@@ -316,7 +318,52 @@ class TaskRepositoryImpl(
                 val user = userRepository.getCurrentUser().firstOrNull()
                 // Check ownership or if it's a valid local-only task
                 if ((user != null && taskWithRelations.task.userId == user.uid) || (user == null && taskWithRelations.task.userId == null)) {
-                    TaskResult.Success(taskWithRelations.toDomainTask())
+
+// --- Enrichment Start ---
+                    var fetchedListName: String? = null
+                    var fetchedSectionName: String? = null // Placeholder for now
+                    var fetchedListColorHex: String? = null
+
+                    taskWithRelations.task.listId?.let { listId ->
+                        // Fetch list details using ListRepository
+                        when (val listResult = listRepository.getList(listId)) {
+                            is TaskResult.Success -> {
+                                listResult.data?.let { list ->
+                                    fetchedListName = list.name
+                                    fetchedListColorHex = list.colorHex
+                                }
+                                // Optionally Fetch Section Name if list fetch was successful
+                                taskWithRelations.task.sectionId?.let { sectionId ->
+                                    // You might need a getSectionById method in ListRepository/SectionDao
+                                    // For simplicity, let's assume you add it or fetch all sections for the list
+                                    when (val sectionsResult = listRepository.getAllSections(listId)) {
+                                        is TaskResult.Success -> {
+                                            fetchedSectionName = sectionsResult.data.find { it.id == sectionId }?.name
+                                        }
+                                        is TaskResult.Error -> Log.w(TAG,"getTask($localId): Could not fetch sections for list $listId: ${sectionsResult.message}")
+                                    }
+                                }
+                            }
+                            is TaskResult.Error -> {
+                                Log.w(TAG, "getTask($localId): Could not fetch list details for listId $listId: ${listResult.message}")
+                                // Decide if this should be a fatal error or just proceed without list info
+                            }
+                        }
+                    }
+
+                    val domainTask = taskMapper.mapToDomain(
+                        taskEntity = taskWithRelations.task,
+                        reminders = taskWithRelations.reminders,
+                        repeatConfigs = taskWithRelations.repeatConfigs,
+                        subtasks = taskWithRelations.subtasks,
+                        listName = fetchedListName, // <-- Pass fetched name
+                        sectionName = fetchedSectionName, // <-- Pass fetched section name
+                        listColorHex = fetchedListColorHex // <-- Pass fetched color hex
+                    )
+
+                    // Return the enriched task, ensuring the ID is the local one
+                    TaskResult.Success(domainTask.copy(id = taskWithRelations.task.id))
+
                 } else {
                     Log.w(
                         TAG,

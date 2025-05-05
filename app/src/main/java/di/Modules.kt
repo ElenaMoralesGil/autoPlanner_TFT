@@ -118,7 +118,8 @@ val appModule = module {
             subtaskDao = get(),
             userRepository = get(),
             firestore = get(),
-            repoScope = get()
+            repoScope = get(),
+            listRepository = get()
         )
     }
     single { FirebaseAuth.getInstance() }
@@ -127,7 +128,6 @@ val appModule = module {
     single<UserRepository> { UserRepositoryImpl(firebaseAuth = get()) }
     single<ListRepository> {
         ListRepositoryImpl(
-            context = androidContext(),
             listDao = get(),
             sectionDao = get()
         )
