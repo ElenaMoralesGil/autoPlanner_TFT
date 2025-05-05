@@ -10,6 +10,7 @@ import com.elena.autoplanner.domain.usecases.lists.GetAllSectionsUseCase
 import com.elena.autoplanner.domain.usecases.lists.GetListsInfoUseCase
 import com.elena.autoplanner.domain.usecases.lists.SaveListUseCase
 import com.elena.autoplanner.domain.usecases.lists.SaveSectionUseCase
+import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.presentation.effects.MoreEffect
 import com.elena.autoplanner.presentation.intents.MoreIntent
 import com.elena.autoplanner.presentation.states.MoreState
@@ -22,12 +23,26 @@ class MoreViewModel(
     private val saveListUseCase: SaveListUseCase,
     private val getAllSectionsUseCase: GetAllSectionsUseCase,
     private val saveSectionUseCase: SaveSectionUseCase,
+    private val getTasksUseCase: GetTasksUseCase,
 ) : BaseViewModel<MoreIntent, MoreState, MoreEffect>() {
 
     override fun createInitialState(): MoreState = MoreState()
 
     init {
         loadLists()
+        observeTotalTaskCount()
+    }
+
+    private fun observeTotalTaskCount() { // <-- New function
+        viewModelScope.launch {
+            getTasksUseCase()
+                .catch { error ->
+                    Log.e("MoreViewModel", "Error observing total tasks", error)
+                }
+                .collectLatest { tasks ->
+                    setState { copy(totalTaskCount = tasks.size) }
+                }
+        }
     }
 
     private fun loadLists() {

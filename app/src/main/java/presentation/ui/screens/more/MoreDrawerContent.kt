@@ -44,10 +44,6 @@ fun MoreDrawerContent(
     var showCreateSectionDialogForListId by remember { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
 
-    val totalTaskCount = remember(state?.lists) {
-        state?.lists?.sumOf { it.taskCount } ?: 0
-    }
-
     LaunchedEffect(viewModel) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
@@ -94,7 +90,7 @@ fun MoreDrawerContent(
                         item {
                             ListItemRow(
                                 name = "All Tasks",
-                                taskCount = totalTaskCount,
+                                taskCount = state?.totalTaskCount ?: 0,
                                 color = MaterialTheme.colorScheme.secondary,
                                 isExpanded = false,
                                 showExpandIcon = false,
