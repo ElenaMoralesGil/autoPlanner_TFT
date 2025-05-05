@@ -81,6 +81,9 @@ class TaskMapper {
             .scheduledStartDateTime(taskEntity.scheduledStartDateTime)
             .scheduledEndDateTime(taskEntity.scheduledEndDateTime)
             .completionDateTime(taskEntity.completionDateTime)
+            .listId(taskEntity.listId) // <-- Add this
+            .sectionId(taskEntity.sectionId) // <-- Add this
+            .displayOrder(taskEntity.displayOrder)
             .listName(listName)
             .sectionName(sectionName)
             .listColor(listColor)
