@@ -175,23 +175,29 @@ fun ModificationTaskSheet(
                 ListSelectionDialog(
                     isLoading = state?.isLoadingSelection ?: false,
                     lists = state?.availableLists ?: emptyList(),
-                    selectedListId = state?.listId,
+                    currentSelectedListId = state?.listId,
                     onDismiss = { showListSelectionDialog = false },
-                    onListSelected = { list ->
-                        taskEditViewModel.sendIntent(TaskEditIntent.AssignList(list?.id))
-                        showListSelectionDialog = false
-                        if (list != null) {
-                            listForSectionSelection = list
-                            showSectionSelectionDialog = true
+                    onConfirmSelection = { selectedListId -> // Use new callback
+                        taskEditViewModel.sendIntent(TaskEditIntent.AssignList(selectedListId))
+                        // If a list was selected (not 'None'), show section dialog
+                        if (selectedListId != null) {
+                            // Find the selected list object to pass its name
+                            listForSectionSelection = state?.availableLists?.find { it.id == selectedListId }
+                            if(listForSectionSelection != null) {
+                                showSectionSelectionDialog = true
+                            } else {
+                                // Handle case where list might not be found (shouldn't happen ideally)
+                                showSectionSelectionDialog = false
+                            }
                         } else {
                             listForSectionSelection = null
-                            showSectionSelectionDialog =
-                                false // Hide section dialog if no list selected
+                            showSectionSelectionDialog = false // Don't show section dialog if 'None' list selected
                         }
+                        showListSelectionDialog = false // Close list dialog handled by GeneralAlertDialog now
                     },
                     onCreateNewList = {
-                        showListSelectionDialog = false // Close selection dialog
-                        showCreateListDialog = true // Open creation dialog
+                        showListSelectionDialog = false
+                        showCreateListDialog = true
                     }
                 )
             }
@@ -201,15 +207,15 @@ fun ModificationTaskSheet(
                     isLoading = state?.isLoadingSelection ?: false,
                     listName = listForSectionSelection!!.name,
                     sections = state?.availableSections ?: emptyList(),
-                    selectedSectionId = state?.sectionId,
+                    currentSelectedSectionId = state?.sectionId, // Pass current ID
                     onDismiss = { showSectionSelectionDialog = false },
-                    onSectionSelected = { section ->
-                        taskEditViewModel.sendIntent(TaskEditIntent.AssignSection(section?.id))
-                        showSectionSelectionDialog = false
+                    onConfirmSelection = { selectedSectionId -> // Use new callback
+                        taskEditViewModel.sendIntent(TaskEditIntent.AssignSection(selectedSectionId))
+                        showSectionSelectionDialog = false // Close section dialog handled by GeneralAlertDialog now
                     },
                     onCreateNewSection = {
-                        showSectionSelectionDialog = false // Close selection dialog
-                        showCreateSectionDialog = true // Open creation dialog
+                        showSectionSelectionDialog = false
+                        showCreateSectionDialog = true
                     }
                 )
             }
