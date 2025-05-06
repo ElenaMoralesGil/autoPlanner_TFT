@@ -16,4 +16,7 @@ sealed class MoreIntent : Intent {
     data class RequestDeleteSection(val sectionId: Long, val listId: Long) : MoreIntent() // listId for context/reload
     data object ConfirmDeleteSection : MoreIntent()
     data object CancelDeleteSection : MoreIntent()
+
+    data class UpdateList(val listId: Long, val newName: String, val newColorHex: String) : MoreIntent()
+    data class UpdateSection(val sectionId: Long, val listId: Long, val newName: String) : MoreIntent()
 }

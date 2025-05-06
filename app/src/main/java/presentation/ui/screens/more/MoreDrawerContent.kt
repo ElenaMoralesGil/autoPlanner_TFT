@@ -260,7 +260,7 @@ fun MoreDrawerContent(
             existingList = listInfo.list,
             onDismiss = { listToEdit = null },
             onConfirm = { name, colorHex ->
-                viewModel.sendIntent(MoreIntent.CreateList(name, colorHex)) // SaveListUseCase handles create/update
+                viewModel.sendIntent(MoreIntent.UpdateList(listInfo.list.id, name, colorHex)) // SaveListUseCase handles create/update
                 listToEdit = null
             }
         )
@@ -286,7 +286,7 @@ fun MoreDrawerContent(
             existingSection = section,
             onDismiss = { sectionToEdit = null },
             onConfirm = { name ->
-                viewModel.sendIntent(MoreIntent.CreateSection(section.listId, name)) // SaveSectionUseCase handles create/update
+                MoreIntent.UpdateSection(section.id, section.listId, name) // SaveSectionUseCase handles create/update
                 sectionToEdit = null
             }
         )

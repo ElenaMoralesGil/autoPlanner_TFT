@@ -57,6 +57,7 @@ class MoreViewModel(
                     is TaskResult.Success -> {
                         setState { copy(isLoading = false, lists = result.data, error = null) }
                     }
+
                     is TaskResult.Error -> {
                         setState { copy(isLoading = false, error = result.message) }
                         setEffect(MoreEffect.ShowSnackbar("Error loading lists: ${result.message}"))
@@ -73,20 +74,93 @@ class MoreViewModel(
                 Log.d("MoreViewModel", "Intent: SelectList ${intent.listId}")
                 intent.listId?.let { setEffect(MoreEffect.NavigateToTasks(it)) }
             }
+
             is MoreIntent.CreateList -> saveList(intent.name, intent.colorHex)
             is MoreIntent.ToggleListExpansion -> handleToggleExpansion(intent.listId) // Refined this
             is MoreIntent.LoadSections -> loadSections(intent.listId) // Keep explicit load if needed elsewhere
             is MoreIntent.CreateSection -> createSection(intent.listId, intent.sectionName)
             MoreIntent.RequestCreateList -> setEffect(MoreEffect.ShowCreateListDialog)
             is MoreIntent.RequestDeleteList -> setState { copy(listIdPendingDeletion = intent.listId) }
-            is MoreIntent.ConfirmDeleteList -> currentState.listIdPendingDeletion?.let { deleteList(it) }
+            is MoreIntent.ConfirmDeleteList -> currentState.listIdPendingDeletion?.let {
+                deleteList(
+                    it
+                )
+            }
+
             is MoreIntent.CancelDeleteList -> setState { copy(listIdPendingDeletion = null) }
 
-            is MoreIntent.RequestDeleteSection -> setState { copy(sectionIdPendingDeletion = intent.sectionId, listIdForSectionDeletion = intent.listId) }
-            is MoreIntent.ConfirmDeleteSection -> currentState.sectionIdPendingDeletion?.let { deleteSection(it, currentState.listIdForSectionDeletion) }
-            is MoreIntent.CancelDeleteSection -> setState { copy(sectionIdPendingDeletion = null, listIdForSectionDeletion = null) }
+            is MoreIntent.RequestDeleteSection -> setState {
+                copy(
+                    sectionIdPendingDeletion = intent.sectionId,
+                    listIdForSectionDeletion = intent.listId
+                )
+            }
+
+            is MoreIntent.ConfirmDeleteSection -> currentState.sectionIdPendingDeletion?.let {
+                deleteSection(
+                    it,
+                    currentState.listIdForSectionDeletion
+                )
+            }
+
+            is MoreIntent.CancelDeleteSection -> setState {
+                copy(
+                    sectionIdPendingDeletion = null,
+                    listIdForSectionDeletion = null
+                )
+            }
+
+            is MoreIntent.UpdateList -> updateList(
+                intent.listId,
+                intent.newName,
+                intent.newColorHex
+            )
+
+            is MoreIntent.UpdateSection -> updateSection(
+                intent.sectionId,
+                intent.listId,
+                intent.newName
+            )
         }
     }
+
+    private suspend fun updateList(listId: Long, newName: String, newColorHex: String) {
+        setState { copy(isLoading = true) }
+        // Create a TaskList object with the existing ID and new details
+        val updatedList = TaskList(id = listId, name = newName, colorHex = newColorHex)
+        when (val result = saveListUseCase(updatedList)) { // saveListUseCase should handle update
+            is TaskResult.Success -> {
+                setEffect(MoreEffect.ShowSnackbar("List '$newName' updated"))
+                // Flow collection in loadLists() should automatically refresh
+            }
+
+            is TaskResult.Error -> {
+                setState { copy(isLoading = false, error = result.message) }
+                setEffect(MoreEffect.ShowSnackbar("Error updating list: ${result.message}"))
+            }
+        }
+        // isLoading will be set to false by the loadLists flow collection
+    }
+
+    private suspend fun updateSection(sectionId: Long, listId: Long, newName: String) {
+        // Create a TaskSection object with the existing ID and new details
+        val updatedSection = TaskSection(id = sectionId, listId = listId, name = newName)
+        when (val result =
+            saveSectionUseCase(updatedSection)) { // saveSectionUseCase should handle update
+            is TaskResult.Success -> {
+                setEffect(MoreEffect.ShowSnackbar("Section '$newName' updated"))
+                // Invalidate cached sections for this list and reload them
+                setState { copy(sectionsByListId = sectionsByListId - listId) }
+                loadSections(listId)
+            }
+
+            is TaskResult.Error -> {
+                setEffect(MoreEffect.ShowSnackbar("Error updating section: ${result.message}"))
+            }
+        }
+        // isLoading for sections is handled by loadSections
+    }
+
 
     private suspend fun handleToggleExpansion(listId: Long) {
         val currentExpanded = currentState.expandedListIds
@@ -151,6 +225,7 @@ class MoreViewModel(
                 setEffect(MoreEffect.ShowSnackbar("List '$name' created"))
                 // Flow collection in loadLists() should automatically refresh the list
             }
+
             is TaskResult.Error -> {
                 setState { copy(isLoading = false, error = result.message) }
                 setEffect(MoreEffect.ShowSnackbar("Error creating list: ${result.message}"))
@@ -177,6 +252,7 @@ class MoreViewModel(
 
 
     }
+
     private suspend fun deleteList(listId: Long) {
         setState { copy(isLoading = true, listIdPendingDeletion = null) }
         when (val result = deleteListUseCase(listId)) {
@@ -184,6 +260,7 @@ class MoreViewModel(
                 setEffect(MoreEffect.ShowSnackbar("List deleted successfully."))
                 // List will be refreshed by the flow from getListsInfoUseCase
             }
+
             is TaskResult.Error -> {
                 setEffect(MoreEffect.ShowSnackbar("Error deleting list: ${result.message}"))
             }
@@ -192,7 +269,13 @@ class MoreViewModel(
     }
 
     private suspend fun deleteSection(sectionId: Long, listId: Long?) {
-        setState { copy(isLoading = true, sectionIdPendingDeletion = null, listIdForSectionDeletion = null) }
+        setState {
+            copy(
+                isLoading = true,
+                sectionIdPendingDeletion = null,
+                listIdForSectionDeletion = null
+            )
+        }
         when (val result = deleteSectionUseCase(sectionId)) {
             is TaskResult.Success -> {
                 setEffect(MoreEffect.ShowSnackbar("Section deleted successfully."))
@@ -202,6 +285,7 @@ class MoreViewModel(
                     loadSections(it)
                 }
             }
+
             is TaskResult.Error -> {
                 setEffect(MoreEffect.ShowSnackbar("Error deleting section: ${result.message}"))
             }
