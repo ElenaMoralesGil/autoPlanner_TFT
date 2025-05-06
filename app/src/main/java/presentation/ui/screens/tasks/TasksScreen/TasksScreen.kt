@@ -99,9 +99,7 @@ fun TasksScreen(
         content = { innerPadding ->
             state?.let { currentState ->
                 Log.d("TasksScreen", "Rendering UI with State: requested(L=${currentState.requestedListId}, S=${currentState.requestedSectionId}), current(L=${currentState.currentListId}, S=${currentState.currentSectionId}), isLoading=${currentState.isLoading}, isNavigating=${currentState.isNavigating}, tasks=${currentState.filteredTasks.size}")
-                val isLoadingOrNavigating = currentState.isLoading || currentState.isNavigating || // <-- ADD isNavigating
-                        currentState.requestedListId != currentState.currentListId ||
-                        currentState.requestedSectionId != currentState.currentSectionId
+                val isLoadingOrNavigating = currentState.isLoading || currentState.isNavigating
 
                 Log.d("TasksScreen", "Calculated shouldShowLoading = $isLoadingOrNavigating")
 

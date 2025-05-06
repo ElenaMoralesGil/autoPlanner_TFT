@@ -12,4 +12,7 @@ data class MoreState(
     val isLoadingSectionsFor: Long? = null,
     val error: String? = null,
     val sectionError: String? = null,
+    val listIdPendingDeletion: Long? = null,
+    val sectionIdPendingDeletion: Long? = null,
+    val listIdForSectionDeletion: Long? = null
 )

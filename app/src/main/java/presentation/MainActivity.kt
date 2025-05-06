@@ -87,7 +87,6 @@ fun MainApp() {
                     drawerState = drawerState,
                     onNavigateToTasks = { listId, sectionId ->
                         scope.launch {
-                            // This logic correctly uses the 'listViewModel' instance from MainApp
                             Log.d("MainActivity", "[ACTION] onNavigateToTasks triggered: listId=$listId, sectionId=$sectionId")
                             val intent = when {
                                 listId != null && sectionId != null -> TaskListIntent.ViewSection(listId, sectionId)

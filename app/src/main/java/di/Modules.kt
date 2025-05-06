@@ -29,6 +29,8 @@ import com.elena.autoplanner.domain.usecases.auth.LoginUseCase
 import com.elena.autoplanner.domain.usecases.auth.LogoutUseCase
 import com.elena.autoplanner.domain.usecases.auth.ReauthenticateUseCase
 import com.elena.autoplanner.domain.usecases.auth.RegisterUseCase
+import com.elena.autoplanner.domain.usecases.lists.DeleteListUseCase
+import com.elena.autoplanner.domain.usecases.lists.DeleteSectionUseCase
 import com.elena.autoplanner.domain.usecases.lists.GetAllListsUseCase
 import com.elena.autoplanner.domain.usecases.lists.GetAllSectionsUseCase
 import com.elena.autoplanner.domain.usecases.lists.GetListsInfoUseCase
@@ -190,6 +192,8 @@ val useCaseModule = module {
     single { GetSectionsUseCase(get()) }
     single { GetAllSectionsUseCase(get()) }
     single { SaveSectionUseCase(get()) }
+    single { DeleteListUseCase(get()) } // Added
+    single { DeleteSectionUseCase(get()) }
 }
 
 val viewModelModule = module {
@@ -202,7 +206,7 @@ val viewModelModule = module {
             saveTaskUseCase = get()
         )
     }
-    viewModel { MoreViewModel(get(), get(), get(), get(), get()) } // Add MoreViewModel
+    viewModel { MoreViewModel(get(), get(), get(), get(), get(), get(), get()) } // Add MoreViewModel
     viewModel { (handle: SavedStateHandle) -> // Koin provides SavedStateHandle
         TaskListViewModel(
             getTasksByListUseCase = get(),

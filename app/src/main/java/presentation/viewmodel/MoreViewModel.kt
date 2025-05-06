@@ -6,6 +6,8 @@ import com.elena.autoplanner.domain.models.TaskList
 import com.elena.autoplanner.domain.models.TaskListInfo
 import com.elena.autoplanner.domain.models.TaskSection
 import com.elena.autoplanner.domain.results.TaskResult
+import com.elena.autoplanner.domain.usecases.lists.DeleteListUseCase
+import com.elena.autoplanner.domain.usecases.lists.DeleteSectionUseCase
 import com.elena.autoplanner.domain.usecases.lists.GetAllSectionsUseCase
 import com.elena.autoplanner.domain.usecases.lists.GetListsInfoUseCase
 import com.elena.autoplanner.domain.usecases.lists.SaveListUseCase
@@ -24,6 +26,8 @@ class MoreViewModel(
     private val getAllSectionsUseCase: GetAllSectionsUseCase,
     private val saveSectionUseCase: SaveSectionUseCase,
     private val getTasksUseCase: GetTasksUseCase,
+    private val deleteListUseCase: DeleteListUseCase,
+    private val deleteSectionUseCase: DeleteSectionUseCase
 ) : BaseViewModel<MoreIntent, MoreState, MoreEffect>() {
 
     override fun createInitialState(): MoreState = MoreState()
@@ -74,6 +78,13 @@ class MoreViewModel(
             is MoreIntent.LoadSections -> loadSections(intent.listId) // Keep explicit load if needed elsewhere
             is MoreIntent.CreateSection -> createSection(intent.listId, intent.sectionName)
             MoreIntent.RequestCreateList -> setEffect(MoreEffect.ShowCreateListDialog)
+            is MoreIntent.RequestDeleteList -> setState { copy(listIdPendingDeletion = intent.listId) }
+            is MoreIntent.ConfirmDeleteList -> currentState.listIdPendingDeletion?.let { deleteList(it) }
+            is MoreIntent.CancelDeleteList -> setState { copy(listIdPendingDeletion = null) }
+
+            is MoreIntent.RequestDeleteSection -> setState { copy(sectionIdPendingDeletion = intent.sectionId, listIdForSectionDeletion = intent.listId) }
+            is MoreIntent.ConfirmDeleteSection -> currentState.sectionIdPendingDeletion?.let { deleteSection(it, currentState.listIdForSectionDeletion) }
+            is MoreIntent.CancelDeleteSection -> setState { copy(sectionIdPendingDeletion = null, listIdForSectionDeletion = null) }
         }
     }
 
@@ -163,5 +174,38 @@ class MoreViewModel(
                 setEffect(MoreEffect.ShowSnackbar("Error creating section: ${result.message}"))
             }
         }
+
+
+    }
+    private suspend fun deleteList(listId: Long) {
+        setState { copy(isLoading = true, listIdPendingDeletion = null) }
+        when (val result = deleteListUseCase(listId)) {
+            is TaskResult.Success -> {
+                setEffect(MoreEffect.ShowSnackbar("List deleted successfully."))
+                // List will be refreshed by the flow from getListsInfoUseCase
+            }
+            is TaskResult.Error -> {
+                setEffect(MoreEffect.ShowSnackbar("Error deleting list: ${result.message}"))
+            }
+        }
+        setState { copy(isLoading = false) }
+    }
+
+    private suspend fun deleteSection(sectionId: Long, listId: Long?) {
+        setState { copy(isLoading = true, sectionIdPendingDeletion = null, listIdForSectionDeletion = null) }
+        when (val result = deleteSectionUseCase(sectionId)) {
+            is TaskResult.Success -> {
+                setEffect(MoreEffect.ShowSnackbar("Section deleted successfully."))
+                listId?.let {
+                    // Invalidate and reload sections for the parent list
+                    setState { copy(sectionsByListId = sectionsByListId - it) }
+                    loadSections(it)
+                }
+            }
+            is TaskResult.Error -> {
+                setEffect(MoreEffect.ShowSnackbar("Error deleting section: ${result.message}"))
+            }
+        }
+        setState { copy(isLoading = false) }
     }
 }
