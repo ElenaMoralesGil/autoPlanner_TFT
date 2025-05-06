@@ -11,6 +11,7 @@ import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TaskInternalFlags
 import com.elena.autoplanner.domain.models.TimePlanning
 
 class TaskMapper {
@@ -67,6 +68,9 @@ class TaskMapper {
             }
         }
 
+        val internalFlags = TaskInternalFlags( // Use fully qualified name if needed
+            isMarkedForDeletion = taskEntity.isDeleted
+        )
         return Task.Builder()
             .id(taskEntity.id)
             .name(taskEntity.name)
@@ -85,6 +89,7 @@ class TaskMapper {
             .sectionId(taskEntity.sectionId) // <-- Add this
             .displayOrder(taskEntity.displayOrder)
             .listName(listName)
+            .internalFlags(internalFlags)
             .sectionName(sectionName)
             .listColor(listColor)
             .build()
@@ -92,6 +97,7 @@ class TaskMapper {
 
 
     fun mapToEntity(domain: Task): TaskEntity {
+        val isDeletedFlag = domain.internalFlags?.isMarkedForDeletion ?: false
         return TaskEntity(
             id = domain.id,
             name = domain.name,
@@ -109,8 +115,16 @@ class TaskMapper {
             listId = domain.listId,
             sectionId = domain.sectionId,
             displayOrder = domain.displayOrder,
+            isDeleted = isDeletedFlag
 
-            )
+        )
+    }
+
+    fun updateEntityFlags(entity: TaskEntity, domain: Task): TaskEntity {
+        return entity.copy(
+            isDeleted = domain.internalFlags?.isMarkedForDeletion ?: entity.isDeleted
+            // Add other flags here if needed in the future
+        )
     }
 }
 

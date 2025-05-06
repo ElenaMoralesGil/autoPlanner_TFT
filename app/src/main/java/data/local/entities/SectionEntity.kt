@@ -29,5 +29,6 @@ data class SectionEntity(
     val listId: Long,
     val name: String,
     val displayOrder: Int = 0,
-    val lastUpdated: Long = System.currentTimeMillis()
+    val lastUpdated: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false
 )

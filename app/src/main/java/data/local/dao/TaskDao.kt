@@ -18,24 +18,26 @@ interface TaskDao {
     // --- Get Operations ---
 
     @Transaction
-    @Query("SELECT * FROM tasks WHERE userId = :userId")
+    @Query("SELECT * FROM tasks WHERE userId = :userId AND isDeleted = 0") // <-- Filter deleted
     fun getTasksWithRelationsForUserFlow(userId: String): Flow<List<TaskWithRelations>>
 
     @Transaction
-    @Query("SELECT * FROM tasks WHERE userId IS NULL")
+    @Query("SELECT * FROM tasks WHERE userId IS NULL AND isDeleted = 0")
     fun getLocalOnlyTasksWithRelationsFlow(): Flow<List<TaskWithRelations>>
 
     @Transaction
-    @Query("SELECT * FROM tasks WHERE userId IS NULL")
+    @Query("SELECT * FROM tasks WHERE userId IS NULL AND isDeleted = 0")
     suspend fun getLocalOnlyTasksWithRelationsList(): List<TaskWithRelations> // Suspend version
 
     @Transaction
-    @Query("SELECT * FROM tasks WHERE id = :localId") // Query by local ID
+    @Query("SELECT * FROM tasks WHERE id = :localId AND isDeleted = 0")
     suspend fun getTaskWithRelationsByLocalId(localId: Int): TaskWithRelations?
 
-    @Query("SELECT * FROM tasks WHERE firestoreId = :firestoreId")
+    @Query("SELECT * FROM tasks WHERE firestoreId = :firestoreId AND isDeleted = 0")
     suspend fun getTaskByFirestoreId(firestoreId: String): TaskEntity?
 
+    @Query("SELECT * FROM tasks WHERE firestoreId = :firestoreId") // <-- Get even if deleted (for sync)
+    suspend fun getAnyTaskByFirestoreId(firestoreId: String): TaskEntity?
     // --- Insert/Update Operations ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -51,6 +53,9 @@ interface TaskDao {
     suspend fun updateTaskCompletion(localId: Int, isCompleted: Boolean, timestamp: Long)
 
     // --- Delete Operations ---
+
+    @Query("UPDATE tasks SET isDeleted = :isDeleted, lastUpdated = :timestamp WHERE id = :localId")
+    suspend fun updateTaskDeletedFlag(localId: Int, isDeleted: Boolean, timestamp: Long)
 
     @Delete
     suspend fun deleteTask(task: TaskEntity) // Keep for generic delete if needed
@@ -71,29 +76,25 @@ interface TaskDao {
     suspend fun deleteAllTasksInternal()
 
 
-    @Query("SELECT * FROM tasks")
+    @Query("SELECT * FROM tasks WHERE isDeleted = 0")
     fun getAllTasks(): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks WHERE id = :taskId")
+    @Query("SELECT * FROM tasks WHERE id = :taskId AND isDeleted = 0")
     suspend fun getTask(taskId: Int): TaskEntity?
 
-    @Query("DELETE FROM tasks")
-    suspend fun deleteAllTasks()
-
     @Transaction
-    @Query("SELECT * FROM tasks")
+    @Query("SELECT * FROM tasks WHERE isDeleted = 0") // Filter deleted
     fun getTasksWithRelations(): Flow<List<TaskWithRelations>>
-
     @Transaction
-    @Query("SELECT * FROM tasks WHERE id = :taskId")
+    @Query("SELECT * FROM tasks WHERE id = :taskId AND isDeleted = 0")
     suspend fun getTaskWithRelations(taskId: Int): TaskWithRelations?
 
     @Transaction
-    @Query("SELECT * FROM tasks WHERE userId = :userId")
+    @Query("SELECT * FROM tasks WHERE userId = :userId AND isDeleted = 0")
     fun getTasksWithRelationsForUser(userId: String): Flow<List<TaskWithRelations>>
 
     @Transaction
-    @Query("SELECT * FROM tasks WHERE userId IS NULL")
+    @Query("SELECT * FROM tasks WHERE userId IS NULL AND isDeleted = 0")
     suspend fun getLocalOnlyTasksWithRelations(): List<TaskWithRelations>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -106,11 +107,13 @@ interface TaskDao {
         completionDateTime: LocalDateTime?, // Add this parameter
         timestamp: Long,
     )
+    @Query("SELECT * FROM tasks WHERE id = :localId") // Get regardless of isDeleted status
+    suspend fun getAnyTaskByLocalId(localId: Int): TaskEntity?
 
-    @Query("SELECT * FROM tasks WHERE userId = :userId AND listId = :listId") // Find synced tasks for a list
+    @Query("SELECT * FROM tasks WHERE userId = :userId AND listId = :listId AND isDeleted = 0") // Find synced tasks for a list
     suspend fun getSyncedTasksByListId(userId: String, listId: Long): List<TaskEntity>
 
-    @Query("SELECT * FROM tasks WHERE userId = :userId AND sectionId = :sectionId") // Find synced tasks for a section
+    @Query("SELECT * FROM tasks WHERE userId = :userId AND sectionId = :sectionId AND isDeleted = 0") // Find synced tasks for a section
     suspend fun getSyncedTasksBySectionId(userId: String, sectionId: Long): List<TaskEntity>
 
     @Query("UPDATE tasks SET listId = NULL, sectionId = NULL WHERE listId = :listId")

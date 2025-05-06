@@ -17,5 +17,6 @@ data class ListEntity(
     val userId: String? = null,
     val name: String,
     val colorHex: String,
-    val lastUpdated: Long = System.currentTimeMillis()
+    val lastUpdated: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false
 )

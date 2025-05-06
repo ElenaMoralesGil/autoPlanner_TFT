@@ -1,7 +1,8 @@
 package com.elena.autoplanner.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
+// Remove unused Delete import if not physically deleting synced items
+// import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -12,65 +13,68 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SectionDao {
 
-    @Delete
-    suspend fun deleteSection(section: SectionEntity)
+    // --- Get Synced (Filters Deleted) ---
+    @Query("SELECT * FROM task_sections WHERE userId = :userId AND listId = :listId AND isDeleted = 0 ORDER BY displayOrder ASC, name ASC")
+    fun getSyncedSectionsForListFlow(userId: String, listId: Long): Flow<List<SectionEntity>>
 
-    @Query("SELECT * FROM task_sections WHERE listId = :listId ORDER BY displayOrder ASC, name ASC")
-    fun getSectionsForList(listId: Long): Flow<List<SectionEntity>>
+    @Query("SELECT * FROM task_sections WHERE userId = :userId AND listId = :listId AND isDeleted = 0 ORDER BY displayOrder ASC, name ASC")
+    suspend fun getSyncedSectionsForListList(userId: String, listId: Long): List<SectionEntity>
 
-    @Query("SELECT * FROM task_sections WHERE listId = :listId ORDER BY displayOrder ASC, name ASC")
-    suspend fun getSectionsForListList(listId: Long): List<SectionEntity> // Non-flow version
+    // --- Get Local Only (Filters Deleted) ---
+    @Query("SELECT * FROM task_sections WHERE userId IS NULL AND listId = :listId AND isDeleted = 0 ORDER BY displayOrder ASC, name ASC")
+    fun getLocalOnlySectionsForListFlow(listId: Long): Flow<List<SectionEntity>>
 
+    @Query("SELECT * FROM task_sections WHERE userId IS NULL AND listId = :listId AND isDeleted = 0 ORDER BY displayOrder ASC, name ASC")
+    suspend fun getLocalOnlySectionsForListList(listId: Long): List<SectionEntity>
 
-    @Query("DELETE FROM task_sections WHERE id = :sectionId")
-    suspend fun deleteSectionById(sectionId: Long)
+    @Query("SELECT * FROM task_sections WHERE userId IS NULL AND isDeleted = 0 ORDER BY name ASC") // Order by name if fetching all local
+    suspend fun getAllLocalOnlySectionsList(): List<SectionEntity>
 
-    @Query("UPDATE tasks SET sectionId = NULL WHERE sectionId = :sectionId")
-    suspend fun clearSectionIdForTasks(sectionId: Long)
-
-    @Query("SELECT * FROM task_sections WHERE userId = :userId AND listId = :listId ORDER BY displayOrder ASC, name ASC")
-    fun getSyncedSectionsForListFlow(userId: String, listId: Long): Flow<List<SectionEntity>> // Flow
-
-    @Query("SELECT * FROM task_sections WHERE userId = :userId AND listId = :listId ORDER BY displayOrder ASC, name ASC")
-    suspend fun getSyncedSectionsForListList(userId: String, listId: Long): List<SectionEntity> // Suspend List
-
-    // --- Get Local Only ---
-    @Query("SELECT * FROM task_sections WHERE userId IS NULL AND listId = :listId ORDER BY displayOrder ASC, name ASC")
-    fun getLocalOnlySectionsForListFlow(listId: Long): Flow<List<SectionEntity>> // Flow
-
-    @Query("SELECT * FROM task_sections WHERE userId IS NULL AND listId = :listId ORDER BY displayOrder ASC, name ASC")
-    suspend fun getLocalOnlySectionsForListList(listId: Long): List<SectionEntity> // Suspend List
-
-    // --- Get Specific ---
-    @Query("SELECT * FROM task_sections WHERE id = :sectionId") // By Local ID
+    // --- Get Specific (Filters Deleted) ---
+    @Query("SELECT * FROM task_sections WHERE id = :sectionId AND isDeleted = 0")
     suspend fun getSectionByLocalId(sectionId: Long): SectionEntity?
 
-    @Query("SELECT * FROM task_sections WHERE firestoreId = :firestoreId") // By Firestore ID
+    @Query("SELECT * FROM task_sections WHERE firestoreId = :firestoreId AND isDeleted = 0")
     suspend fun getSectionByFirestoreId(firestoreId: String): SectionEntity?
 
-    // --- Insert/Update ---
+    // --- Get Specific (Including Deleted - For Sync/Delete Logic) ---
+    @Query("SELECT * FROM task_sections WHERE id = :sectionId") // Get regardless of isDeleted
+    suspend fun getAnySectionByLocalId(sectionId: Long): SectionEntity? // <-- ADDED
+
+    @Query("SELECT * FROM task_sections WHERE firestoreId = :firestoreId") // Get regardless of isDeleted
+    suspend fun getAnySectionByFirestoreId(firestoreId: String): SectionEntity?
+
+    // --- Get All For List (Including Deleted - For Sync/Delete Logic) ---
+    @Query("SELECT * FROM task_sections WHERE listId = :listId ORDER BY displayOrder ASC, name ASC") // Get regardless of isDeleted
+    suspend fun getAllSectionsForListList(listId: Long): List<SectionEntity> // <-- ADDED
+
+    // --- Insert/Update (Keep as is) ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSection(section: SectionEntity): Long // Returns local ID
+    suspend fun insertSection(section: SectionEntity): Long
 
     @Update
-    suspend fun updateSection(section: SectionEntity) // Assumes section.id is set correctly
+    suspend fun updateSection(section: SectionEntity)
 
-    // --- Delete ---
+    // --- Update isDeleted flag ---
+    @Query("UPDATE task_sections SET isDeleted = :isDeleted, lastUpdated = :timestamp WHERE id = :localId")
+    suspend fun updateSectionDeletedFlag(localId: Long, isDeleted: Boolean, timestamp: Long)
+
+    // --- Delete Local-Only (Physical) ---
     @Query("DELETE FROM task_sections WHERE id = :localId AND userId IS NULL")
-    suspend fun deleteLocalOnlySection(localId: Long) // Delete local-only by local ID
-
-    @Query("DELETE FROM task_sections WHERE id = :localId AND userId = :userId")
-    suspend fun deleteSyncedSection(userId: String, localId: Long) // Delete synced by local ID
-
-    @Query("DELETE FROM task_sections WHERE userId = :userId")
-    suspend fun deleteAllSectionsForUser(userId: String)
+    suspend fun deleteLocalOnlySection(localId: Long)
 
     @Query("DELETE FROM task_sections WHERE userId IS NULL")
     suspend fun deleteAllLocalOnlySections()
 
-    @Query("DELETE FROM task_sections WHERE listId = :listId") // Keep for list cascade delete
-    suspend fun deleteSectionsForList(listId: Long)
+    // Keep FK clear method
+    @Query("UPDATE tasks SET sectionId = NULL WHERE sectionId = :sectionId")
+    suspend fun clearSectionIdForTasks(sectionId: Long)
 
-    @Query("SELECT * FROM task_sections WHERE userId IS NULL") // <-- ADDED: Get ALL local-only sections
-    suspend fun getAllLocalOnlySectionsList(): List<SectionEntity>
+    // --- Legacy/Redundant Queries (Can likely be removed if not used elsewhere) ---
+    // These filter deleted, similar to getSynced/getLocalOnly flows/lists
+    @Query("SELECT * FROM task_sections WHERE listId = :listId AND isDeleted = 0 ORDER BY displayOrder ASC, name ASC")
+    fun getSectionsForList(listId: Long): Flow<List<SectionEntity>>
+
+    @Query("SELECT * FROM task_sections WHERE listId = :listId AND isDeleted = 0 ORDER BY displayOrder ASC, name ASC")
+    suspend fun getSectionsForListList(listId: Long): List<SectionEntity>
 }

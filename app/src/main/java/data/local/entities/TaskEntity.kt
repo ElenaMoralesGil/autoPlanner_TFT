@@ -49,4 +49,5 @@ data class TaskEntity(
     val listId: Long? = null,
     val sectionId: Long? = null,
     val displayOrder: Int = 0,
+    val isDeleted: Boolean = false
 )

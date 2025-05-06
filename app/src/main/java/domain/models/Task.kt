@@ -20,6 +20,7 @@ data class TaskInternalFlags(
     var isHardConflict: Boolean = false, // Flag if involved in Fixed vs Fixed
     var isPostponed: Boolean = false,
     var needsManualResolution: Boolean = false,
+    var isMarkedForDeletion: Boolean = false
 )
 
 data class Task private constructor(
@@ -132,6 +133,7 @@ data class Task private constructor(
         private var listName: String? = null
         private var sectionName: String? = null
         private var listColor: Color? = null
+        private var internalFlags: TaskInternalFlags? = null
 
         fun id(id: Int) = apply { this.id = id }
         fun name(name: String) = apply { this.name = name }
@@ -159,7 +161,7 @@ data class Task private constructor(
         fun listName(name: String?) = apply { this.listName = name }
         fun sectionName(name: String?) = apply { this.sectionName = name }
         fun listColor(color: Color?) = apply { this.listColor = color }
-
+        fun internalFlags(flags: TaskInternalFlags?) = apply { this.internalFlags = flags }
         fun build(): Task {
             val finalSectionId = if (listId == null) null else sectionId
             val effectiveStartDate = startDateConf ?: TimePlanning(
@@ -182,6 +184,7 @@ data class Task private constructor(
                 scheduledEndDateTime = scheduledEndDateTime,
                 completionDateTime = completionDateTime,
                 listId = listId,
+                internalFlags = internalFlags,
                 sectionId = finalSectionId,
                 displayOrder = displayOrder,
                 listName = listName,
@@ -220,6 +223,7 @@ data class Task private constructor(
                 .listId(task.listId)
                 .sectionId(task.sectionId)
                 .displayOrder(task.displayOrder)
+                .internalFlags(task.internalFlags)
                 .listName(task.listName)
                 .sectionName(task.sectionName)
                 .listColor(task.listColor)
