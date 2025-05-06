@@ -8,6 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.data.local.MIGRATION_6_7
 import com.elena.autoplanner.data.local.MIGRATION_7_8
 import com.elena.autoplanner.data.local.MIGRATION_8_9
+import com.elena.autoplanner.data.local.MIGRATION_9_10
 import com.elena.autoplanner.data.local.TaskDatabase
 import com.elena.autoplanner.data.local.dao.ListDao
 import com.elena.autoplanner.data.local.dao.ReminderDao
@@ -97,7 +98,7 @@ val appModule = module {
             TaskDatabase::class.java,
             "task_database"
         )
-            .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+            .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
             .addCallback(roomCallback)
             .build()
     }
@@ -116,6 +117,8 @@ val appModule = module {
             reminderDao = get(),
             repeatConfigDao = get(),
             subtaskDao = get(),
+            listDao = get(),
+            sectionDao = get(),
             userRepository = get(),
             firestore = get(),
             repoScope = get(),
@@ -129,7 +132,12 @@ val appModule = module {
     single<ListRepository> {
         ListRepositoryImpl(
             listDao = get(),
-            sectionDao = get()
+            sectionDao = get(),
+            taskDao = get(),             // <-- Add TaskDao
+            userRepository = get(),      // <-- Add UserRepository
+            firestore = get(),           // <-- Add Firestore
+            dispatcher = Dispatchers.IO,
+            repoScope = get()
         )
     } // Add ListRepository
 }

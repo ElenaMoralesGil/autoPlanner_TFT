@@ -27,7 +27,7 @@ import com.elena.autoplanner.data.local.entities.TaskEntity
         ListEntity::class,      // Add ListEntity
         SectionEntity::class    // Add SectionEntity
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 @TypeConverters(
@@ -108,3 +108,26 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         // 5. Recreate indices
     }
 }
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Add columns to task_lists
+        db.execSQL("ALTER TABLE task_lists ADD COLUMN userId TEXT")
+        db.execSQL("ALTER TABLE task_lists ADD COLUMN firestoreId TEXT")
+        db.execSQL("ALTER TABLE task_lists ADD COLUMN lastUpdated INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_task_lists_userId ON task_lists(userId)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_task_lists_firestoreId ON task_lists(firestoreId)")
+
+        // Add columns to task_sections
+        db.execSQL("ALTER TABLE task_sections ADD COLUMN userId TEXT")
+        db.execSQL("ALTER TABLE task_sections ADD COLUMN firestoreId TEXT")
+        db.execSQL("ALTER TABLE task_sections ADD COLUMN lastUpdated INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_task_sections_userId ON task_sections(userId)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_task_sections_firestoreId ON task_sections(firestoreId)")
+
+        // Important: Re-evaluate FKs in TaskEntity if needed.
+        // Since ListEntity now has local-only and synced states,
+        // the SET NULL on TaskEntity might be sufficient.
+        // If issues arise, you might need more complex migration or logic.
+    }
+}
+

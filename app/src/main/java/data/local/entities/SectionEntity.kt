@@ -13,15 +13,21 @@ import androidx.room.PrimaryKey
             entity = ListEntity::class,
             parentColumns = ["id"],
             childColumns = ["listId"],
-            onDelete = ForeignKey.CASCADE // Delete sections if list is deleted
+            onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("listId")]
-
+    indices = [
+        Index("listId"),
+        Index(value = ["userId"]), // Add index for userId
+        Index(value = ["firestoreId"], unique = true) // Add index for firestoreId
+    ]
 )
 data class SectionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val firestoreId: String? = null, // <-- Add
+    val userId: String? = null,
     val listId: Long,
     val name: String,
-    val displayOrder: Int = 0, // For ordering sections within a list
+    val displayOrder: Int = 0,
+    val lastUpdated: Long = System.currentTimeMillis()
 )

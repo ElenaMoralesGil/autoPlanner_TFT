@@ -13,6 +13,8 @@ import com.elena.autoplanner.domain.models.ReminderPlan
 import com.elena.autoplanner.domain.models.RepeatPlan
 import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TaskList
+import com.elena.autoplanner.domain.models.TaskSection
 import com.elena.autoplanner.domain.models.TimePlanning
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
@@ -23,7 +25,11 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-fun Task.toFirebaseMap(userId: String): Map<String, Any?> {
+fun Task.toFirebaseMap(
+    userId: String,
+    resolvedListFirestoreId: String? = null, // Pass the resolved FS IDs
+    resolvedSectionFirestoreId: String? = null
+): Map<String, Any?> {
     return mapOf(
         "userId" to userId,
         "name" to name,
@@ -40,10 +46,65 @@ fun Task.toFirebaseMap(userId: String): Map<String, Any?> {
         "completionDateTime" to completionDateTime?.toTimestamp(),
         "listId" to this.listId,
         "sectionId" to this.sectionId,
+        "listFirestoreId" to resolvedListFirestoreId,
+        "sectionFirestoreId" to resolvedSectionFirestoreId,
         "displayOrder" to this.displayOrder,
         "lastUpdated" to FieldValue.serverTimestamp()
     ).filterValues { it != null }
 
+}
+data class TaskFirestoreDTO(
+    val task: Task, // The task mapped *without* local list/section IDs yet
+    val listFirestoreId: String?,
+    val sectionFirestoreId: String?,
+    val lastUpdated: Long?
+)
+fun DocumentSnapshot.toTaskFirestoreDTO(localIdFallback: Int? = null): TaskFirestoreDTO? {
+    return try {
+        val data = data ?: return null
+        val domainId = localIdFallback ?: id.hashCode() // Or 0 if you prefer default ID
+
+        // Read Firestore IDs
+        val listFsId = getString("listFirestoreId")
+        val sectionFsId = getString("sectionFirestoreId")
+        val lastUpdated = getTimestamp("lastUpdated")?.toDate()?.time
+
+        // Build Task object *without* local list/section IDs for now
+        val task = Task.Builder()
+            .id(domainId)
+            .name(getString("name") ?: "")
+            .isCompleted(getBoolean("isCompleted") ?: false)
+            .priority(Priority.valueOf(getString("priority") ?: Priority.NONE.name))
+            .startDateConf((data["startDateConf"] as? Map<String, Any>)?.toTimePlanning())
+            .endDateConf((data["endDateConf"] as? Map<String, Any>)?.toTimePlanning())
+            .durationConf((data["durationConf"] as? Map<String, Any>)?.toDurationPlan())
+            .reminderPlan((data["reminderPlan"] as? Map<String, Any>)?.toReminderPlan())
+            .repeatPlan((data["repeatPlan"] as? Map<String, Any>)?.toRepeatPlan())
+            .subtasks((data["subtasks"] as? List<Map<String, Any>>)?.mapIndexedNotNull { index, subtaskMap ->
+                subtaskMap.toSubtask(index + 1)
+            } ?: emptyList())
+            .scheduledStartDateTime((data["scheduledStartDateTime"] as? Timestamp)?.toLocalDateTime())
+            .scheduledEndDateTime((data["scheduledEndDateTime"] as? Timestamp)?.toLocalDateTime())
+            .completionDateTime((data["completionDateTime"] as? Timestamp)?.toLocalDateTime())
+            // .listId(null) // Leave local IDs null initially
+            // .sectionId(null)
+            .displayOrder(getLong("displayOrder")?.toInt() ?: 0)
+            .build()
+
+        TaskFirestoreDTO(task, listFsId, sectionFsId, lastUpdated)
+
+    } catch (e: Exception) {
+        Log.e("FirebaseMapper", "Error mapping Firestore document ${id} to TaskFirestoreDTO", e)
+        null
+    }
+}
+fun TaskList.toFirebaseMap(userId: String): Map<String, Any?> {
+    return mapOf(
+        "userId" to userId,
+        "name" to name,
+        "colorHex" to colorHex,
+        "lastUpdated" to FieldValue.serverTimestamp() // Use server timestamp for updates
+    ).filterValues { it != null }
 }
 
 fun TimePlanning.toFirebaseMap(): Map<String, Any?> {
@@ -98,7 +159,22 @@ fun Subtask.toFirebaseMap(): Map<String, Any?> {
         "estimatedDurationInMinutes" to estimatedDurationInMinutes
     )
 }
-
+fun TaskSection.toFirebaseMap(
+    userId: String,
+    listFirestoreId: String? // NEED the Firestore ID of the parent list
+): Map<String, Any?>? {
+    if (listFirestoreId == null) {
+        Log.e("SectionMapper", "Cannot map Section to Firebase without parent List Firestore ID.")
+        return null // Cannot save a section without its parent list's FS ID
+    }
+    return mapOf(
+        "userId" to userId,
+        "listFirestoreId" to listFirestoreId, // Store parent Firestore ID
+        "name" to name,
+        "displayOrder" to displayOrder,
+        "lastUpdated" to FieldValue.serverTimestamp()
+    ).filterValues { it != null }
+}
 // --- From Firestore ---
 
 fun DocumentSnapshot.toTask(localIdFallback: Int? = null): Task? {
@@ -132,6 +208,49 @@ fun DocumentSnapshot.toTask(localIdFallback: Int? = null): Task? {
     }
 }
 
+fun DocumentSnapshot.toListData(localIdFallback: Long? = null): Pair<TaskList, Long?>? {
+    return try {
+        val data = data ?: return null
+        val domainId = localIdFallback ?: 0L // Default to 0 if no local mapping yet
+        val list = TaskList(
+            id = domainId, // Use local ID if available, otherwise 0
+            name = getString("name") ?: "",
+            colorHex = getString("colorHex") ?: "#CCCCCC" // Default color
+        )
+        val lastUpdated = getTimestamp("lastUpdated")?.toDate()?.time
+
+        list to lastUpdated
+    } catch (e: Exception) {
+        Log.e("ListMapper", "Error mapping Firestore document ${id} to TaskList", e)
+        null
+    }
+}
+
+fun DocumentSnapshot.toSectionData(
+    localIdFallback: Long? = null,
+    parentListLocalId: Long? // NEED parent list's *local* ID to create the domain object
+): Pair<TaskSection, Long?>? {
+    if (parentListLocalId == null) {
+        Log.e("SectionMapper", "Cannot map Firestore Section ${id} without parent List Local ID.")
+        return null // Cannot create domain object without parent local ID
+    }
+    return try {
+        val data = data ?: return null
+        val domainId = localIdFallback ?: 0L
+        val section = TaskSection(
+            id = domainId,
+            listId = parentListLocalId, // Use the provided local list ID
+            name = getString("name") ?: "",
+            displayOrder = getLong("displayOrder")?.toInt() ?: 0
+        )
+        val lastUpdated = getTimestamp("lastUpdated")?.toDate()?.time
+
+        section to lastUpdated
+    } catch (e: Exception) {
+        Log.e("SectionMapper", "Error mapping Firestore document ${id} to TaskSection", e)
+        null
+    }
+}
 fun Map<String, Any>.toTimePlanning(): TimePlanning? {
     return try {
         TimePlanning(

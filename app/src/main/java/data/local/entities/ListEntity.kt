@@ -1,11 +1,21 @@
 package com.elena.autoplanner.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "task_lists")
+@Entity(
+    tableName = "task_lists",
+    indices = [
+        Index(value = ["userId"]),
+        Index(value = ["firestoreId"], unique = true) // Add index for firestoreId
+    ]
+)
 data class ListEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val firestoreId: String? = null,
+    val userId: String? = null,
     val name: String,
-    val colorHex: String, // Store color as hex string (e.g., "#FF5722")
+    val colorHex: String,
+    val lastUpdated: Long = System.currentTimeMillis()
 )

@@ -23,6 +23,8 @@ class TaskRepositoryImpl(
     private val context: Context,
     private val taskDao: TaskDao,
     private val reminderDao: ReminderDao,
+    private val listDao: ListDao,
+    private val sectionDao: SectionDao,
     private val repeatConfigDao: RepeatConfigDao,
     private val subtaskDao: SubtaskDao,
     private val userRepository: UserRepository,
@@ -148,142 +150,151 @@ class TaskRepositoryImpl(
     }
 
     private fun listenToFirestoreTasks(userId: String) {
-        firestoreListenerRegistration?.remove() // Ensure no duplicate listeners
+        firestoreListenerRegistration?.remove()
         Log.d(TAG, "Setting up Firestore listener for user $userId")
 
         firestoreListenerRegistration = getUserTasksCollection(userId)
-            .snapshots() // Get a Flow of QuerySnapshots
-            .onStart {
-                Log.d(TAG, "Firestore listener started for user $userId.")
-                _isSyncing.value = true // Indicate sync activity starts
-            }
-            .map { snapshot ->
-                // Extract data and metadata (like timestamps) needed for sync
-                val tasks = mutableListOf<Pair<String, Task>>() // Pair of (firestoreId, Task)
-                val timestamps = mutableMapOf<String, Long?>()
-                snapshot.documents.forEach { doc ->
-                    doc.toTask()?.let { task -> // Map Firestore doc to domain Task
-                        tasks.add(doc.id to task) // Store Firestore ID with the task
-                        val serverTimestamp = doc.getTimestamp("lastUpdated")?.toDate()?.time
-                        timestamps[doc.id] = serverTimestamp
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error listening to Firestore tasks: ${error.message}")
+                    _isSyncing.value = false // Stop syncing on error
+                    return@addSnapshotListener }
+                if (snapshot == null) {
+                    Log.e(TAG, "Null snapshot received from Firestore.")
+                    _isSyncing.value = false // Stop syncing on null snapshot
+                    return@addSnapshotListener }
+
+                repoScope.launch(dispatcher) {
+                    Log.v(TAG, "Firestore Task Snapshot received. Pending writes: ${snapshot.metadata.hasPendingWrites()}")
+                    if (!snapshot.metadata.hasPendingWrites()) {
+                        _isSyncing.value = true
+                        // --- Map to DTOs first ---
+                        val taskDTOs = mutableListOf<Pair<String, TaskFirestoreDTO>>() // firestoreId -> DTO
+                        snapshot.documents.forEach { doc ->
+                            doc.toTaskFirestoreDTO()?.let { dto -> // Map to DTO
+                                taskDTOs.add(doc.id to dto)
+                            }
+                        }
+                        // --- Sync using DTOs ---
+                        syncFirestoreToRoom(userId, taskDTOs) // Pass DTO list
+                        _isSyncing.value = false
+                    } else {
+                        Log.d(TAG, "Skipping task sync due to pending writes.")
                     }
                 }
-                Triple(tasks, timestamps, snapshot.metadata.hasPendingWrites())
             }
-            .catch { e ->
-                Log.e(TAG, "Error in Firestore listener stream for user $userId", e)
-                _isSyncing.value = false
-                // Optionally emit an error state or handle offline scenario
-            }
-            .flowOn(dispatcher) // Perform Firestore operations and mapping off the main thread
-            .onEach { (firestoreTaskPairs, timestamps, hasPendingWrites) ->
-                if (!hasPendingWrites) { // Only sync full snapshots, not local pending writes
-                    Log.d(TAG, "Syncing ${firestoreTaskPairs.size} tasks from Firestore snapshot.")
-                    syncFirestoreToRoom(userId, firestoreTaskPairs, timestamps)
-                    _isSyncing.value = false // Sync completed for this snapshot
-                } else {
-                    Log.d(TAG, "Skipping sync due to pending writes.")
-                }
-            }
-            .launchIn(repoScope) as ListenerRegistration? // Launch the collection in the repository's scope
     }
 
     // Syncs Firestore data TO Room, attempting a merge based on firestoreId
     private suspend fun syncFirestoreToRoom(
         userId: String,
-        firestoreTaskPairs: List<Pair<String, Task>>, // List of (firestoreId, Task)
-        firestoreTimestamps: Map<String, Long?>,
+        firestoreTaskDTOs: List<Pair<String, TaskFirestoreDTO>> // Receive DTOs
     ) {
         withContext(dispatcher) {
             try {
                 Log.d(TAG, "Starting syncFirestoreToRoom for user $userId...")
-                val localTasks =
-                    taskDao.getTasksWithRelationsForUserFlow(userId).firstOrNull() ?: emptyList()
+                val localTasks = taskDao.getTasksWithRelationsForUserFlow(userId).firstOrNull() ?: emptyList()
                 val localTaskMapByFirestoreId = localTasks.mapNotNull { rel ->
                     rel.task.firestoreId?.let { it to rel.task }
                 }.toMap()
-                val firestoreTaskMap = firestoreTaskPairs.toMap() // Map<firestoreId, Task>
+                val firestoreTaskMap = firestoreTaskDTOs.toMap() // Map<firestoreId, TaskFirestoreDTO>
 
                 val operations = mutableListOf<suspend () -> Unit>()
 
                 // 1. Process tasks present in Firestore
-                firestoreTaskPairs.forEach { (firestoreId, firestoreTask) ->
+                firestoreTaskDTOs.forEach { (firestoreId, dto) ->
+                    val firestoreTask = dto.task // The basic task data
                     val localEntity = localTaskMapByFirestoreId[firestoreId]
-                    val firestoreTimestamp = firestoreTimestamps[firestoreId]
-                        ?: System.currentTimeMillis() // Fallback timestamp
+                    val firestoreTimestamp = dto.lastUpdated ?: System.currentTimeMillis()
 
-                    if (localEntity == null) {
-                        // Insert new task from Firestore into Room
+                    // --- Resolve IDs Asynchronously ---
+                    var resolvedListLocalId: Long? = null
+                    var resolvedSectionLocalId: Long? = null
+                    dto.listFirestoreId?.let { listFsId ->
+                        resolvedListLocalId = listDao.getListByFirestoreId(listFsId)?.id
+                        if (resolvedListLocalId != null) { // Only look for section if list was found
+                            dto.sectionFirestoreId?.let { sectionFsId ->
+                                resolvedSectionLocalId = sectionDao.getSectionByFirestoreId(sectionFsId)?.id
+                                // Optional: Check if section's parent matches resolvedListLocalId if needed
+                            }
+                        } else {
+                            Log.w(TAG, "Sync Task: Parent list (FS ID: ${dto.listFirestoreId}) for task '${firestoreTask.name}' not found locally.")
+                        }
+                    }
+                    // --- End ID Resolution ---
+
+
+                    if (localEntity == null) { // Insert
+                        // Create entity with resolved local IDs
                         val newEntity = taskMapper.mapToEntity(firestoreTask).copy(
                             userId = userId,
                             firestoreId = firestoreId,
-                            lastUpdated = firestoreTimestamp
+                            lastUpdated = firestoreTimestamp,
+                            listId = resolvedListLocalId, // Set resolved ID
+                            sectionId = resolvedSectionLocalId // Set resolved ID
                         )
                         operations.add {
                             val newLocalId = taskDao.insertTask(newEntity).toInt()
-                            updateRelatedEntitiesLocal(
-                                newLocalId,
-                                firestoreTask.copy(id = newLocalId)
-                            )
-                            Log.v(
-                                TAG,
-                                "Sync: Inserted task '${newEntity.name}' (Local ID: $newLocalId)"
-                            )
+                            // Pass the original domain task (without resolved IDs yet) for related entities
+                            updateRelatedEntitiesLocal(newLocalId, firestoreTask.copy(id = newLocalId))
+                            Log.v(TAG, "Sync Task: Inserted '${newEntity.name}' (Local ID: $newLocalId, ListID: ${newEntity.listId})")
                         }
-                    } else if (firestoreTimestamp > localEntity.lastUpdated) {
-                        // Update existing local task if Firestore is newer
+                    } else if (firestoreTimestamp > localEntity.lastUpdated) { // Update
+                        // Create updated entity with resolved local IDs
                         val updatedEntity = taskMapper.mapToEntity(firestoreTask).copy(
                             id = localEntity.id, // Keep local ID
                             userId = userId,
                             firestoreId = firestoreId,
-                            lastUpdated = firestoreTimestamp
+                            lastUpdated = firestoreTimestamp,
+                            listId = resolvedListLocalId, // Set resolved ID
+                            sectionId = resolvedSectionLocalId // Set resolved ID
                         )
                         operations.add {
                             taskDao.updateTask(updatedEntity)
-                            updateRelatedEntitiesLocal(
-                                localEntity.id,
-                                firestoreTask.copy(id = localEntity.id)
-                            )
-                            Log.v(
-                                TAG,
-                                "Sync: Updated task '${updatedEntity.name}' (Local ID: ${localEntity.id})"
-                            )
+                            // Pass the original domain task for related entities
+                            updateRelatedEntitiesLocal(localEntity.id, firestoreTask.copy(id = localEntity.id))
+                            Log.v(TAG, "Sync Task: Updated '${updatedEntity.name}' (Local ID: ${localEntity.id}, ListID: ${updatedEntity.listId})")
                         }
-                    } else {
-                        Log.v(
-                            TAG,
-                            "Sync: Skipped task '${localEntity.name}' (Local ID: ${localEntity.id}), local is up-to-date."
+                    } else if (localEntity.listId != resolvedListLocalId || localEntity.sectionId != resolvedSectionLocalId) {
+                        // Handle case where only list/section assignment changed, but timestamp didn't
+                        // This might happen if the list/section was deleted and re-added, or assignment changed on another device
+                        Log.v(TAG, "Sync Task: Updating list/section assignment for '${localEntity.name}' (Local ID: ${localEntity.id})")
+                        val updatedEntity = localEntity.copy(
+                            listId = resolvedListLocalId,
+                            sectionId = resolvedSectionLocalId,
+                            lastUpdated = firestoreTimestamp // Update timestamp too
                         )
+                        operations.add {
+                            taskDao.updateTask(updatedEntity)
+                            // No need to update related (Reminder/Repeat/Subtask) if only list/section changed
+                        }
+                    }
+                    else { // Local is up-to-date
+                        Log.v(TAG, "Sync Task: Skipped '${localEntity.name}' (Local ID: ${localEntity.id}), local is up-to-date.")
                     }
                 }
 
-                // 2. Process tasks present locally but not in Firestore (for this user)
+                // 2. Process local tasks not in Firestore
                 localTaskMapByFirestoreId.forEach { (firestoreId, localEntity) ->
                     if (!firestoreTaskMap.containsKey(firestoreId)) {
-                        // Delete local task that's no longer in Firestore
                         operations.add {
-                            taskDao.deleteTask(localEntity) // Cascade should handle relations
-                            Log.v(
-                                TAG,
-                                "Sync: Deleted task '${localEntity.name}' (Local ID: ${localEntity.id}), not in Firestore."
-                            )
+                            taskDao.deleteTask(localEntity)
+                            Log.v(TAG, "Sync Task: Deleted '${localEntity.name}' (Local ID: ${localEntity.id}), not in Firestore.")
                         }
                     }
                 }
 
-                // Execute Room operations
+                // Execute ops
                 if (operations.isNotEmpty()) {
-                    Log.d(TAG, "Executing ${operations.size} sync operations in Room...")
-                    // Ideally, use @Transaction here if DAO methods supported it directly for lists,
-                    // but sequential execution is generally safe within the single dispatcher context.
+                    Log.d(TAG, "Executing ${operations.size} Task sync operations...")
                     operations.forEach { it.invoke() }
-                    Log.d(TAG, "Finished executing Room sync operations.")
+                    Log.d(TAG, "Finished executing Task sync operations.")
                 } else {
-                    Log.d(TAG, "No Room sync operations needed for this snapshot.")
+                    Log.d(TAG, "No Task sync operations needed.")
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error during syncFirestoreToRoom for user $userId", e)
+                Log.e(TAG, "Error during syncFirestoreToRoom", e)
             }
         }
     }
@@ -311,151 +322,108 @@ class TaskRepositoryImpl(
         }.flowOn(dispatcher) // Ensure DB operations run on IO dispatcher
     }
 
-    override suspend fun getTask(localId: Int): TaskResult<Task> = withContext(dispatcher) {
-        try {
-            val taskWithRelations = taskDao.getTaskWithRelationsByLocalId(localId)
-            if (taskWithRelations != null) {
-                val user = userRepository.getCurrentUser().firstOrNull()
-                // Check ownership or if it's a valid local-only task
-                if ((user != null && taskWithRelations.task.userId == user.uid) || (user == null && taskWithRelations.task.userId == null)) {
-
-// --- Enrichment Start ---
-                    var fetchedListName: String? = null
-                    var fetchedSectionName: String? = null // Placeholder for now
-                    var fetchedListColorHex: String? = null
-
-                    taskWithRelations.task.listId?.let { listId ->
-                        // Fetch list details using ListRepository
-                        when (val listResult = listRepository.getList(listId)) {
-                            is TaskResult.Success -> {
-                                listResult.data?.let { list ->
-                                    fetchedListName = list.name
-                                    fetchedListColorHex = list.colorHex
-                                }
-                                // Optionally Fetch Section Name if list fetch was successful
-                                taskWithRelations.task.sectionId?.let { sectionId ->
-                                    // You might need a getSectionById method in ListRepository/SectionDao
-                                    // For simplicity, let's assume you add it or fetch all sections for the list
-                                    when (val sectionsResult = listRepository.getAllSections(listId)) {
-                                        is TaskResult.Success -> {
-                                            fetchedSectionName = sectionsResult.data.find { it.id == sectionId }?.name
-                                        }
-                                        is TaskResult.Error -> Log.w(TAG,"getTask($localId): Could not fetch sections for list $listId: ${sectionsResult.message}")
-                                    }
-                                }
-                            }
-                            is TaskResult.Error -> {
-                                Log.w(TAG, "getTask($localId): Could not fetch list details for listId $listId: ${listResult.message}")
-                                // Decide if this should be a fatal error or just proceed without list info
-                            }
-                        }
-                    }
-
-                    val domainTask = taskMapper.mapToDomain(
-                        taskEntity = taskWithRelations.task,
-                        reminders = taskWithRelations.reminders,
-                        repeatConfigs = taskWithRelations.repeatConfigs,
-                        subtasks = taskWithRelations.subtasks,
-                        listName = fetchedListName, // <-- Pass fetched name
-                        sectionName = fetchedSectionName, // <-- Pass fetched section name
-                        listColorHex = fetchedListColorHex // <-- Pass fetched color hex
-                    )
-
-                    // Return the enriched task, ensuring the ID is the local one
-                    TaskResult.Success(domainTask.copy(id = taskWithRelations.task.id))
-
-                } else {
-                    Log.w(
-                        TAG,
-                        "getTask: Access denied or invalid state for task $localId. User: ${user?.uid}, Task UserID: ${taskWithRelations.task.userId}"
-                    )
-                    TaskResult.Error(context.getString(R.string.task_not_found, localId))
-                }
-            } else {
-                TaskResult.Error(context.getString(R.string.task_not_found, localId))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "getTask($localId) error", e)
-            TaskResult.Error(mapExceptionMessage(e), e)
-        }
-    }
-
     override suspend fun saveTask(task: Task): TaskResult<Int> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
-        val isNewTask = task.id == 0 // Domain ID 0 implies new task
+        val isNewTask = task.id == 0
 
         try {
             if (user != null) {
-                // --- Logged In: Save to Firestore AND Room ---
+                // --- Logged In: Resolve IDs THEN Save ---
                 val userId = user.uid
-                val localEntity: TaskEntity
+                var resolvedListFirestoreId: String? = null
+                var resolvedSectionFirestoreId: String? = null
+
+                // Resolve local Long IDs to Firestore String IDs
+                task.listId?.let { listLocalId ->
+                    resolvedListFirestoreId = listDao.getListByLocalId(listLocalId)?.firestoreId
+                    if (resolvedListFirestoreId == null) {
+                        Log.w(TAG, "saveTask: Task ${task.id} references local list ID $listLocalId, but list has no Firestore ID. Saving task without list reference.")
+                        // return@withContext TaskResult.Error("Cannot save task: Associated list not synced.") // Option: Error out
+                    } else {
+                        task.sectionId?.let { sectionLocalId ->
+                            resolvedSectionFirestoreId = sectionDao.getSectionByLocalId(sectionLocalId)?.firestoreId
+                            if (resolvedSectionFirestoreId == null) {
+                                Log.w(TAG, "saveTask: Task ${task.id} references local section ID $sectionLocalId, but section has no Firestore ID. Saving task without section reference.")
+                            }
+                            // Optional: Check if section's parent list FS ID matches resolvedListFirestoreId
+                        }
+                    }
+                }
+
+                // Create Firestore map using resolved FS IDs
+                val firestoreMap = task.toFirebaseMap(
+                    userId = userId,
+                    resolvedListFirestoreId = resolvedListFirestoreId,
+                    resolvedSectionFirestoreId = resolvedSectionFirestoreId
+                )
+
+                // --- Proceed with Firestore and Room save/update ---
+                var localEntity: TaskEntity
                 val finalLocalId: Int
 
                 if (isNewTask) {
-                    // Create in Firestore first
                     val docRef = getUserTasksCollection(userId).document()
-                    val firestoreId = docRef.id
-                    val firestoreMap = task.toFirebaseMap(userId) // Uses server timestamp
+                    val taskFirestoreId = docRef.id
                     docRef.set(firestoreMap).await()
-                    Log.d(TAG, "saveTask (New): Created Firestore task $firestoreId")
+                    Log.d(TAG, "saveTask (New): Created Firestore task $taskFirestoreId")
 
-                    // Insert into Room, linking with firestoreId
-                    localEntity = taskMapper.mapToEntity(task).copy(
+                    localEntity = taskMapper.mapToEntity(task).copy( // mapToEntity uses local IDs from domain Task
                         userId = userId,
-                        firestoreId = firestoreId,
-                        lastUpdated = System.currentTimeMillis() // Placeholder, will be updated by listener
+                        firestoreId = taskFirestoreId,
+                        lastUpdated = System.currentTimeMillis() // Placeholder
                     )
                     finalLocalId = taskDao.insertTask(localEntity).toInt()
                     Log.d(TAG, "saveTask (New): Inserted into Room with local ID $finalLocalId")
                 } else {
-                    // Update existing task
-                    finalLocalId = task.id // Use existing local ID
-                    val existingLocalEntity =
-                        taskDao.getTaskWithRelationsByLocalId(finalLocalId)?.task
-                    val firestoreId = existingLocalEntity?.firestoreId ?: run {
-                        Log.e(
-                            TAG,
-                            "saveTask (Update): Cannot update task $finalLocalId - Firestore ID missing locally."
-                        )
+                    finalLocalId = task.id
+                    val existingLocalEntity = taskDao.getTaskWithRelationsByLocalId(finalLocalId)?.task
+                    val taskFirestoreId = existingLocalEntity?.firestoreId ?: run {
+                        Log.e(TAG, "saveTask (Update): Cannot update task $finalLocalId - Firestore ID missing.")
                         return@withContext TaskResult.Error("Cannot sync update, task metadata missing.")
                     }
 
-                    // Update Firestore
-                    val firestoreMap = task.toFirebaseMap(userId) // Uses server timestamp
-                    getUserTasksCollection(userId).document(firestoreId)
+                    getUserTasksCollection(userId).document(taskFirestoreId)
                         .set(firestoreMap, SetOptions.merge()).await()
-                    Log.d(TAG, "saveTask (Update): Updated Firestore task $firestoreId")
+                    Log.d(TAG, "saveTask (Update): Updated Firestore task $taskFirestoreId")
 
-                    // Update Room
-                    localEntity = taskMapper.mapToEntity(task).copy(
-                        id = finalLocalId, // Keep local ID
+                    localEntity = taskMapper.mapToEntity(task).copy( // mapToEntity uses local IDs
+                        id = finalLocalId,
                         userId = userId,
-                        firestoreId = firestoreId,
+                        firestoreId = taskFirestoreId,
                         lastUpdated = System.currentTimeMillis() // Placeholder
                     )
                     taskDao.updateTask(localEntity)
                     Log.d(TAG, "saveTask (Update): Updated Room task $finalLocalId")
                 }
-                // Update related entities locally using the final local ID
                 updateRelatedEntitiesLocal(finalLocalId, task.copy(id = finalLocalId))
                 TaskResult.Success(finalLocalId)
 
             } else {
                 // --- Logged Out: Save only to Room ---
+                // (Logic remains the same, ensures local list/section IDs exist locally)
                 Log.d(TAG, "saveTask: Saving task locally (user logged out).")
-                val localEntity = taskMapper.mapToEntity(task).copy(
-                    userId = null,
-                    firestoreId = null,
-                    lastUpdated = System.currentTimeMillis()
-                )
-                Log.d(
-                    TAG,
-                    "Saving Task Entity - ID: ${localEntity.id}, ListID: ${localEntity.listId}, SectionID: ${localEntity.sectionId}"
-                )
+                val localEntity: TaskEntity
+                if (task.listId != null && listDao.getListByLocalId(task.listId) == null) {
+                    Log.w(TAG, "saveTask (Local): Task references non-existent local list ${task.listId}. Saving without list.")
+                    localEntity = taskMapper.mapToEntity(task.copy(listId = null, sectionId = null)).copy(
+                        userId = null, firestoreId = null, lastUpdated = System.currentTimeMillis()
+                    )
+                } else if (task.sectionId != null && sectionDao.getSectionByLocalId(task.sectionId) == null) {
+                    Log.w(TAG, "saveTask (Local): Task references non-existent local section ${task.sectionId}. Saving without section.")
+                    localEntity = taskMapper.mapToEntity(task.copy(sectionId = null)).copy(
+                        userId = null, firestoreId = null, lastUpdated = System.currentTimeMillis()
+                    )
+                } else {
+                    localEntity = taskMapper.mapToEntity(task).copy(
+                        userId = null, firestoreId = null, lastUpdated = System.currentTimeMillis()
+                    )
+                }
+
+                Log.d(TAG, "Saving Local Task Entity - ID: ${localEntity.id}, ListID: ${localEntity.listId}, SectionID: ${localEntity.sectionId}")
                 val savedLocalId = if (isNewTask) {
                     taskDao.insertTask(localEntity).toInt()
                 } else {
-                    taskDao.updateTask(localEntity.copy(id = task.id)) // Ensure ID is set for update
+                    taskDao.updateTask(localEntity.copy(id = task.id))
                     task.id
                 }
                 updateRelatedEntitiesLocal(savedLocalId, task.copy(id = savedLocalId))
@@ -463,6 +431,68 @@ class TaskRepositoryImpl(
             }
         } catch (e: Exception) {
             Log.e(TAG, "saveTask error for task ID ${task.id}", e)
+            TaskResult.Error(mapExceptionMessage(e), e)
+        }
+    }
+
+    // --- getTask, deleteTask, deleteAll, updateTaskCompletion ---
+    // getTask needs adjustment to use ListRepository for enrichment as local IDs are reliable now
+    override suspend fun getTask(localId: Int): TaskResult<Task> = withContext(dispatcher) {
+        try {
+            val taskWithRelations = taskDao.getTaskWithRelationsByLocalId(localId)
+            if (taskWithRelations != null) {
+                val user = userRepository.getCurrentUser().firstOrNull()
+                if ((user != null && taskWithRelations.task.userId == user.uid) || (user == null && taskWithRelations.task.userId == null)) {
+
+                    // --- Use ListRepository for Enrichment (already handles sync state) ---
+                    var fetchedListName: String? = null
+                    var fetchedSectionName: String? = null
+                    var fetchedListColorHex: String? = null
+
+                    taskWithRelations.task.listId?.let { listLocalId ->
+                        when (val listResult = listRepository.getList(listLocalId)) { // Uses local ID
+                            is TaskResult.Success -> {
+                                listResult.data?.let { list ->
+                                    fetchedListName = list.name
+                                    fetchedListColorHex = list.colorHex
+                                }
+                                // Fetch sections only if list was found
+                                taskWithRelations.task.sectionId?.let { sectionLocalId ->
+                                    when (val sectionsResult = listRepository.getAllSections(listLocalId)) {
+                                        is TaskResult.Success -> {
+                                            fetchedSectionName = sectionsResult.data.find { it.id == sectionLocalId }?.name
+                                        }
+                                        is TaskResult.Error -> Log.w(TAG,"getTask($localId): Could not fetch sections for list $listLocalId: ${sectionsResult.message}")
+                                    }
+                                }
+                            }
+                            is TaskResult.Error -> Log.w(TAG, "getTask($localId): Could not fetch list details for listId $listLocalId: ${listResult.message}")
+                        }
+                    }
+                    // --- End Enrichment ---
+
+                    // Call mapToDomain with potentially enriched data
+                    val domainTask = taskMapper.mapToDomain(
+                        taskEntity = taskWithRelations.task, // Already has correct local list/section IDs
+                        reminders = taskWithRelations.reminders,
+                        repeatConfigs = taskWithRelations.repeatConfigs,
+                        subtasks = taskWithRelations.subtasks,
+                        listName = fetchedListName,
+                        sectionName = fetchedSectionName,
+                        listColorHex = fetchedListColorHex
+                    )
+
+                    TaskResult.Success(domainTask.copy(id = taskWithRelations.task.id)) // Return domain task with local ID
+
+                } else {
+                    Log.w(TAG, "getTask: Access denied or invalid state for task $localId.")
+                    TaskResult.Error(context.getString(R.string.task_not_found, localId))
+                }
+            } else {
+                TaskResult.Error(context.getString(R.string.task_not_found, localId))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "getTask($localId) error", e)
             TaskResult.Error(mapExceptionMessage(e), e)
         }
     }

@@ -12,11 +12,18 @@ fun SectionEntity.toDomain(): TaskSection {
     )
 }
 
-fun TaskSection.toEntity(): SectionEntity {
+fun TaskSection.toEntity(
+    userId: String? = null,
+    firestoreId: String? = null,
+    lastUpdated: Long? = null
+): SectionEntity {
     return SectionEntity(
-        id = this.id,
-        listId = this.listId,
+        id = this.id, // Use domain ID (0 for new)
+        firestoreId = firestoreId,
+        userId = userId,
+        listId = this.listId, // Use the local list ID it belongs to
         name = this.name,
-        displayOrder = this.displayOrder
+        displayOrder = this.displayOrder,
+        lastUpdated = lastUpdated ?: System.currentTimeMillis()
     )
 }

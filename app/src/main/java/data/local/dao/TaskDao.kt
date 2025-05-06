@@ -106,4 +106,18 @@ interface TaskDao {
         completionDateTime: LocalDateTime?, // Add this parameter
         timestamp: Long,
     )
+
+    @Query("SELECT * FROM tasks WHERE userId = :userId AND listId = :listId") // Find synced tasks for a list
+    suspend fun getSyncedTasksByListId(userId: String, listId: Long): List<TaskEntity>
+
+    @Query("SELECT * FROM tasks WHERE userId = :userId AND sectionId = :sectionId") // Find synced tasks for a section
+    suspend fun getSyncedTasksBySectionId(userId: String, sectionId: Long): List<TaskEntity>
+
+    @Query("UPDATE tasks SET listId = NULL, sectionId = NULL WHERE listId = :listId")
+    suspend fun clearListIdForTasks(listId: Long) // Clears BOTH list and section if list is deleted
+
+    @Query("UPDATE tasks SET sectionId = NULL WHERE sectionId = :sectionId")
+    suspend fun clearSectionIdForTasks(sectionId: Long) // Clears only section
+
+
 }

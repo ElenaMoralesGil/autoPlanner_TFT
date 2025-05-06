@@ -11,10 +11,17 @@ fun ListEntity.toDomain(): TaskList {
     )
 }
 
-fun TaskList.toEntity(): ListEntity {
+fun TaskList.toEntity(
+    userId: String? = null,
+    firestoreId: String? = null,
+    lastUpdated: Long? = null
+): ListEntity {
     return ListEntity(
-        id = this.id,
+        id = this.id, // Use domain ID (0 for new)
+        firestoreId = firestoreId,
+        userId = userId,
         name = this.name,
-        colorHex = this.colorHex
+        colorHex = this.colorHex,
+        lastUpdated = lastUpdated ?: System.currentTimeMillis()
     )
 }

@@ -12,7 +12,6 @@ interface ListRepository {
     suspend fun getList(listId: Long): TaskResult<TaskList?>
     suspend fun saveList(list: TaskList): TaskResult<Long>
     suspend fun deleteList(listId: Long): TaskResult<Unit>
-
     fun getSections(listId: Long): Flow<TaskResult<List<TaskSection>>>
     suspend fun getAllSections(listId: Long): TaskResult<List<TaskSection>> // Non-flow
     suspend fun saveSection(section: TaskSection): TaskResult<Long>
