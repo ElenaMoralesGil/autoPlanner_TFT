@@ -1,0 +1,113 @@
+<!-- res/drawable/ic_autoplanner_orchestrated.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- Background Gradient (optional, for a bit of depth) -->
+    <path android:pathData="M0,0 H48 V48 H0 Z">
+        <aapt:attr name="android:fillColor"
+            xmlns:aapt="http://schemas.android.com/aapt">
+            <gradient
+                android:type="radial"
+                android:centerX="24"
+                android:centerY="24"
+                android:gradientRadius="28">
+                <item
+                    android:color="#1AFFFFFF"
+                    android:offset="0.0" /> <!-- Very subtle white highlight -->
+                <item
+                    android:color="#0D000000"
+                    android:offset="1.0" /> <!-- Very subtle dark edge -->
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Main Planner Page - Modern, slightly asymmetric -->
+    <path
+        android:fillColor="#EFECEA"
+        android:pathData="
+            M9,7
+            C7.343,7 6,8.343 6,10
+            L6,38 C6,39.657 7.343,41 9,41
+            L39,41 C40.657,41 42,39.657 42,38
+            L42,15
+            C42,10 38,7 34,7
+            L9,7 Z" />
+
+    <!-- Inner Content Area - Clean White -->
+    <path
+        android:fillColor="#BAF2754C"
+        android:pathData="
+            M11,10
+            C9.895,10 9,10.895 9,12
+            L9,36 C9,37.105 9.895,38 11,38
+            L37,38 C38.105,38 39,37.105 39,36
+            L39,18
+            C39,14 36,10 33,10
+            L11,10 Z" />
+
+    <!-- "AI Core" / Automation Engine Element - Small, distinct -->
+    <group
+        android:translateX="35"
+        android:translateY="13">
+        <path
+            android:fillColor="?attr/colorPrimary"
+            android:pathData="M0,0 A3,3 0 1,1 6,0 A3,3 0 1,1 0,0 Z" />
+        <path
+            android:fillColor="#F1F0F0"
+            android:pathData="M1.5,1.5 A1.5,1.5 0 1,1 4.5,1.5 A1.5,1.5 0 1,1 1.5,1.5 Z" />
+    </group>
+
+    <!-- Circuit-like/Flow Lines from AI Core to Tasks -->
+    <!-- Line 1 (to first task area) -->
+    <path
+        android:strokeColor="?attr/colorPrimary"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:pathData="M35,16 Q30,18 28,23" />
+    <path
+        android:strokeColor="?attr/colorPrimary"
+        android:strokeWidth="0.8"
+        android:strokeLineCap="round"
+        android:pathData="M34.5,16.5 Q29,19 27.5,24" />
+
+    <!-- Line 2 (to second task area, more direct) -->
+    <path
+        android:strokeColor="?attr/colorPrimary"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:pathData="M34,17 L30,28" />
+
+
+    <!-- Task Elements - More distinct, some "activated" -->
+    <!-- Task 1 (being "activated") -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M15,22 h12 v3 h-12 Z"
+        android:alpha="0.8" />
+    <path
+        android:strokeColor="#E0E0E0"
+        android:strokeWidth="1.5"
+        android:pathData="M15,22 h12 v3 h-12 Z" />
+
+    <!-- Task 2 (standard) -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M15,27 h16 v3 h-16 Z" />
+
+    <!-- Task 3 (shorter, standard) -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M15,32 h10 v3 h-10 Z" />
+
+    <!-- Small "connection points" or "nodes" where lines meet tasks -->
+    <path
+        android:fillColor="?attr/colorPrimary"
+        android:pathData="M28,23.5 m-1,0 a1,1 0,1 1,2 0 a1,1 0,1 1,-2 0" />
+    <path
+        android:fillColor="?attr/colorPrimary"
+        android:pathData="M30,28.5 m-1,0 a1,1 0,1 1,2 0 a1,1 0,1 1,-2 0" />
+
+</vector>
