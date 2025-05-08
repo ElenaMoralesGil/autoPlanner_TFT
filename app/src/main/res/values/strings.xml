@@ -37,4 +37,12 @@
     <string name="subtask_name_empty">Subtask name cannot be empty</string>
 
 
+    <string name="daily_widget_description">View today\'s tasks</string>
+    <string name="weekly_widget_description">View this week\'s tasks</string>
+    <string name="widget_no_tasks">No tasks for this period.</string>
+    <string name="widget_loading">Loading tasks...</string>
+    <string name="widget_tap_to_refresh">Tap to refresh</string>
+    <string name="widget_title_daily">Today\'s Tasks</string>
+    <string name="widget_title_weekly">This Week\'s Tasks</string>
+
 </resources>

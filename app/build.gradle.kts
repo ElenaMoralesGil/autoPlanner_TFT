@@ -98,6 +98,8 @@ dependencies {
     implementation(libs.vico.compose.m2)
     implementation(libs.vico.compose.m3)
     implementation(libs.vico.views)
+    implementation("androidx.glance:glance-appwidget:1.1.0-beta01") // Or latest stable
+    implementation("androidx.glance:glance-material3:1.1.0-beta01")
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)

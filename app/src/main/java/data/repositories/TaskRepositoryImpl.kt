@@ -17,6 +17,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.tasks.await
 import java.io.IOException
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 
@@ -745,5 +746,46 @@ class TaskRepositoryImpl(
             }
         }.flowOn(dispatcher) // Ensure DB operations run on IO dispatcher
     }
+    override suspend fun getTasksForDate(date: LocalDate, userId: String?): List<Task> = withContext(dispatcher) {
+        try {
+            val tasksWithRelations = if (userId != null) {
+                taskDao.getTasksWithRelationsForUserFlow(userId).firstOrNull() // Consider a more direct DAO query if performance is an issue
+            } else {
+                taskDao.getLocalOnlyTasksWithRelationsFlow().firstOrNull()
+            }
+            tasksWithRelations?.mapNotNull {
+                val domainTask = it.toDomainTask()
+                val taskDate = domainTask.startDateConf.dateTime?.toLocalDate()
+                if (taskDate == date && !domainTask.isCompleted && !domainTask.internalFlags?.isMarkedForDeletion!!) domainTask else null
+            } ?: emptyList()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching tasks for date $date, user $userId", e)
+            emptyList()
+        }
+    }
+
+    override suspend fun getTasksForWeek(weekStartDate: LocalDate, userId: String?): List<Task> = withContext(dispatcher) {
+        val weekEndDate = weekStartDate.plusDays(6)
+        try {
+            val tasksWithRelations = if (userId != null) {
+                taskDao.getTasksWithRelationsForUserFlow(userId).firstOrNull()
+            } else {
+                taskDao.getLocalOnlyTasksWithRelationsFlow().firstOrNull()
+            }
+            tasksWithRelations?.mapNotNull {
+                val domainTask = it.toDomainTask()
+                val taskDate = domainTask.startDateConf.dateTime?.toLocalDate()
+                if (taskDate != null && !taskDate.isBefore(weekStartDate) && !taskDate.isAfter(weekEndDate) && !domainTask.isCompleted && !domainTask.internalFlags?.isMarkedForDeletion!!) {
+                    domainTask
+                } else {
+                    null
+                }
+            }?.sortedBy { it.startDateConf.dateTime } ?: emptyList()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching tasks for week starting $weekStartDate, user $userId", e)
+            emptyList()
+        }
+    }
+
 
 }

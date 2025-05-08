@@ -234,6 +234,22 @@ fun MoreDrawerContent(
                                 Text("Create new list")
                             }
                         }
+
+                        item {
+                            HorizontalDivider(
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                            ListSectionHeader(title = "Widgets")
+                            Text(
+                                "Add widgets to your home screen via your phone's widget picker.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
+                        }
+                        // --- End Widgets Section ---
                     }
                 }
             }
@@ -243,6 +259,8 @@ fun MoreDrawerContent(
             }
         }
     }
+
+
 
     // --- Dialogs ---
     if (showCreateListDialog) {
