@@ -1,5 +1,7 @@
 package com.elena.autoplanner.presentation.viewmodel
 
+import android.content.ComponentName
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.TaskList
@@ -16,9 +18,12 @@ import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.presentation.effects.MoreEffect
 import com.elena.autoplanner.presentation.intents.MoreIntent
 import com.elena.autoplanner.presentation.states.MoreState
+import com.elena.autoplanner.widgets.DailyWidgetReceiver
+import com.elena.autoplanner.widgets.WeeklyWidgetReceiver
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.java.KoinJavaComponent.inject
 
 class MoreViewModel(
     private val getListsInfoUseCase: GetListsInfoUseCase,
@@ -29,6 +34,8 @@ class MoreViewModel(
     private val deleteListUseCase: DeleteListUseCase,
     private val deleteSectionUseCase: DeleteSectionUseCase
 ) : BaseViewModel<MoreIntent, MoreState, MoreEffect>() {
+
+    private val context: Context by inject(Context::class.java)
 
     override fun createInitialState(): MoreState = MoreState()
 
@@ -121,8 +128,19 @@ class MoreViewModel(
                 intent.listId,
                 intent.newName
             )
+
+            is MoreIntent.RequestAddDailyWidget -> {
+                val componentName = ComponentName(context, DailyWidgetReceiver::class.java)
+                setEffect(MoreEffect.TriggerWidgetPinRequest(componentName))
+            }
+            is MoreIntent.RequestAddWeeklyWidget -> {
+                val componentName = ComponentName(context, WeeklyWidgetReceiver::class.java)
+                setEffect(MoreEffect.TriggerWidgetPinRequest(componentName))
+            }
         }
     }
+
+
 
     private suspend fun updateList(listId: Long, newName: String, newColorHex: String) {
         setState { copy(isLoading = true) }

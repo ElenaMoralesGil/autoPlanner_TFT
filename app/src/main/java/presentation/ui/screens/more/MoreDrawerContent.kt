@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.TaskListInfo
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import androidx.core.graphics.toColorInt
+import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.TaskSection
 import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 
@@ -59,6 +61,7 @@ fun MoreDrawerContent(
                 is MoreEffect.NavigateToTasks -> {} // Handled by onNavigateToTasks callback
                 is MoreEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
                 is MoreEffect.ShowCreateListDialog -> showCreateListDialog = true
+                is MoreEffect.TriggerWidgetPinRequest -> {}
             }
         }
     }
@@ -242,8 +245,50 @@ fun MoreDrawerContent(
                                 modifier = Modifier.padding(top = 8.dp)
                             )
                             ListSectionHeader(title = "Widgets")
+                            // Add Daily Widget Row
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.sendIntent(MoreIntent.RequestAddDailyWidget) } // Send intent
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_day_view), // Use Daily View icon
+                                    contentDescription = "Add Daily Widget",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.secondary // Or primary
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                Text(
+                                    "Add Daily Widget",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            // Add Weekly Widget Row
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.sendIntent(MoreIntent.RequestAddWeeklyWidget) } // Send intent
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_week_view), // Use Weekly View icon
+                                    contentDescription = "Add Weekly Widget",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.secondary // Or primary
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                Text(
+                                    "Add Weekly Widget",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                             Text(
-                                "Add widgets to your home screen via your phone's widget picker.",
+                                "Add widgets to your home screen via your phone's widget manager.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
