@@ -42,7 +42,13 @@
     <string name="widget_no_tasks">No tasks for this period.</string>
     <string name="widget_loading">Loading tasks...</string>
     <string name="widget_tap_to_refresh">Tap to refresh</string>
-    <string name="widget_title_daily">Today\'s Tasks</string>
-    <string name="widget_title_weekly">This Week\'s Tasks</string>
+    <string name="widget_task_singular">\nTask</string>
 
+    <string name="widget_title_daily">Today\'s Plan</string>
+    <string name="widget_title_weekly">This Week</string>
+    <string name="widget_refresh_description">Refresh widget</string>
+    <string name="widget_no_tasks_today">No tasks for today. Enjoy your day!</string>
+    <string name="widget_no_tasks_week">No tasks scheduled for this week.</string>
+    <string name="widget_no_tasks_for_this_day">No tasks</string>
+    <string name="widget_today_indicator">Today</string>
 </resources>

@@ -5,7 +5,6 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.TaskList
-import com.elena.autoplanner.domain.models.TaskListInfo
 import com.elena.autoplanner.domain.models.TaskSection
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.lists.DeleteListUseCase
@@ -18,8 +17,8 @@ import com.elena.autoplanner.domain.usecases.tasks.GetTasksUseCase
 import com.elena.autoplanner.presentation.effects.MoreEffect
 import com.elena.autoplanner.presentation.intents.MoreIntent
 import com.elena.autoplanner.presentation.states.MoreState
-import com.elena.autoplanner.widgets.DailyWidgetReceiver
-import com.elena.autoplanner.widgets.WeeklyWidgetReceiver
+import com.elena.autoplanner.presentation.ui.screens.more.widgets.DailyWidgetReceiver
+import com.elena.autoplanner.presentation.ui.screens.more.widgets.WeeklyWidgetReceiver
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch

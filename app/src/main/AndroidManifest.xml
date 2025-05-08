@@ -21,7 +21,7 @@
 
         <!-- Daily Tasks Widget -->
         <receiver
-            android:name=".widgets.DailyWidgetReceiver"
+            android:name=".presentation.ui.screens.more.widgets.DailyWidgetReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -33,7 +33,7 @@
 
         <!-- Weekly Tasks Widget -->
         <receiver
-            android:name=".widgets.WeeklyWidgetReceiver"
+            android:name=".presentation.ui.screens.more.widgets.WeeklyWidgetReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

@@ -1,19 +1,20 @@
-package com.elena.autoplanner.widgets
+package com.elena.autoplanner.presentation.ui.screens.more.widgets
 
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -26,6 +27,9 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -34,21 +38,12 @@ import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.User
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.repositories.UserRepository
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import androidx.glance.Image
-import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.lazy.LazyColumn
-import androidx.glance.appwidget.lazy.items
-import androidx.glance.color.ColorProvider
-
-import android.graphics.Color as AndroidColor
-
+import java.util.Locale // For capitalizing date
 
 class DailyWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = DailyWidget()
@@ -67,63 +62,76 @@ class DailyWidget : GlanceAppWidget(), KoinComponent {
             val tasks: List<Task> by produceState<List<Task>>(initialValue = emptyList(), user, today) {
                 value = taskRepository.getTasksForDate(today, user?.uid)
             }
-            DailyWidgetContent(context = context, tasks = tasks, date = today, glanceId = id)
+            DailyWidgetContent(context = context, tasks = tasks, date = today)
         }
     }
 }
 
 @Composable
-fun DailyWidgetContent( context: Context, tasks: List<Task>, date: LocalDate, glanceId: GlanceId) {
-    val titleDateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
+fun DailyWidgetContent(context: Context, tasks: List<Task>, date: LocalDate) {
+    val titleDateFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d")
 
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(ImageProvider(R.drawable.widget_background_daily)) // Create a drawable
-            .padding(8.dp)
-            .cornerRadius(16.dp) // Apply corner radius
+            .background(WidgetColors.widgetBackground) // Themed: Very Light Gray
+            .padding(16.dp)
+            .cornerRadius(24.dp)
     ) {
         Row(
-            modifier = GlanceModifier.fillMaxWidth().padding(bottom = 4.dp),
+            modifier = GlanceModifier.fillMaxWidth().padding(bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = context.getString(R.string.widget_title_daily),
-                style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp, color = androidx.glance.unit.ColorProvider(
-                    Color(AndroidColor.BLACK)
-                )
+                style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = WidgetColors.titleText // Themed: Cute Light Orange
                 )
             )
             Spacer(GlanceModifier.defaultWeight())
             Image(
-                provider = ImageProvider(R.drawable.ic_refresh), // Create a refresh icon
-                contentDescription = "Refresh",
-                modifier = GlanceModifier.size(20.dp).clickable(onClick = actionRunCallback<RefreshAction>())
+                provider = ImageProvider(R.drawable.ic_refresh), // Ensure this icon is neutral or matches orange
+                contentDescription = context.getString(R.string.widget_refresh_description),
+                modifier = GlanceModifier
+                    .size(28.dp)
+                    .clickable(onClick = actionRunCallback<RefreshAction>())
             )
         }
         Text(
-            text = date.format(titleDateFormatter),
-            style = TextStyle(fontSize = 12.sp, color = androidx.glance.unit.ColorProvider(
-                Color(
-                    AndroidColor.DKGRAY
-                )
-            )
+            text = date.format(titleDateFormatter).replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+            },
+            style = TextStyle(
+                fontSize = 15.sp,
+                color = WidgetColors.secondaryText, // Themed: Lighter Dark Gray
+                fontWeight = FontWeight.Normal
             ),
-            modifier = GlanceModifier.padding(bottom = 6.dp)
+            modifier = GlanceModifier.padding(bottom = 12.dp)
         )
 
         if (tasks.isEmpty()) {
-            Box(modifier = GlanceModifier.fillMaxSize().defaultWeight(), contentAlignment = Alignment.Center) {
-                Text(context.getString(R.string.widget_no_tasks), style = TextStyle(color = androidx.glance.unit.ColorProvider(
-                    Color(AndroidColor.GRAY)
+            Box(
+                modifier = GlanceModifier.fillMaxSize().defaultWeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    context.getString(R.string.widget_no_tasks_today),
+                    style = TextStyle(
+                        color = WidgetColors.tertiaryText, // Themed: Medium Gray
+                        fontSize = 14.sp
+                    )
                 )
-                ))
             }
         } else {
             LazyColumn(modifier = GlanceModifier.defaultWeight()) {
-                items(tasks, itemId = { it.id.toLong() }) { task ->
+                items(
+                    items = tasks,
+                    itemId = { task -> task.id.hashCode().toLong() }
+                ) { task ->
                     DailyTaskWidgetItem(task = task)
-                    Spacer(GlanceModifier.height(4.dp))
+                    Spacer(GlanceModifier.height(8.dp))
                 }
             }
         }
@@ -136,30 +144,42 @@ fun DailyTaskWidgetItem(task: Task) {
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .background(ImageProvider(R.drawable.widget_item_background)) // Create a drawable
-            .padding(vertical = 4.dp, horizontal = 6.dp)
-            .cornerRadius(8.dp),
+            .background(WidgetColors.itemBackground) // Themed: White
+            .cornerRadius(16.dp)
+            .padding(vertical = 10.dp, horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Box(
+            // Caja para la barra de acento
+            modifier = GlanceModifier
+                .size(width = 4.dp, height = 32.dp)
+                .background(WidgetColors.accent) // Themed: Cute Light Orange
+                .cornerRadius(2.dp),
+            contentAlignment = Alignment.Center,
+            content = {}
+        ) // No se especifica contentAlignment ni content si es solo una barra de color
+
+        Spacer(GlanceModifier.width(12.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
                 text = task.name,
-                style = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp, color = androidx.glance.unit.ColorProvider(
-                    Color(AndroidColor.BLACK)
-                )
+                style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = WidgetColors.primaryText // Themed: Dark Gray
                 ),
-                maxLines = 1
+                maxLines = 2
             )
             task.startDateConf.dateTime?.let {
                 Text(
                     text = it.format(timeFormatter),
-                    style = TextStyle(fontSize = 12.sp, color = androidx.glance.unit.ColorProvider(
-                        Color(AndroidColor.DKGRAY)
-                    )
-                    )
+                    style = TextStyle(
+                        fontSize = 13.sp,
+                        color = WidgetColors.secondaryText // Themed: Lighter Dark Gray
+                    ),
+                    modifier = GlanceModifier.padding(top = 3.dp)
                 )
             }
         }
-        // Optionally, add a checkbox or priority indicator
     }
 }
