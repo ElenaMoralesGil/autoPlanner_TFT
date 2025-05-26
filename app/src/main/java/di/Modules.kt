@@ -1,5 +1,7 @@
 package com.elena.autoplanner.di
 
+import android.app.AlarmManager
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
@@ -59,6 +61,7 @@ import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.UpdateTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ValidateTaskUseCase
+import com.elena.autoplanner.notifications.NotificationScheduler
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.EditProfileViewModel
 import com.elena.autoplanner.presentation.viewmodel.LoginViewModel
@@ -125,7 +128,8 @@ val appModule = module {
             userRepository = get(),
             firestore = get(),
             repoScope = get(),
-            listRepository = get()
+            listRepository = get(),
+            notificationScheduler = get()
         )
     }
     single { FirebaseAuth.getInstance() }
@@ -142,7 +146,14 @@ val appModule = module {
             dispatcher = Dispatchers.IO,
             repoScope = get()
         )
-    } // Add ListRepository
+    }
+    single {
+        NotificationScheduler(
+            context = androidContext(),
+            alarmManager = androidContext().getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        )
+    }
+
 }
 
 

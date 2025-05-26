@@ -1,5 +1,6 @@
 package com.elena.autoplanner.presentation
 
+import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.os.Build
 import android.os.Bundle
@@ -7,6 +8,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
@@ -20,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
@@ -46,6 +49,43 @@ class MainActivity : ComponentActivity() {
     private val dataSeeder: DataSeeder by inject()
     private val taskRepository: TaskRepository by inject()
 
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                Log.i("MainActivity", "POST_NOTIFICATIONS permission granted.")
+                // You might trigger a refresh of alarms here if needed
+            } else {
+                Log.w("MainActivity", "POST_NOTIFICATIONS permission denied.")
+                // Explain to the user why the permission is needed (e.g., via Snackbar or Dialog)
+                // Show snackbar: scope.launch { snackbarHostState.showSnackbar("Notifications disabled. Reminders won't work.") }
+            }
+        }
+
+    private fun checkAndRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.POST_NOTIFICATIONS
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED -> {
+                    Log.d("MainActivity", "POST_NOTIFICATIONS permission already granted.")
+                }
+
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
+                    Log.w("MainActivity", "Showing rationale for POST_NOTIFICATIONS.")
+                    // Show an explanation to the user *asynchronously* before requesting again.
+                    // For now, just request again or show snackbar.
+                    // scope.launch { snackbarHostState.showSnackbar("Please allow notifications for reminders.") }
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) // Or request after showing rationale dialog
+                }
+
+                else -> {
+                    Log.i("MainActivity", "Requesting POST_NOTIFICATIONS permission.")
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -71,6 +111,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        checkAndRequestNotificationPermission()
 
         setContent {
             MainApp()

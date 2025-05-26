@@ -51,4 +51,9 @@
     <string name="widget_no_tasks_week">No tasks scheduled for this week.</string>
     <string name="widget_no_tasks_for_this_day">No tasks</string>
     <string name="widget_today_indicator">Today</string>
+
+    <string name="channel_name_reminders">Task Reminders</string>
+    <string name="channel_description_reminders">Notifications for upcoming task reminders</string>
+    <string name="notification_title">Task Reminder</string>
+    <string name="notification_action_view">View Task</string>
 </resources>

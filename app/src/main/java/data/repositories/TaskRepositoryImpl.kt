@@ -12,6 +12,7 @@ import com.elena.autoplanner.domain.repositories.ListRepository
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.repositories.UserRepository
+import com.elena.autoplanner.notifications.NotificationScheduler
 import com.google.firebase.firestore.* // Import Firestore classes
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -32,7 +33,8 @@ class TaskRepositoryImpl(
     private val userRepository: UserRepository,
     private val firestore: FirebaseFirestore,
     private val repoScope: CoroutineScope,
-    private val listRepository: ListRepository, // Needed for getTask enrichment
+    private val listRepository: ListRepository,
+    private val notificationScheduler: NotificationScheduler,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : TaskRepository {
 
@@ -446,6 +448,13 @@ class TaskRepositoryImpl(
                     Log.d(TAG, "saveTask (Update): Updated Room task $finalLocalId")
                 }
                 updateRelatedEntitiesLocal(finalLocalId, task.copy(id = finalLocalId))
+
+                if (task.reminderPlan != null && task.reminderPlan.mode != ReminderMode.NONE) {
+                    notificationScheduler.scheduleNotification(task)
+                } else {
+                    notificationScheduler.cancelNotification(finalLocalId)
+                }
+
                 TaskResult.Success(finalLocalId)
 
             } else {
@@ -575,6 +584,7 @@ class TaskRepositoryImpl(
                 return@withContext TaskResult.Error("Permission denied to delete task.")
             }
 
+            notificationScheduler.cancelNotification(localId)
             TaskResult.Success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "deleteTask($localId) error", e)
@@ -587,8 +597,13 @@ class TaskRepositoryImpl(
     override suspend fun deleteAll(): TaskResult<Unit> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
         val timestamp = System.currentTimeMillis()
+
         try {
+
+            val localIdsToCancel = mutableListOf<Int>()
             if (user != null) {
+
+
                 Log.w(TAG, "deleteAll: Marking ALL synced tasks for user ${user.uid} as deleted.")
                 // Soft delete in Firestore
                 val querySnapshot = getUserTasksCollection(user.uid)
@@ -612,6 +627,9 @@ class TaskRepositoryImpl(
             Log.w(TAG, "deleteAll: Physically deleting ALL local-only tasks.")
             taskDao.deleteAllLocalOnlyTasks()
 
+            localIdsToCancel.forEach { id ->
+                notificationScheduler.cancelNotification(id)
+            }
             TaskResult.Success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "deleteAll error", e)
@@ -649,6 +667,26 @@ class TaskRepositoryImpl(
                 getUserTasksCollection(user.uid).document(localEntity.firestoreId!!)
                     .update(firestoreUpdateData).await()
             }
+
+            if (isCompleted) {
+                Log.d(TAG, "Task $localId marked complete. Canceling associated notification.")
+                notificationScheduler.cancelNotification(localId)
+            } else {
+                // If marking incomplete, reschedule the notification if it's still relevant
+                val taskResult = getTask(localId) // Fetch the task details
+                if (taskResult is TaskResult.Success) {
+                    val task = taskResult.data
+                    if (task.reminderPlan != null && task.reminderPlan.mode != ReminderMode.NONE) {
+                        notificationScheduler.scheduleNotification(task)
+                    }
+                } else {
+                    Log.w(
+                        TAG,
+                        "Could not refetch task $localId to reschedule notification after marking incomplete."
+                    )
+                }
+            }
+
             TaskResult.Success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "updateTaskCompletion($localId) error", e); TaskResult.Error(mapExceptionMessage(e), e)
