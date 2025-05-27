@@ -56,7 +56,6 @@ class TaskRepositoryImplTest {
         )
     }
 
-    /** ---------------------------- PRUEBAS DE GETTASKS ---------------------------- **/
 
     @Test
     fun `getTasks returns empty list when no tasks are available`() = runTest(testDispatcher) {
@@ -124,7 +123,6 @@ class TaskRepositoryImplTest {
         }
     }
 
-    /** ---------------------------- PRUEBAS DE GETTASK ---------------------------- **/
 
     @Test
     fun `getTask returns null when task does not exist`() = runTest(testDispatcher) {
@@ -170,7 +168,6 @@ class TaskRepositoryImplTest {
         assertTrue(task?.subtasks?.isEmpty() == true)
     }
 
-    /** ---------------------------- PRUEBAS DE SAVETASK ---------------------------- **/
 
     @Test
     fun `saveTask inserts new task when ID is zero`() = runTest(testDispatcher) {
@@ -181,15 +178,15 @@ class TaskRepositoryImplTest {
             subtasks = listOf(createFakeSubtask(taskEntity.id))
         )
 
-        // Configuración para la inserción de la tarea.
+
         coEvery { taskDao.insertTask(any()) } returns 1L
 
-        // Configuración para los métodos de eliminación.
+
         coEvery { reminderDao.deleteRemindersForTask(any()) } just Runs
         coEvery { repeatConfigDao.deleteRepeatConfigsForTask(any()) } just Runs
         coEvery { subtaskDao.deleteSubtasksForTask(any()) } just Runs
 
-        // Configuración para los métodos de inserción.
+
         coEvery { reminderDao.insertReminder(any()) } just Runs
         coEvery { repeatConfigDao.insertRepeatConfig(any()) } just Runs
         coEvery { subtaskDao.insertSubtasks(any()) } just Runs
@@ -214,12 +211,12 @@ class TaskRepositoryImplTest {
 
         coEvery { taskDao.updateTask(any()) } just Runs
 
-        // Configuración para las operaciones de eliminación.
+
         coEvery { reminderDao.deleteRemindersForTask(any()) } just Runs
         coEvery { repeatConfigDao.deleteRepeatConfigsForTask(any()) } just Runs
         coEvery { subtaskDao.deleteSubtasksForTask(any()) } just Runs
 
-        // Configuración para las operaciones de inserción.
+
         coEvery { reminderDao.insertReminder(any()) } just Runs
         coEvery { repeatConfigDao.insertRepeatConfig(any()) } just Runs
         coEvery { subtaskDao.insertSubtasks(any()) } just Runs
@@ -261,9 +258,9 @@ class TaskRepositoryImplTest {
 
     @Test(expected = Exception::class)
     fun `saveTask handles insert failure`() = runTest(testDispatcher) {
-        // Se crea una entidad de tarea nueva (ID = 0)
+
         val taskEntity = createFakeTaskEntity(id = 0)
-        // Conversión a dominio con listas vacías
+
         val domainTask = taskEntity.toDomain(
             reminders = emptyList(),
             repeatConfigs = emptyList(),
@@ -304,7 +301,7 @@ class TaskRepositoryImplTest {
         }
     }
 
-    /** ---------------------------- PRUEBAS DE DELETETASK ---------------------------- **/
+
     @Test
     fun `deleteTask handles non-existent task`() = runTest {
         val domainTask = createFakeTaskEntity(id = 999).toDomain(
@@ -313,7 +310,7 @@ class TaskRepositoryImplTest {
             subtasks = emptyList()
         )
 
-        // Mockear el DAO para lanzar excepción
+
         coEvery { taskDao.deleteTask(any()) } throws TaskNotFoundException("Task not found")
 
         var exceptionThrown = false
@@ -329,8 +326,8 @@ class TaskRepositoryImplTest {
 
     @Test
     fun `deleteTask ignores deletion of already deleted task`() = runTest {
-        // Create a task and simulate its deletion
-        val taskEntity = createFakeTaskEntity(id = 1)
+
+    val taskEntity = createFakeTaskEntity(id = 1)
         val domainTask = createFakeTaskEntity(id = 1).toDomain(
             reminders = emptyList(),
             repeatConfigs = emptyList(),
@@ -385,7 +382,7 @@ class TaskRepositoryImplTest {
             subtasks = emptyList()
         )
 
-        // Mockear error de base de datos
+
         coEvery { taskDao.deleteTask(any()) } throws DatabaseException("Database error")
 
         var exceptionThrown = false
@@ -416,19 +413,6 @@ class TaskRepositoryImplTest {
 
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-    /** ---------------------------- FUNCIONES AUXILIARES ---------------------------- **/
 
     private fun createFakeTaskEntity(
         id: Int,

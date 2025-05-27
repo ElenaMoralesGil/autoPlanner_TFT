@@ -24,7 +24,7 @@ data class TaskEditState(
     val error: String? = null,
     val listId: Long? = null,
     val sectionId: Long? = null,
-    val isLoadingSelection: Boolean = false, // For loading lists/sections
+    val isLoadingSelection: Boolean = false, 
     val availableLists: List<TaskList> = emptyList(),
     val availableSections: List<TaskSection> = emptyList(),
 )

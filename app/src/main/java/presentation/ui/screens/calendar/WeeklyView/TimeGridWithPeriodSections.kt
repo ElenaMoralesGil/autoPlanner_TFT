@@ -54,30 +54,30 @@ fun TimeGridWithPeriodSections(
     scheduledTasks: List<Task>,
     morningTasks: List<Task>,
     eveningTasks: List<Task>,
-    nightTasks: List<Task>,   // Tasks for the night period section
+    nightTasks: List<Task>,   
     hourHeightDp: Dp,
     onTaskSelected: (Task) -> Unit,
-    onTaskTimeChanged: (task: Task, newTime: LocalTime, dayOffset: Long) -> Unit, // Callback when drag ends
-    scrollState: ScrollState, // Use androidx.compose.foundation.ScrollState
-    currentTime: LocalTime, // Current time for the indicator line
+    onTaskTimeChanged: (task: Task, newTime: LocalTime, dayOffset: Long) -> Unit,
+    scrollState: ScrollState,
+    currentTime: LocalTime, 
 ) {
     val hours = (0..23).toList()
     val currentDateIndex = weekDays.indexOfFirst { it.isToday() }
     val density = LocalDensity.current
     val hourHeightPx = remember(density, hourHeightDp) { with(density) { hourHeightDp.toPx() } }
 
-    // State for the currently dragged task and grid layout info
-    var dayWidthPx by remember { mutableStateOf(0f) }
-    var gridStartTimeAreaWidthPx by remember { mutableStateOf(0f) } // Width of the time label area
-    var draggedTaskState by remember { mutableStateOf<WeeklyTaskDragState?>(null) }
-    var taskAreaCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) } // Coordinates of the grid content area
 
-    // Helper to calculate task vertical position (offset) and height in Dp
+    var dayWidthPx by remember { mutableStateOf(0f) }
+    var gridStartTimeAreaWidthPx by remember { mutableStateOf(0f) } 
+    var draggedTaskState by remember { mutableStateOf<WeeklyTaskDragState?>(null) }
+    var taskAreaCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
+
     @Composable
     fun rememberTaskMetrics(task: Task): Pair<Dp, Dp> {
         val startDateTime = task.startDateConf?.dateTime ?: LocalDateTime.MIN
         val effectiveDuration = task.effectiveDurationMinutes.coerceAtLeast(1)
-        // Ensure end time is at least slightly after start time for calculation
+
         val endDateTime = startDateTime.plusMinutes(
             (task.durationConf?.totalMinutes?.toLong() ?: 15L).coerceAtLeast(1L)
         )
@@ -87,8 +87,8 @@ fun TimeGridWithPeriodSections(
 
         val topOffsetDp = with(density) { (startTotalMinutes / 60f * hourHeightPx).toDp() }
 
-        // Calculate duration, ensuring a minimum visual height (e.g., for 15 mins)
-        (endTotalMinutes - startTotalMinutes).coerceAtLeast(15) // Ensure min 15 min visually?
+
+        (endTotalMinutes - startTotalMinutes).coerceAtLeast(15) 
         val heightDp = with(density) {
             (effectiveDuration / 60f * hourHeightPx)
                 .toDp()
@@ -97,7 +97,7 @@ fun TimeGridWithPeriodSections(
         return Pair(topOffsetDp, heightDp)
     }
 
-    // Group tasks by date for efficient rendering
+
     val tasksByDate = remember(scheduledTasks, weekDays) {
         weekDays.associateWith { date ->
             scheduledTasks.filter { task ->
@@ -109,9 +109,9 @@ fun TimeGridWithPeriodSections(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(scrollState) // Apply vertical scroll
+            .verticalScroll(scrollState) 
     ) {
-        // --- Period Sections (Rendered above the main grid) ---
+
         PeriodSection(
             title = "Morning (6AM-12PM)",
             tasks = morningTasks,
@@ -119,43 +119,43 @@ fun TimeGridWithPeriodSections(
             onTaskSelected = onTaskSelected,
         )
         PeriodSection(
-            title = "Afternoon (12PM-6PM)", // Changed title for clarity
-            tasks = eveningTasks, // Assuming eveningTasks covers afternoon
+            title = "Afternoon (12PM-6PM)",
+            tasks = eveningTasks, 
             weekDays = weekDays,
             onTaskSelected = onTaskSelected,
         )
         PeriodSection(
-            title = "Evening & Night (6PM-6AM)", // Changed title for clarity
-            tasks = nightTasks, // Assuming nightTasks covers this range
+            title = "Evening & Night (6PM-6AM)",
+            tasks = nightTasks, 
             weekDays = weekDays,
             onTaskSelected = onTaskSelected,
         )
         val color1 = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         val color2 = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
 
-        Spacer(Modifier.height(8.dp)) // Spacing before the grid
+        Spacer(Modifier.height(8.dp))
 
-        // --- Main Time Grid Container ---
+
         Box(modifier = Modifier.fillMaxWidth()) {
 
-            // --- Layer 1: Background Grid and Time Labels ---
+
             Column {
                 hours.forEach { hour ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(hourHeightDp) // Fixed height for each hour row
+                            .height(hourHeightDp) 
                     ) {
-                        // Time Label Box (Left Side)
+
                         Box(
                             modifier = Modifier
-                                .width(48.dp) // Fixed width for consistency
+                                .width(48.dp)
                                 .fillMaxHeight()
                                 .onGloballyPositioned {
                                     if (gridStartTimeAreaWidthPx == 0f) gridStartTimeAreaWidthPx =
                                         it.size.width.toFloat()
                                 },
-                            contentAlignment = Alignment.TopCenter // Center time label vertically
+                            contentAlignment = Alignment.TopCenter 
                         ) {
                             Text(
                                 text = when (hour) {
@@ -166,45 +166,45 @@ fun TimeGridWithPeriodSections(
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                // Apply offset for visual adjustment, NOT negative padding
+
                                 modifier = Modifier.offset(y = (-4).dp)
                             )
                         }
 
-                        // Grid Content Area (Right Side)
+
                         Row(
                             modifier = Modifier
-                                .weight(1f) // Take remaining width
+                                .weight(1f)
                                 .fillMaxHeight()
                                 .onGloballyPositioned {
-                                    // Calculate dayWidthPx once layout is known
+
                                     if (dayWidthPx == 0f && it.size.width > 0 && weekDays.isNotEmpty()) {
                                         dayWidthPx = it.size.width.toFloat() / weekDays.size
                                     }
                                     if (taskAreaCoordinates == null) {
                                         taskAreaCoordinates =
-                                            it // Store coordinates of the grid content area itself
+                                            it
                                     }
                                 }
 
                         ) {
                             weekDays.forEachIndexed { dayIndex, _ ->
-                                Box( // Represents one hour slot for a specific day
+                                Box( 
                                     modifier = Modifier
-                                        .weight(1f) // Equal width for each day column
+                                        .weight(1f)
                                         .fillMaxHeight()
                                 )
 
                                 {
                                     Canvas(modifier = Modifier.matchParentSize()) {
-                                        // Horizontal line at the top of the hour
+
                                         drawLine(
                                             color = color1,
                                             start = Offset(0f, 0f),
                                             end = Offset(size.width, 0f),
                                             strokeWidth = 1f
                                         )
-                                        // Dashed line at half hour (optional)
+
                                         val halfHourY = size.height / 2
                                         drawLine(
                                             color = color2,
@@ -218,7 +218,7 @@ fun TimeGridWithPeriodSections(
                                                 )
                                             )
                                         )
-                                        // Vertical line separating days (draw on the left edge)
+
                                         if (dayIndex > 0) {
                                             drawLine(
                                                 color = color1,
@@ -229,19 +229,19 @@ fun TimeGridWithPeriodSections(
                                         }
                                     }
 
-                                    // Current Time Indicator Line
+
                                     if (dayIndex == currentDateIndex && hour == currentTime.hour && dayWidthPx > 0) {
                                         val minuteRatio = currentTime.minute / 60f
                                         val indicatorY = minuteRatio * hourHeightPx
 
-                                        Box( // Use a Box for thickness
+                                        Box( 
                                             modifier = Modifier
-                                                .padding(start = 0.dp) // Align with the start of the day column
+                                                .padding(start = 0.dp)
                                                 .width(with(density) { dayWidthPx.toDp() })
                                                 .height(2.dp)
                                                 .offset(y = with(density) { indicatorY.toDp() })
                                                 .background(MaterialTheme.colorScheme.primary)
-                                                .zIndex(5f) // Above grid lines, below tasks
+                                                .zIndex(5f) 
                                         )
                                     }
                                 }
@@ -249,25 +249,25 @@ fun TimeGridWithPeriodSections(
                         }
                     }
                 }
-            } // End Background Grid Column
+            }
 
-            // --- Layer 2: Task Rendering Area ---
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(24 * hourHeightDp) // Must match total grid height
-                    .padding(start = 48.dp) // Offset start to align with grid content area
+                    .height(24 * hourHeightDp)
+                    .padding(start = 48.dp)
                     .onGloballyPositioned {
                         if (taskAreaCoordinates == null) taskAreaCoordinates = it
                     }
             ) {
                 Row(modifier = Modifier.fillMaxWidth()) {
                     weekDays.forEachIndexed { dayIndex, date ->
-                        Box( // Column for tasks on a specific day
+                        Box( 
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .clipToBounds() // Clip tasks overflowing this day's column bounds
+                                .clipToBounds() 
                         ) {
                             tasksByDate[date]?.forEach { task ->
                                 val (topOffsetDp, heightDp) = rememberTaskMetrics(task)
@@ -382,12 +382,12 @@ fun TimeGridWithPeriodSections(
                         }
                     }
                 }
-            } // End Task Rendering Area Row (Layer 2)
+            }
 
-            // --- Layer 3: Ghost / Placeholder for Dragging ---
+
             draggedTaskState?.let { currentDrag ->
                 val ghostDayIndex = weekDays.indexOf(currentDrag.targetDate)
-                // Ensure dayWidthPx is positive before using it in calculations
+
                 if (ghostDayIndex != -1 && dayWidthPx > 0f) {
                     val (_, originalHeightDp) = rememberTaskMetrics(task = currentDrag.task)
                     val ghostTargetMinutes =
@@ -404,21 +404,21 @@ fun TimeGridWithPeriodSections(
                                     y = ghostTargetYPx.roundToInt()
                                 )
                             }
-                            // Apply width safely
+
                             .width(
                                 if (dayWidthPx > 0f) {
                                     with(density) { dayWidthPx.toDp() } * 0.95f
                                 } else {
-                                    0.dp // Fallback
+                                    0.dp
                                 }
                             )
                             .height(originalHeightDp)
-                            // Apply padding safely
+
                             .padding(
                                 horizontal = if (dayWidthPx > 0f) {
                                     with(density) { (dayWidthPx * 0.025f).toDp() }
                                 } else {
-                                    0.dp // Fallback
+                                    0.dp
                                 }
                             )
                             .background(
@@ -442,8 +442,8 @@ fun TimeGridWithPeriodSections(
                         )
                     }
                 }
-            } // End Ghost Layer (Layer 3)
+            }
 
-        } // End Main Time Grid Box
-    } // End Main Column (Scrollable)
+        }
+    } 
 }

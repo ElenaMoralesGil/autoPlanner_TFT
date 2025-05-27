@@ -49,7 +49,7 @@ fun TasksScreen(
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Handle navigation effects from TaskListViewModel
+
 
     LaunchedEffect(listViewModel) {
         listViewModel.effect.collectLatest { effect ->
@@ -145,13 +145,13 @@ fun TasksScreen(
         }
     )
 
-    // Task detail bottom sheet
+
     selectedTaskId?.let { taskId ->
-        // Use Koin's viewModel function with parameters for the detail view
+
         val detailViewModel: TaskDetailViewModel =
             koinViewModel(parameters = { parametersOf(taskId) })
 
-        // Handle effects from TaskDetailViewModel
+
         LaunchedEffect(detailViewModel) {
             detailViewModel.effect.collectLatest { effect ->
                 when (effect) {
@@ -161,7 +161,7 @@ fun TasksScreen(
                     }
 
                     is TaskDetailEffect.NavigateToEdit -> {
-                        // Load task to edit and show edit sheet
+
                         taskToEdit = state?.tasks?.find { it.id == effect.taskId }
                         selectedTaskId = null
                         showAddEditSheet = true
@@ -174,12 +174,12 @@ fun TasksScreen(
             }
         }
 
-        // Launch initial load task intent
+
         LaunchedEffect(taskId) {
             detailViewModel.sendIntent(TaskDetailIntent.LoadTask(taskId))
         }
 
-        // Show the detail sheet
+
         TaskDetailSheet(
             taskId = taskId,
             onDismiss = { selectedTaskId = null },
@@ -187,13 +187,13 @@ fun TasksScreen(
         )
     }
 
-    // Task add/edit bottom sheet
+
     if (showAddEditSheet) {
-        // Get edit ViewModel with correct parameters
+
         val editViewModel: TaskEditViewModel =
             koinViewModel(parameters = { parametersOf(taskToEdit?.id ?: 0) })
 
-        // Handle effects from TaskEditViewModel
+
         LaunchedEffect(editViewModel) {
             editViewModel.effect.collectLatest { effect ->
                 when (effect) {
@@ -212,12 +212,12 @@ fun TasksScreen(
             }
         }
 
-        // Launch initial load task intent if in edit mode
+
         LaunchedEffect(taskToEdit?.id) {
             editViewModel.sendIntent(TaskEditIntent.LoadTask(taskToEdit?.id ?: 0))
         }
 
-        // Show the edit sheet
+
         ModificationTaskSheet(
             taskEditViewModel = editViewModel,
             onClose = {

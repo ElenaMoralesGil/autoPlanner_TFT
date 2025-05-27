@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
     tableName = "task_lists",
     indices = [
         Index(value = ["userId"]),
-        Index(value = ["firestoreId"], unique = true) // Add index for firestoreId
+        Index(value = ["firestoreId"], unique = true) 
     ]
 )
 data class ListEntity(

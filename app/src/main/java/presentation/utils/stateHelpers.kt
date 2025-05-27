@@ -14,8 +14,8 @@ fun Task.hasPeriodAssigned(): Boolean =
 
 fun Priority.toColor(): Color = when (this) {
     Priority.HIGH -> Color.Red
-    Priority.MEDIUM -> Color(0xFFFFA500) // Orange
-    Priority.LOW -> Color(0xFF4CAF50) // Green
+    Priority.MEDIUM -> Color(0xFFFFA500)
+    Priority.LOW -> Color(0xFF4CAF50) 
     Priority.NONE -> Color.Gray
 }
 

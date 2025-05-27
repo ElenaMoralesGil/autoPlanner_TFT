@@ -71,7 +71,7 @@ fun ModificationTaskSheet(
             taskEditViewModel.sendIntent(TaskEditIntent.LoadListsForSelection)
         }
     }
-    // Fetch sections when needed
+
     LaunchedEffect(showSectionSelectionDialog, listForSectionSelection) {
         if (showSectionSelectionDialog && listForSectionSelection != null) {
             taskEditViewModel.sendIntent(
@@ -177,23 +177,23 @@ fun ModificationTaskSheet(
                     lists = state?.availableLists ?: emptyList(),
                     currentSelectedListId = state?.listId,
                     onDismiss = { showListSelectionDialog = false },
-                    onConfirmSelection = { selectedListId -> // Use new callback
+                    onConfirmSelection = { selectedListId -> 
                         taskEditViewModel.sendIntent(TaskEditIntent.AssignList(selectedListId))
-                        // If a list was selected (not 'None'), show section dialog
+
                         if (selectedListId != null) {
-                            // Find the selected list object to pass its name
+
                             listForSectionSelection = state?.availableLists?.find { it.id == selectedListId }
                             if(listForSectionSelection != null) {
                                 showSectionSelectionDialog = true
                             } else {
-                                // Handle case where list might not be found (shouldn't happen ideally)
+
                                 showSectionSelectionDialog = false
                             }
                         } else {
                             listForSectionSelection = null
-                            showSectionSelectionDialog = false // Don't show section dialog if 'None' list selected
+                            showSectionSelectionDialog = false 
                         }
-                        showListSelectionDialog = false // Close list dialog handled by GeneralAlertDialog now
+                        showListSelectionDialog = false 
                     },
                     onCreateNewList = {
                         showListSelectionDialog = false
@@ -207,11 +207,11 @@ fun ModificationTaskSheet(
                     isLoading = state?.isLoadingSelection ?: false,
                     listName = listForSectionSelection!!.name,
                     sections = state?.availableSections ?: emptyList(),
-                    currentSelectedSectionId = state?.sectionId, // Pass current ID
+                    currentSelectedSectionId = state?.sectionId, 
                     onDismiss = { showSectionSelectionDialog = false },
-                    onConfirmSelection = { selectedSectionId -> // Use new callback
+                    onConfirmSelection = { selectedSectionId -> 
                         taskEditViewModel.sendIntent(TaskEditIntent.AssignSection(selectedSectionId))
-                        showSectionSelectionDialog = false // Close section dialog handled by GeneralAlertDialog now
+                        showSectionSelectionDialog = false 
                     },
                     onCreateNewSection = {
                         showSectionSelectionDialog = false
@@ -224,8 +224,8 @@ fun ModificationTaskSheet(
                 CreateEditListDialog(
                     onDismiss = { showCreateListDialog = false },
                     onConfirm = { name, colorHex ->
-                        // Send intent to VM to create and assign
-                        taskEditViewModel.sendIntent(
+
+                    taskEditViewModel.sendIntent(
                             TaskEditIntent.CreateAndAssignList(
                                 name,
                                 colorHex
@@ -238,11 +238,11 @@ fun ModificationTaskSheet(
 
             if (showCreateSectionDialog && listForSectionSelection != null) {
                 CreateEditSectionDialog(
-                    listName = listForSectionSelection!!.name, // Pass list name for context
+                    listName = listForSectionSelection!!.name, 
                     onDismiss = { showCreateSectionDialog = false },
                     onConfirm = { name ->
-                        // Send intent to VM to create and assign
-                        taskEditViewModel.sendIntent(
+
+                    taskEditViewModel.sendIntent(
                             TaskEditIntent.CreateAndAssignSection(
                                 name,
                                 listForSectionSelection!!.id

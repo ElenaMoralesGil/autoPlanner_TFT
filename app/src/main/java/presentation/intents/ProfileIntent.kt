@@ -12,5 +12,5 @@ sealed class ProfileIntent : Intent {
     data object NavigateToLogin : ProfileIntent()
     data object NavigateToRegister : ProfileIntent()
     data object NavigateToEditProfile : ProfileIntent()
-    data class SelectTimeFrame(val timeFrame: StatsTimeFrame) : ProfileIntent() // New Intent
+    data class SelectTimeFrame(val timeFrame: StatsTimeFrame) : ProfileIntent() 
 }

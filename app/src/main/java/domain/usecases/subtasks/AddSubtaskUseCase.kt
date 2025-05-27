@@ -15,28 +15,28 @@ class AddSubtaskUseCase(
             return TaskResult.Error("Subtask name cannot be empty")
         }
 
-        // 1. Get the current task
+
         val taskResult = getTaskUseCase(taskId)
         if (taskResult !is TaskResult.Success) {
-            return taskResult // Propagate error if task not found
+            return taskResult 
         }
         val task = taskResult.data
 
-        // 2. Create the new subtask (ID here is temporary, only for adding to the list)
+
         val nextTempId = (task.subtasks.maxOfOrNull { it.id } ?: 0) + 1
         val newSubtask =
-            Subtask(id = nextTempId, name = name, isCompleted = false) // ID is local/temp
+            Subtask(id = nextTempId, name = name, isCompleted = false)
 
-        // 3. Create the updated task object
+
         val updatedTaskObject = Task.from(task).subtasks(task.subtasks + newSubtask).build()
 
         return when (val saveResult = saveTaskUseCase(updatedTaskObject)) {
             is TaskResult.Success -> {
-                // 5. IMPORTANT: Re-fetch the task AFTER saving to get correct subtask IDs
-                getTaskUseCase(taskId) // Fetch again to ensure latest state with final IDs
+
+                getTaskUseCase(taskId) 
             }
 
-            is TaskResult.Error -> saveResult // Propagate save error
+            is TaskResult.Error -> saveResult 
         }
     }
 }

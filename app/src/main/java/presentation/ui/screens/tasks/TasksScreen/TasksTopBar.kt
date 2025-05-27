@@ -34,21 +34,21 @@ import com.elena.autoplanner.presentation.states.TimeFrame
 @Composable
 fun TasksTopBar(
     state: TaskListState,
-    currentListName: String?, // Receive list name from ViewModel state
+    currentListName: String?, 
     onStatusSelected: (TaskStatus) -> Unit,
     onTimeFrameSelected: (TimeFrame) -> Unit,
     onPlannerClick: () -> Unit,
-    onShowAllTasks: () -> Unit, // Callback to navigate to all tasks
-    onEditList: () -> Unit, // Callback to trigger list edit
-    onEditSections: () -> Unit, // Callback to trigger section edit
+    onShowAllTasks: () -> Unit,
+    onEditList: () -> Unit,
+    onEditSections: () -> Unit, 
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val isSpecificListSelected = state.currentListId != null
 
     val titleText = buildString {
-        append(currentListName ?: "Tasks") // Start with list name or "Tasks"
+        append(currentListName ?: "Tasks") 
         state.currentSectionName?.let { sectionName ->
-            append(" / $sectionName") // Append section name if available
+            append(" / $sectionName") 
         }
     }
 
@@ -58,14 +58,14 @@ fun TasksTopBar(
         ),
         title = {
             Column {
-                // Display the current list name or "Tasks"
+
                 Text(
-                    text = titleText, // Use the combined title
+                    text = titleText, 
                     style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 1, // Prevent title from taking too much space
+                    maxLines = 1, 
                     overflow = TextOverflow.Ellipsis
                 )
-                // Display filters below the title
+
                 Text(
                     buildFilterText(state),
                     Modifier.padding(start = 2.dp),
@@ -76,9 +76,9 @@ fun TasksTopBar(
             }
         },
         navigationIcon = {
-            // Show back arrow only if viewing a specific list
+
             if (isSpecificListSelected) {
-                IconButton(onClick = onShowAllTasks) { // Navigate back to all tasks
+                IconButton(onClick = onShowAllTasks) { 
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Show All Tasks")
                 }
             }
@@ -93,7 +93,7 @@ fun TasksTopBar(
                 )
             }
 
-            // Show list-specific options only when a list is selected
+
             if (isSpecificListSelected) {
                 Box {
                     IconButton(onClick = { showMenu = true }) {
@@ -111,7 +111,7 @@ fun TasksTopBar(
                             text = { Text("Edit Sections") },
                             onClick = { onEditSections(); showMenu = false }
                         )
-                        // Add Delete List option later if needed
+
 
                     }
                 }

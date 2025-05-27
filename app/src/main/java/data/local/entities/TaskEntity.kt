@@ -11,17 +11,17 @@ import java.time.LocalDateTime
     indices = [
         Index(value = ["userId"]),
         Index(value = ["firestoreId"], unique = true),
-        Index(value = ["listId"]), // Add index for listId
-        Index(value = ["sectionId"]) // Add index for sectionId
+        Index(value = ["listId"]),
+        Index(value = ["sectionId"]) 
     ],
     foreignKeys = [
-        ForeignKey( // Optional: Enforce FK constraint if desired
+        ForeignKey( 
             entity = ListEntity::class,
             parentColumns = ["id"],
             childColumns = ["listId"],
-            onDelete = ForeignKey.SET_NULL // Or CASCADE, SET_DEFAULT if you have a default list
+            onDelete = ForeignKey.SET_NULL 
         ),
-        ForeignKey( // Optional: Enforce FK constraint
+        ForeignKey( 
             entity = SectionEntity::class,
             parentColumns = ["id"],
             childColumns = ["sectionId"],

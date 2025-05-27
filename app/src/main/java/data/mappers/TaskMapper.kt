@@ -37,26 +37,26 @@ class TaskMapper {
         val repeatConfigMapper = RepeatConfigMapper()
         val subtaskMapper = SubtaskMapper()
 
-        // Helper to safely get DayPeriod, defaulting to NONE
+
         fun getDayPeriod(periodString: String?): DayPeriod {
             return try {
                 periodString?.let { DayPeriod.valueOf(it) } ?: DayPeriod.NONE
             } catch (e: IllegalArgumentException) {
-                DayPeriod.NONE // Handle invalid enum strings
+                DayPeriod.NONE 
             }
         }
 
-        val startDateConf = taskEntity.startDateTime?.let { // Create if startDateTime exists
+        val startDateConf = taskEntity.startDateTime?.let { 
             TimePlanning(
                 dateTime = it,
-                dayPeriod = getDayPeriod(taskEntity.startDayPeriod) // Use helper
+                dayPeriod = getDayPeriod(taskEntity.startDayPeriod) 
             )
         }
 
-        val endDateConf = taskEntity.endDateTime?.let { // Create if endDateTime exists
+        val endDateConf = taskEntity.endDateTime?.let { 
             TimePlanning(
                 dateTime = it,
-                dayPeriod = getDayPeriod(taskEntity.endDayPeriod) // Use helper
+                dayPeriod = getDayPeriod(taskEntity.endDayPeriod) 
             )
         }
 
@@ -64,11 +64,11 @@ class TaskMapper {
             try {
                 Color(hex.toColorInt())
             } catch (e: Exception) {
-                null // Handle invalid hex
+                null 
             }
         }
 
-        val internalFlags = TaskInternalFlags( // Use fully qualified name if needed
+        val internalFlags = TaskInternalFlags( 
             isMarkedForDeletion = taskEntity.isDeleted
         )
         return Task.Builder()
@@ -76,8 +76,8 @@ class TaskMapper {
             .name(taskEntity.name)
             .isCompleted(taskEntity.isCompleted)
             .priority(mapPriority(taskEntity.priority))
-            .startDateConf(startDateConf) // Assign the potentially created object
-            .endDateConf(endDateConf)     // Assign the potentially created object
+            .startDateConf(startDateConf)
+            .endDateConf(endDateConf)     
             .durationConf(taskEntity.durationMinutes?.let { DurationPlan(it) })
             .reminderPlan(reminders.firstOrNull()?.let { reminderMapper.mapToDomain(it) })
             .repeatPlan(repeatConfigs.firstOrNull()?.let { repeatConfigMapper.mapToDomain(it) })
@@ -85,8 +85,8 @@ class TaskMapper {
             .scheduledStartDateTime(taskEntity.scheduledStartDateTime)
             .scheduledEndDateTime(taskEntity.scheduledEndDateTime)
             .completionDateTime(taskEntity.completionDateTime)
-            .listId(taskEntity.listId) // <-- Add this
-            .sectionId(taskEntity.sectionId) // <-- Add this
+            .listId(taskEntity.listId)
+            .sectionId(taskEntity.sectionId) 
             .displayOrder(taskEntity.displayOrder)
             .listName(listName)
             .internalFlags(internalFlags)
@@ -123,7 +123,7 @@ class TaskMapper {
     fun updateEntityFlags(entity: TaskEntity, domain: Task): TaskEntity {
         return entity.copy(
             isDeleted = domain.internalFlags?.isMarkedForDeletion ?: entity.isDeleted
-            // Add other flags here if needed in the future
+
         )
     }
 }

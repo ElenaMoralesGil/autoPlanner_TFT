@@ -43,7 +43,7 @@ class MoreViewModel(
         observeTotalTaskCount()
     }
 
-    private fun observeTotalTaskCount() { // <-- New function
+    private fun observeTotalTaskCount() { 
         viewModelScope.launch {
             getTasksUseCase()
                 .catch { error ->
@@ -76,14 +76,14 @@ class MoreViewModel(
     override suspend fun handleIntent(intent: MoreIntent) {
         when (intent) {
             is MoreIntent.SelectList -> {
-                // Effect is handled by UI callback now, but keep if needed
+
                 Log.d("MoreViewModel", "Intent: SelectList ${intent.listId}")
                 intent.listId?.let { setEffect(MoreEffect.NavigateToTasks(it)) }
             }
 
             is MoreIntent.CreateList -> saveList(intent.name, intent.colorHex)
-            is MoreIntent.ToggleListExpansion -> handleToggleExpansion(intent.listId) // Refined this
-            is MoreIntent.LoadSections -> loadSections(intent.listId) // Keep explicit load if needed elsewhere
+            is MoreIntent.ToggleListExpansion -> handleToggleExpansion(intent.listId)
+            is MoreIntent.LoadSections -> loadSections(intent.listId) 
             is MoreIntent.CreateSection -> createSection(intent.listId, intent.sectionName)
             MoreIntent.RequestCreateList -> setEffect(MoreEffect.ShowCreateListDialog)
             is MoreIntent.RequestDeleteList -> setState { copy(listIdPendingDeletion = intent.listId) }
@@ -143,12 +143,12 @@ class MoreViewModel(
 
     private suspend fun updateList(listId: Long, newName: String, newColorHex: String) {
         setState { copy(isLoading = true) }
-        // Create a TaskList object with the existing ID and new details
+
         val updatedList = TaskList(id = listId, name = newName, colorHex = newColorHex)
-        when (val result = saveListUseCase(updatedList)) { // saveListUseCase should handle update
+        when (val result = saveListUseCase(updatedList)) { 
             is TaskResult.Success -> {
                 setEffect(MoreEffect.ShowSnackbar("List '$newName' updated"))
-                // Flow collection in loadLists() should automatically refresh
+
             }
 
             is TaskResult.Error -> {
@@ -156,17 +156,17 @@ class MoreViewModel(
                 setEffect(MoreEffect.ShowSnackbar("Error updating list: ${result.message}"))
             }
         }
-        // isLoading will be set to false by the loadLists flow collection
+
     }
 
     private suspend fun updateSection(sectionId: Long, listId: Long, newName: String) {
-        // Create a TaskSection object with the existing ID and new details
+
         val updatedSection = TaskSection(id = sectionId, listId = listId, name = newName)
         when (val result =
-            saveSectionUseCase(updatedSection)) { // saveSectionUseCase should handle update
+            saveSectionUseCase(updatedSection)) { 
             is TaskResult.Success -> {
                 setEffect(MoreEffect.ShowSnackbar("Section '$newName' updated"))
-                // Invalidate cached sections for this list and reload them
+
                 setState { copy(sectionsByListId = sectionsByListId - listId) }
                 loadSections(listId)
             }
@@ -175,7 +175,7 @@ class MoreViewModel(
                 setEffect(MoreEffect.ShowSnackbar("Error updating section: ${result.message}"))
             }
         }
-        // isLoading for sections is handled by loadSections
+
     }
 
 
@@ -189,14 +189,14 @@ class MoreViewModel(
         }
         setState { copy(expandedListIds = newExpanded) }
 
-        // If expanding and sections not loaded yet for this list, trigger load
+
         if (!isCurrentlyExpanded && !currentState.sectionsByListId.containsKey(listId)) {
             loadSections(listId)
         }
     }
 
     private suspend fun loadSections(listId: Long) {
-        if (currentState.isLoadingSectionsFor == listId) return // Don't load if already loading
+        if (currentState.isLoadingSectionsFor == listId) return 
 
         Log.d("MoreViewModel", "Loading sections for listId: $listId")
         setState {
@@ -204,14 +204,14 @@ class MoreViewModel(
                 isLoadingSectionsFor = listId,
                 sectionError = null
             )
-        } // Clear previous section error
+        } 
 
         when (val result = getAllSectionsUseCase(listId)) {
             is TaskResult.Success -> {
                 setState {
                     copy(
                         sectionsByListId = sectionsByListId + (listId to result.data),
-                        isLoadingSectionsFor = null // Clear loading indicator
+                        isLoadingSectionsFor = null 
                     )
                 }
                 Log.d(
@@ -223,12 +223,12 @@ class MoreViewModel(
             is TaskResult.Error -> {
                 setState {
                     copy(
-                        isLoadingSectionsFor = null, // Clear loading indicator on error
-                        sectionError = "Could not load sections for list." // Set specific error
+                        isLoadingSectionsFor = null,
+                        sectionError = "Could not load sections for list." 
                     )
                 }
-                // Optionally show snackbar, but error message might be displayed in UI
-                // setEffect(MoreEffect.ShowSnackbar("Error loading sections: ${result.message}"))
+
+
                 Log.e("MoreViewModel", "Error loading sections for list $listId: ${result.message}")
             }
         }
@@ -240,7 +240,7 @@ class MoreViewModel(
         when (val result = saveListUseCase(newList)) {
             is TaskResult.Success -> {
                 setEffect(MoreEffect.ShowSnackbar("List '$name' created"))
-                // Flow collection in loadLists() should automatically refresh the list
+
             }
 
             is TaskResult.Error -> {
@@ -252,14 +252,14 @@ class MoreViewModel(
     }
 
     private suspend fun createSection(listId: Long, sectionName: String) {
-        // Optionally add loading state specific to section creation if needed
+
         val newSection = TaskSection(listId = listId, name = sectionName)
         when (val result = saveSectionUseCase(newSection)) {
             is TaskResult.Success -> {
                 setEffect(MoreEffect.ShowSnackbar("Section '$sectionName' created"))
-                // Invalidate cached sections for this list and reload them
-                setState { copy(sectionsByListId = sectionsByListId - listId) } // Remove old sections
-                loadSections(listId) // Reload sections
+
+                setState { copy(sectionsByListId = sectionsByListId - listId) }
+                loadSections(listId) 
             }
 
             is TaskResult.Error -> {
@@ -275,7 +275,7 @@ class MoreViewModel(
         when (val result = deleteListUseCase(listId)) {
             is TaskResult.Success -> {
                 setEffect(MoreEffect.ShowSnackbar("List deleted successfully."))
-                // List will be refreshed by the flow from getListsInfoUseCase
+
             }
 
             is TaskResult.Error -> {
@@ -297,8 +297,8 @@ class MoreViewModel(
             is TaskResult.Success -> {
                 setEffect(MoreEffect.ShowSnackbar("Section deleted successfully."))
                 listId?.let {
-                    // Invalidate and reload sections for the parent list
-                    setState { copy(sectionsByListId = sectionsByListId - it) }
+
+                setState { copy(sectionsByListId = sectionsByListId - it) }
                     loadSections(it)
                 }
             }

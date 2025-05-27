@@ -9,7 +9,7 @@ class SaveListUseCase(private val listRepository: ListRepository) {
         if (list.name.isBlank()) {
             return TaskResult.Error("List name cannot be empty.")
         }
-        // Add color validation if needed
+
         return listRepository.saveList(list)
     }
 }

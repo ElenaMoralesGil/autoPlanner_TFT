@@ -28,22 +28,22 @@ import kotlin.math.roundToInt
 
 @Composable
 fun WeeklyView(
-    weekStartDateInput: LocalDate, // The reference date for the week (e.g., selected date)
+    weekStartDateInput: LocalDate, 
     tasks: List<Task>,
     onTaskSelected: (Task) -> Unit,
     calendarViewModel: CalendarViewModel,
     tasksViewModel: TaskListViewModel,
 ) {
-    val hourHeightDp = 60.dp // Height for one hour slot
+    val hourHeightDp = 60.dp 
     val hourHeightPx = with(LocalDensity.current) { hourHeightDp.toPx() }
     val scrollState = rememberScrollState()
     val currentTime = LocalTime.now()
 
-    // Calculate the actual start of the week (Monday) based on the input date
+
     val weekStartDate = remember(weekStartDateInput) {
         weekStartDateInput.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     }
-    // Calculate the days of the week based on the *actual* start date (Monday)
+
     val weekDays = remember(weekStartDate) {
         (0..6).map { weekStartDate.plusDays(it.toLong()) }
     }
@@ -58,7 +58,7 @@ fun WeeklyView(
         }
     }
 
-    // Categorize tasks for different sections
+
     val allDayTasks = remember(weekTasks) { weekTasks.filter { it.isAllDay() } }
     val scheduledTasks = remember(weekTasks) {
         weekTasks.filter {
@@ -78,17 +78,17 @@ fun WeeklyView(
         val originalDateTime = task.scheduledStartDateTime ?: task.startDateConf?.dateTime
         if (originalDateTime != null) {
             val originalDate = originalDateTime.toLocalDate()
-            val newDate = originalDate.plusDays(dayOffset) // Apply day offset from drag
+            val newDate = originalDate.plusDays(dayOffset) 
             val newDateTime = LocalDateTime.of(newDate, newTime)
 
             val newConf = TimePlanning(
                 dateTime = newDateTime,
-                dayPeriod = DayPeriod.NONE // Manual drag sets specific time
+                dayPeriod = DayPeriod.NONE 
             )
             val updatedTask = Task.from(task)
                 .startDateConf(newConf)
-                .scheduledStartDateTime(null) // Clear scheduled time on manual drag
-                .scheduledEndDateTime(null)   // Clear scheduled time on manual drag
+                .scheduledStartDateTime(null)
+                .scheduledEndDateTime(null)   
                 .build()
             Log.d(
                 "WeeklyView",
@@ -106,66 +106,66 @@ fun WeeklyView(
     val morningTasks =
         remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.MORNING } }
     val eveningTasks =
-        remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING } } // Assuming AFTERNOON maps here
+        remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.EVENING } } 
     val nightTasks =
         remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.NIGHT } }
-    // Scroll to current time on initial composition or when week changes to contain today
+
     LaunchedEffect(weekDays) {
         val today = LocalDate.now()
         if (weekDays.any { it == today }) {
-            // Calculate scroll position slightly above the current hour
+
             val currentHour = LocalTime.now().hour
             val scrollToPosition = ((currentHour - 1).coerceAtLeast(0) * hourHeightPx).roundToInt()
             scrollState.animateScrollTo(scrollToPosition)
         } else {
-            // Optionally scroll to top if today is not in view
+
             scrollState.animateScrollTo(0)
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // Top navigation header (Previous/Next Week, Date Range)
+
         WeekNavigationHeader(
-            weekStartDate = weekDays.first(), // Monday
-            weekEndDate = weekDays.last(),   // Sunday
+            weekStartDate = weekDays.first(),
+            weekEndDate = weekDays.last(),   
             onPreviousWeek = {
-                // Navigate to the Monday of the previous week
-                calendarViewModel.sendIntent(
+
+            calendarViewModel.sendIntent(
                     CalendarIntent.ChangeDate(weekStartDate.minusWeeks(1))
                 )
             },
             onNextWeek = {
-                // Navigate to the Monday of the next week
-                calendarViewModel.sendIntent(
+
+            calendarViewModel.sendIntent(
                     CalendarIntent.ChangeDate(weekStartDate.plusWeeks(1))
                 )
             }
         )
 
-        // Header displaying clickable days of the week (MON 1, TUE 2, ...)
+
         DaysOfWeekHeader(
             weekDays = weekDays,
-            currentDate = LocalDate.now(), // Highlight today
+            currentDate = LocalDate.now(), 
             onDateSelected = { selectedDate ->
                 calendarViewModel.sendIntent(CalendarIntent.ChangeDate(selectedDate))
 
             }
         )
 
-        // Separator(modifier = Modifier.padding(vertical = 4.dp)) // Optional separator
 
-        // Section for All-Day tasks displayed horizontally
+
+
         AllDayTasksSection(
             allDayTasks = allDayTasks,
             weekDays = weekDays,
             onTaskSelected = onTaskSelected
         )
 
-        // The main scrollable area containing period sections and the time grid
+
         Box(
             modifier = Modifier
-                .weight(1f) // Takes remaining vertical space
+                .weight(1f)
                 .fillMaxWidth()
         ) {
             TimeGridWithPeriodSections(

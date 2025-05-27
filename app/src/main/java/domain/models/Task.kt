@@ -15,12 +15,12 @@ enum class ErrorCode {
 
 data class TaskInternalFlags(
     var isOverdue: Boolean = false,
-    var constraintDate: LocalDate? = null, // For ADD_TODAY_FREE_TIME
-    var failedPeriod: Boolean = false, // If period placement failed and fallback is attempted
-    var isHardConflict: Boolean = false, // Flag if involved in Fixed vs Fixed
+    var constraintDate: LocalDate? = null,
+    var failedPeriod: Boolean = false,
+    var isHardConflict: Boolean = false,
     var isPostponed: Boolean = false,
     var needsManualResolution: Boolean = false,
-    var isMarkedForDeletion: Boolean = false
+    var isMarkedForDeletion: Boolean = false,
 )
 
 data class Task private constructor(
@@ -41,9 +41,9 @@ data class Task private constructor(
     val listId: Long? = null,
     val sectionId: Long? = null,
     val displayOrder: Int = 0,
-    @Transient val listName: String? = null, // Transient: Not stored in DB directly
-    @Transient val sectionName: String? = null, // Transient
-    @Transient val listColor: Color? = null, // Transient
+    @Transient val listName: String? = null,
+    @Transient val sectionName: String? = null,
+    @Transient val listColor: Color? = null, 
 
     ) {
     fun validate() {
@@ -65,15 +65,14 @@ data class Task private constructor(
     fun isExpired(): Boolean {
         val now = LocalDateTime.now()
         return if (endDateConf?.dateTime != null) {
-            // Primary check: If there's an end date, is it before now?
+
             endDateConf.dateTime.isBefore(now)
         } else if (startDateConf.dateTime != null && durationConf?.totalMinutes == null) {
-            // Fallback check (no end date, no duration):
-            // Is the task's start date strictly before today's date?
-            // This treats tasks with only a start date like events that expire once the day passes.
+
+
             startDateConf.dateTime.toLocalDate().isBefore(now.toLocalDate())
         } else {
-            // Not expired if it has a duration or no dates defined in a way that makes it expired.
+
             false
         }
     }
@@ -99,7 +98,7 @@ data class Task private constructor(
         startDateConf.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } == true
 
     fun copyForPlanning(flags: TaskInternalFlags? = this.internalFlags): Task {
-        val newTask = this.copy() // Standard copy
+        val newTask = this.copy() 
         newTask.internalFlags = flags
         return newTask
     }

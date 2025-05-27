@@ -17,7 +17,7 @@ fun TaskList.toEntity(
     lastUpdated: Long? = null
 ): ListEntity {
     return ListEntity(
-        id = this.id, // Use domain ID (0 for new)
+        id = this.id, 
         firestoreId = firestoreId,
         userId = userId,
         name = this.name,

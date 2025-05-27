@@ -22,7 +22,7 @@ data class ReminderEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val taskId: Int,
 
-    // e.g. "NONE", "PRESET_OFFSET", "CUSTOM", "EXACT"
+
     val mode: String,
     val offsetMinutes: Int? = null,
     val exactDateTime: LocalDateTime? = null,

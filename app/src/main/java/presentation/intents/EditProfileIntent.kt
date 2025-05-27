@@ -10,7 +10,7 @@ sealed class EditProfileIntent : Intent {
     data class UpdateConfirmPassword(val password: String) : EditProfileIntent()
     data object SaveChanges : EditProfileIntent()
     data object Cancel : EditProfileIntent()
-    data object ShowReAuthDialog : EditProfileIntent() // Potentially trigger manually if needed
+    data object ShowReAuthDialog : EditProfileIntent() 
     data object HideReAuthDialog : EditProfileIntent()
     data class UpdateCurrentPasswordForReAuth(val password: String) : EditProfileIntent()
     data object PerformReAuthentication : EditProfileIntent()

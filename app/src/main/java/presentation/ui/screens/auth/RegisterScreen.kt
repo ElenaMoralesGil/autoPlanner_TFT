@@ -97,8 +97,8 @@ fun RegisterScreen(
             Spacer(Modifier.height(8.dp))
 
             state?.error?.let {
-                // Display general errors not related to specific fields
-                if (!it.contains("password", ignoreCase = true) && !it.contains(
+
+            if (!it.contains("password", ignoreCase = true) && !it.contains(
                         "email",
                         ignoreCase = true
                     ) && !it.contains("match", ignoreCase = true)

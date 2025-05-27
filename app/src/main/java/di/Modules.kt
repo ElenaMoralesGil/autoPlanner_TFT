@@ -140,9 +140,9 @@ val appModule = module {
         ListRepositoryImpl(
             listDao = get(),
             sectionDao = get(),
-            taskDao = get(),             // <-- Add TaskDao
-            userRepository = get(),      // <-- Add UserRepository
-            firestore = get(),           // <-- Add Firestore
+            taskDao = get(),
+            userRepository = get(),
+            firestore = get(),           
             dispatcher = Dispatchers.IO,
             repoScope = get()
         )
@@ -203,7 +203,7 @@ val useCaseModule = module {
     single { GetSectionsUseCase(get()) }
     single { GetAllSectionsUseCase(get()) }
     single { SaveSectionUseCase(get()) }
-    single { DeleteListUseCase(get()) } // Added
+    single { DeleteListUseCase(get()) } 
     single { DeleteSectionUseCase(get()) }
 }
 
@@ -217,8 +217,8 @@ val viewModelModule = module {
             saveTaskUseCase = get()
         )
     }
-    viewModel { MoreViewModel(get(), get(), get(), get(), get(), get(), get()) } // Add MoreViewModel
-    viewModel { (handle: SavedStateHandle) -> // Koin provides SavedStateHandle
+    viewModel { MoreViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { (handle: SavedStateHandle) -> 
         TaskListViewModel(
             getTasksByListUseCase = get(),
             filterTasksUseCase = get(),
@@ -228,7 +228,7 @@ val viewModelModule = module {
             saveListUseCase = get(),
             saveSectionUseCase = get(),
             getAllSectionsUseCase = get(),
-            savedStateHandle = handle // Pass the handle
+            savedStateHandle = handle 
         )
     }
     viewModel { (taskId: Int) ->
@@ -243,15 +243,15 @@ val viewModelModule = module {
         )
     }
 
-    viewModel { (taskId: Int) -> // TaskEditViewModel might also need SavedStateHandle if it depends on nav args
+    viewModel { (taskId: Int) -> 
         TaskEditViewModel(
             getTaskUseCase = get(),
             saveTaskUseCase = get(),
             getAllListsUseCase = get(),
             getAllSectionsUseCase = get(),
-            saveListUseCase = get(),      // Add this
+            saveListUseCase = get(),      
             saveSectionUseCase = get()
-            // savedStateHandle = get() // Add if needed
+
         )
     }
     viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }

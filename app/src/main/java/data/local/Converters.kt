@@ -44,12 +44,12 @@ object ListOfIntConverter {
 object DayOfWeekSetConverter {
     private val gson = Gson()
 
-    // Se define el tipo que representa un Set<DayOfWeek> para Gson
+
     private val typeToken = object : TypeToken<Set<DayOfWeek>>() {}.type
 
     @TypeConverter
     fun fromDayOfWeekSet(days: Set<DayOfWeek>?): String? {
-        // Convierte el Set<DayOfWeek> a un String en formato JSON
+
         return if (days == null) {
             null
         } else {
@@ -59,7 +59,7 @@ object DayOfWeekSetConverter {
 
     @TypeConverter
     fun toDayOfWeekSet(json: String?): Set<DayOfWeek>? {
-        // Convierte el String en formato JSON al Set<DayOfWeek>
+
         return if (json.isNullOrEmpty()) {
             null
         } else {
@@ -68,7 +68,7 @@ object DayOfWeekSetConverter {
     }
 }
 
-// Converters.kt
+
 object IntervalUnitConverter {
     @TypeConverter
     fun fromIntervalUnit(unit: IntervalUnit?): String? = unit?.name

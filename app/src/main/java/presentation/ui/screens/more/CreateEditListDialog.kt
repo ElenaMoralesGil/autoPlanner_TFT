@@ -21,7 +21,7 @@ import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 
 @Composable
 fun CreateEditListDialog(
-    existingList: TaskList? = null, // Pass existing list for editing
+    existingList: TaskList? = null, 
     onDismiss: () -> Unit,
     onConfirm: (name: String, colorHex: String) -> Unit,
 ) {
@@ -42,13 +42,13 @@ fun CreateEditListDialog(
 
     val predefinedColors = listOf(
         MaterialTheme.colorScheme.primary,
-        Color(0xFFF44336), // Red
-        Color(0xFF4CAF50), // Green
-        Color(0xFF2196F3), // Blue
-        Color(0xFFFFEB3B), // Yellow
-        Color(0xFF9C27B0), // Purple
-        Color(0xFF000000), // Black
-        Color(0xFF9E9E9E)  // Grey
+        Color(0xFFF44336),
+        Color(0xFF4CAF50),
+        Color(0xFF2196F3),
+        Color(0xFFFFEB3B),
+        Color(0xFF9C27B0),
+        Color(0xFF000000),
+        Color(0xFF9E9E9E)  
     )
 
     GeneralAlertDialog(
@@ -59,7 +59,7 @@ fun CreateEditListDialog(
                     value = name,
                     onValueChange = {
                         name = it
-                        nameError = null // Clear error on change
+                        nameError = null 
                     },
                     label = { Text("List Name") },
                     modifier = Modifier.fillMaxWidth(),
@@ -100,8 +100,8 @@ fun CreateEditListDialog(
                 onConfirm(name, colorHex)
             }
         },
-        // Use default "Cancel" and "Ready" buttons from GeneralAlertDialog
-    )
+
+        )
 }
 
 @Composable
@@ -127,7 +127,7 @@ private fun ColorCircle(
             Icon(
                 Icons.Default.Check,
                 contentDescription = "Selected",
-                tint = MaterialTheme.colorScheme.onPrimary, // Adjust if needed based on circle color
+                tint = MaterialTheme.colorScheme.onPrimary, 
                 modifier = Modifier.size(20.dp)
             )
         }

@@ -18,17 +18,17 @@ import androidx.room.PrimaryKey
     ],
     indices = [
         Index("listId"),
-        Index(value = ["userId"]), // Add index for userId
-        Index(value = ["firestoreId"], unique = true) // Add index for firestoreId
+        Index(value = ["userId"]),
+        Index(value = ["firestoreId"], unique = true) 
     ]
 )
 data class SectionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val firestoreId: String? = null, // <-- Add
+    val firestoreId: String? = null,
     val userId: String? = null,
     val listId: Long,
     val name: String,
     val displayOrder: Int = 0,
     val lastUpdated: Long = System.currentTimeMillis(),
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
 )

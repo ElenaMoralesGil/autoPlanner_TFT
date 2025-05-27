@@ -30,14 +30,14 @@ fun MainNavigation(
         modifier = modifier
     ) {
         composable(
-            route = Screen.Tasks.route, // Use the updated route definition
+            route = Screen.Tasks.route, 
             arguments = listOf(
                 navArgument("listId") {
-                    type = NavType.StringType // Read as String
+                    type = NavType.StringType 
                     nullable = true
                     defaultValue = null
                 },
-                // Add argument for sectionId
+
                 navArgument("sectionId") {
                     type = NavType.StringType
                     nullable = true
@@ -49,7 +49,7 @@ fun MainNavigation(
             TasksScreen(
                 listViewModel = taskListViewModel,
                 onNavigateToPlanner = { navController.navigate(Screen.Planner.route) },
-                navController = navController // Pass the navController
+                navController = navController 
             )
         }
         composable(Screen.Calendar.route) {
@@ -73,9 +73,9 @@ fun MainNavigation(
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
-                    // Navigate back to Profile or Tasks after login
-                    navController.popBackStack(Screen.Profile.route, inclusive = false)
-                    // Or navigate to a specific screen: navController.navigate(Screen.Tasks.route) { popUpTo(Screen.Login.route) { inclusive = true } }
+
+                navController.popBackStack(Screen.Profile.route, inclusive = false)
+
                 },
                 onNavigateToRegister = { navController.navigate(Screen.Register.route) }
             )
@@ -83,8 +83,8 @@ fun MainNavigation(
         composable(Screen.Register.route) {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // Navigate back to Profile or Tasks after registration
-                    navController.popBackStack(Screen.Profile.route, inclusive = false)
+
+                navController.popBackStack(Screen.Profile.route, inclusive = false)
                 },
                 onNavigateToLogin = {
                     navController.navigate(Screen.Login.route) {

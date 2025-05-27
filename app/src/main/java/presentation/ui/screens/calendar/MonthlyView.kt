@@ -249,12 +249,12 @@ fun WeekTasksGrid(
 ) {
     val tasksByDay = remember(tasks, week) {
         tasks.groupBy { task ->
-            // Priorizar scheduled date para determinar en qué día de la semana va
+
             val relevantDate = task.scheduledStartDateTime?.toLocalDate()
                 ?: task.startDateConf?.dateTime?.toLocalDate()
-            // Encontrar el índice de esa fecha en la lista 'week'
+
             week.indexOfFirst { calendarDay -> calendarDay.date == relevantDate }
-        }.filterKeys { it != -1 } // Filtrar tareas que no caen en los días mostrados esta semana
+        }.filterKeys { it != -1 } 
     }
 
     val maxTasksPerDay = remember(tasksByDay) {
@@ -285,7 +285,7 @@ fun WeekTasksGrid(
             }
         }
         if (maxTasksPerDay == 0) {
-            Spacer(modifier = Modifier.height(24.dp)) // Ensure week row takes some space
+            Spacer(modifier = Modifier.height(24.dp)) 
         }
     }
 }
@@ -318,8 +318,8 @@ fun TaskCard(
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left indicator showing priority or day period color
-            Box(
+
+        Box(
                 modifier = Modifier
                     .width(2.dp)
                     .height(16.dp)

@@ -6,8 +6,8 @@ import com.elena.autoplanner.domain.models.User
 data class ProfileState(
     val isLoading: Boolean = true,
     val user: User? = null,
-    val stats: ProfileStats? = null, // Holds ALL stats (W/M/Y)
-    val selectedTimeFrame: StatsTimeFrame = StatsTimeFrame.WEEKLY, // Default to weekly
+    val stats: ProfileStats? = null,
+    val selectedTimeFrame: StatsTimeFrame = StatsTimeFrame.WEEKLY, 
     val error: String? = null,
     val showDeleteConfirmDialog: Boolean = false,
 ) {

@@ -75,15 +75,15 @@ class TaskDetailViewModel(
             }
 
             executeTaskOperation(
-                setLoadingState = { /* No loading indicator for quick operations */ },
+                setLoadingState = { },
                 operation = { toggleTaskCompletionUseCase(currentTask.id, completed) },
                 onSuccess = {
                     val message = if (completed) "Task completed" else "Task marked as incomplete"
                     setEffect(TaskDetailEffect.ShowSnackbar(message))
                 },
                 onError = { errorMessage ->
-                    // Revert optimistic update
-                    setState { copy(task = currentTask, error = errorMessage) }
+
+                setState { copy(task = currentTask, error = errorMessage) }
                     setEffect(TaskDetailEffect.ShowSnackbar("Error updating task: $errorMessage"))
                 }
             )

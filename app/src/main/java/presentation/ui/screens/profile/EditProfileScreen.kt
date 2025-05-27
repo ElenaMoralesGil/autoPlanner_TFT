@@ -26,7 +26,7 @@ import org.koin.androidx.compose.koinViewModel
 fun EditProfileScreen(
     viewModel: EditProfileViewModel = koinViewModel(),
     onNavigateBack: () -> Unit,
-    onReAuthenticationNeeded: () -> Unit, // Callback to handle re-auth navigation
+    onReAuthenticationNeeded: () -> Unit, 
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -85,7 +85,7 @@ fun EditProfileScreen(
                 ) {
                     Text("Account Information", style = MaterialTheme.typography.titleMedium)
 
-                    // Display Name
+
                     OutlinedTextField(
                         value = state?.displayName ?: "",
                         onValueChange = {
@@ -101,17 +101,17 @@ fun EditProfileScreen(
                         isError = state?.error?.contains("name", ignoreCase = true) == true
                     )
 
-                    // Current Email (Read-only display)
+
                     OutlinedTextField(
                         value = state?.currentEmail ?: "",
-                        onValueChange = { /* Read Only */ },
+                        onValueChange = { },
                         label = { Text("Current Email (Cannot be changed directly)") },
                         modifier = Modifier.fillMaxWidth(),
                         readOnly = true,
-                        enabled = false // Visually disable it
+                        enabled = false 
                     )
 
-                    // New Email
+
                     OutlinedTextField(
                         value = state?.newEmail ?: "",
                         onValueChange = { viewModel.sendIntent(EditProfileIntent.UpdateNewEmail(it)) },
@@ -126,7 +126,7 @@ fun EditProfileScreen(
                         Text(
                             text = it,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary, // Or a specific info color
+                            color = MaterialTheme.colorScheme.primary, 
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     }
@@ -135,7 +135,7 @@ fun EditProfileScreen(
                     Spacer(Modifier.height(16.dp))
                     Text("Change Password (Optional)", style = MaterialTheme.typography.titleMedium)
 
-                    // New Password
+
                     OutlinedTextField(
                         value = state?.newPassword ?: "",
                         onValueChange = {
@@ -155,7 +155,7 @@ fun EditProfileScreen(
                                 (state?.newPassword?.isNotEmpty() == true && state?.newPassword?.length ?: 0 < 6)
                     )
 
-                    // Confirm New Password
+
                     OutlinedTextField(
                         value = state?.confirmPassword ?: "",
                         onValueChange = {
@@ -170,7 +170,7 @@ fun EditProfileScreen(
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true,
-                        enabled = state?.newPassword?.isNotEmpty() == true, // Enable only if new password is being entered
+                        enabled = state?.newPassword?.isNotEmpty() == true, 
                         isError = state?.newPassword?.isNotEmpty() == true && state?.newPassword != state?.confirmPassword
                     )
                     if (state?.newPassword?.isNotEmpty() == true && state?.newPassword != state?.confirmPassword) {
@@ -182,7 +182,7 @@ fun EditProfileScreen(
                         )
                     }
 
-                    // General Error Display
+
                     state?.error?.let {
                         if (!it.contains("password", ignoreCase = true) && !it.contains(
                                 "email",
@@ -198,7 +198,7 @@ fun EditProfileScreen(
                         }
                     }
 
-                    // Re-authentication Notice
+
                     if (state?.needsReAuthentication == true) {
                         Text(
                             "Recent login required to change sensitive data. Please log out and log back in.",
@@ -209,7 +209,7 @@ fun EditProfileScreen(
                     }
 
 
-                    Spacer(Modifier.weight(1f)) // Push button to bottom
+                    Spacer(Modifier.weight(1f)) 
 
                     Button(
                         onClick = { viewModel.sendIntent(EditProfileIntent.SaveChanges) },
@@ -232,10 +232,10 @@ fun EditProfileScreen(
                     },
                     onConfirm = { viewModel.sendIntent(EditProfileIntent.PerformReAuthentication) },
                     onDismiss = { viewModel.sendIntent(EditProfileIntent.HideReAuthDialog) },
-                    error = state?.error // Pass error to display in the dialog
+                    error = state?.error 
                 )
             }
-        } // End Scaffol
+        } 
 
     }
 }
@@ -271,9 +271,9 @@ fun ReAuthenticationDialog(
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     singleLine = true,
-                    isError = error != null // Show error state if there's an error message
+                    isError = error != null 
                 )
-                // Display error message inside the dialog
+
                 error?.let {
                     Text(
                         it,

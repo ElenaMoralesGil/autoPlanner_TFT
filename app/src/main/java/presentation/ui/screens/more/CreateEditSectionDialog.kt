@@ -12,7 +12,7 @@ import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 
 @Composable
 fun CreateEditSectionDialog(
-    listName: String, // To show context
+    listName: String, 
     existingSection: TaskSection? = null,
     onDismiss: () -> Unit,
     onConfirm: (name: String) -> Unit,

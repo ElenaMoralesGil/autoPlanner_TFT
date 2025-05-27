@@ -1,4 +1,4 @@
-// src/main/java/presentation/ui/screens/more/SectionSelectionDialog.kt
+
 
 package com.elena.autoplanner.presentation.ui.screens.more
 
@@ -11,13 +11,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
-import androidx.compose.runtime.* // Add remember import
+import androidx.compose.runtime.* 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.TaskSection
-import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog // Keep using this
+import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog 
 import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
 
 @Composable
@@ -25,12 +25,12 @@ fun SectionSelectionDialog(
     isLoading: Boolean,
     listName: String,
     sections: List<TaskSection>,
-    currentSelectedSectionId: Long?, // Renamed for clarity
+    currentSelectedSectionId: Long?, 
     onDismiss: () -> Unit,
-    onConfirmSelection: (sectionId: Long?) -> Unit, // Changed callback name
+    onConfirmSelection: (sectionId: Long?) -> Unit, 
     onCreateNewSection: () -> Unit,
 ) {
-    // State to hold the selection *within* the dialog before confirming
+
     var temporarySelectedSectionId by remember { mutableStateOf(currentSelectedSectionId) }
 
     GeneralAlertDialog(
@@ -41,12 +41,12 @@ fun SectionSelectionDialog(
                     LoadingIndicator()
                 } else {
                     LazyColumn {
-                        // Option to remove from section
+
                         item {
                             SectionSelectItem(
                                 name = "None (No Section)",
-                                isSelected = temporarySelectedSectionId == null, // Use temporary state
-                                onClick = { temporarySelectedSectionId = null }, // Update temporary state
+                                isSelected = temporarySelectedSectionId == null,
+                                onClick = { temporarySelectedSectionId = null }, 
                                 leadingIcon = {
                                     Icon(
                                         Icons.Default.Clear,
@@ -58,22 +58,22 @@ fun SectionSelectionDialog(
                             HorizontalDivider()
                         }
 
-                        // Existing sections
+
                         items(sections, key = { it.id }) { section ->
                             SectionSelectItem(
                                 name = section.name,
-                                isSelected = section.id == temporarySelectedSectionId, // Use temporary state
-                                onClick = { temporarySelectedSectionId = section.id } // Update temporary state
+                                isSelected = section.id == temporarySelectedSectionId,
+                                onClick = { temporarySelectedSectionId = section.id } 
                             )
                             HorizontalDivider()
                         }
 
-                        // Option to create new section
+
                         item {
                             SectionSelectItem(
                                 name = "Create New Section...",
-                                isSelected = false, // Create is never "selected"
-                                onClick = onCreateNewSection // Trigger create flow immediately
+                                isSelected = false,
+                                onClick = onCreateNewSection 
                             )
                         }
                     }
@@ -82,26 +82,26 @@ fun SectionSelectionDialog(
         },
         onDismiss = onDismiss,
         onConfirm = {
-            // Only call the final callback when the "Ready" button is pressed
+
             onConfirmSelection(temporarySelectedSectionId)
-            onDismiss() // Close dialog after confirming
+            onDismiss() 
         }
-        // Keep default "Cancel" and "Ready" buttons
+
     )
 }
 
-// SectionSelectItem remains largely the same
+
 @Composable
 private fun SectionSelectItem(
     name: String,
     isSelected: Boolean,
-    onClick: () -> Unit, // This now updates temporary state
+    onClick: () -> Unit, 
     leadingIcon: @Composable (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick) // Click updates temp state
+            .clickable(onClick = onClick)
             .padding(vertical = 12.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -109,7 +109,7 @@ private fun SectionSelectItem(
             leadingIcon()
             Spacer(Modifier.width(16.dp))
         } else {
-            Spacer(Modifier.width(24.dp)) // Keep indentation
+            Spacer(Modifier.width(24.dp)) 
         }
 
         Text(
@@ -119,7 +119,7 @@ private fun SectionSelectItem(
             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
-        if (isSelected && leadingIcon == null) { // Show check only for actual sections
+        if (isSelected && leadingIcon == null) { 
             Icon(
                 Icons.Default.Check,
                 contentDescription = "Selected",

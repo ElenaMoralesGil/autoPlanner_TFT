@@ -28,7 +28,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Daily Tasks Widget -->
         <receiver
             android:name=".presentation.ui.screens.more.widgets.DailyWidgetReceiver"
             android:exported="false">
@@ -40,7 +39,6 @@
                 android:resource="@xml/daily_widget_info" />
         </receiver>
 
-        <!-- Weekly Tasks Widget -->
         <receiver
             android:name=".presentation.ui.screens.more.widgets.WeeklyWidgetReceiver"
             android:exported="false">

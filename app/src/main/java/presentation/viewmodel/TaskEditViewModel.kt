@@ -24,7 +24,7 @@ class TaskEditViewModel(
     private val saveTaskUseCase: SaveTaskUseCase,
     private val getAllListsUseCase: GetAllListsUseCase,
     private val getAllSectionsUseCase: GetAllSectionsUseCase,
-    private val saveListUseCase: SaveListUseCase,         // Inject
+    private val saveListUseCase: SaveListUseCase,         
     private val saveSectionUseCase: SaveSectionUseCase,
 ) : BaseTaskViewModel<TaskEditIntent, TaskEditState, TaskEditEffect>() {
 
@@ -85,14 +85,13 @@ class TaskEditViewModel(
                             startDateConf = task.startDateConf, endDateConf = task.endDateConf,
                             durationConf = task.durationConf, reminderPlan = task.reminderPlan,
                             repeatPlan = task.repeatPlan, subtasks = task.subtasks,
-                            listId = task.listId, // Load existing listId
-                            sectionId = task.sectionId, // Load existing sectionId
+                            listId = task.listId,
+                            sectionId = task.sectionId, 
                             error = null
                         )
                     }
-                    // Optionally load lists/sections here if needed immediately
-                    // loadListsForSelection()
-                    // task.listId?.let { loadSectionsForSelection(it) }
+
+
                 },
                 onError = { errorMessage ->
                     setState { copy(isLoading = false, error = errorMessage) }
@@ -157,8 +156,8 @@ class TaskEditViewModel(
                 .reminderPlan(state.reminderPlan)
                 .repeatPlan(state.repeatPlan)
                 .subtasks(state.subtasks)
-                .listId(state.listId) // Include listId
-                .sectionId(state.sectionId) // Include sectionId
+                .listId(state.listId)
+                .sectionId(state.sectionId) 
                 .build()
 
             executeTaskOperation(
@@ -183,13 +182,13 @@ class TaskEditViewModel(
         setState {
             copy(
                 listId = listId,
-                // Reset section if list changes or is removed
+
                 sectionId = if (listId == null || listId != oldListId) null else this.sectionId,
-                // Clear available sections if list changes or is removed
+
                 availableSections = if (listId == null || listId != oldListId) emptyList() else this.availableSections
             )
         }
-        // If a new list is selected, load its sections
+
         if (listId != null && listId != oldListId) {
             loadSectionsForSelection(listId)
         }
@@ -248,8 +247,8 @@ class TaskEditViewModel(
             is TaskResult.Success -> {
                 val newListId = saveResult.data
                 Log.d("TaskEditVM", "Created new list with ID: $newListId. Assigning to task.")
-                assignList(newListId) // Assign the newly created list ID
-                loadListsForSelection() // Refresh list selection options
+                assignList(newListId)
+                loadListsForSelection() 
                 setState { copy(isLoadingSelection = false) }
             }
 
@@ -270,8 +269,8 @@ class TaskEditViewModel(
                     "TaskEditVM",
                     "Created new section with ID: $newSectionId. Assigning to task."
                 )
-                assignSection(newSectionId) // Assign the newly created section ID
-                loadSectionsForSelection(listId) // Refresh section selection options
+                assignSection(newSectionId)
+                loadSectionsForSelection(listId) 
                 setState { copy(isLoadingSelection = false) }
             }
 

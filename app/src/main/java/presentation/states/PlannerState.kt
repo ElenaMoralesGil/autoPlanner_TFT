@@ -1,4 +1,4 @@
-// =============== Content from: src\main\java\presentation\states\PlannerState.kt ===============
+
 
 package com.elena.autoplanner.presentation.states
 
@@ -27,26 +27,26 @@ data class PlannerState(
     val selectedOverdueHandling: OverdueTaskHandling? = null,
     val selectedPlacementHeuristic: PlacementHeuristic = PlacementHeuristic.EARLIEST_FIT,
 
-    // Loaded Data
+
     val numOverdueTasks: Int = 0,
 
-    // Plan Review State
+
     val generatedPlan: Map<LocalDate, List<ScheduledTaskItem>> = emptyMap(),
     val expiredTasksToResolve: List<Task> = emptyList(),
     val conflictsToResolve: List<ConflictItem> = emptyList(),
     val infoMessages: List<InfoItem> = emptyList(),
-    val postponedTasks: List<Task> = emptyList(), // <-- ADD THIS LINE
+    val postponedTasks: List<Task> = emptyList(), 
     val taskResolutions: Map<Int, ResolutionOption> = emptyMap(),
     val conflictResolutions: Map<Int, ResolutionOption> = emptyMap(),
     val tasksFlaggedForManualEdit: Set<Int> = emptySet(),
 
-    // UI State
+
     val isLoading: Boolean = false,
     val error: String? = null,
     val planSuccessfullyAdded: Boolean = false,
 ) {
     val canMoveToStep2: Boolean
-        get() = scheduleScope != null // Simplified: Allow moving even if times are same initially
+        get() = scheduleScope != null 
 
     val canMoveToStep3: Boolean
         get() = selectedPriority != null && selectedDayOrganization != null
@@ -54,9 +54,9 @@ data class PlannerState(
     val canGeneratePlan: Boolean
         get() = allowSplitting != null &&
                 (numOverdueTasks == 0 || selectedOverdueHandling != null) &&
-                scheduleScope != null && // Ensure scope is selected
-                selectedPriority != null && // Ensure priority is selected
-                selectedDayOrganization != null // Ensure organization is selected
+                scheduleScope != null &&
+                selectedPriority != null &&
+                selectedDayOrganization != null 
 
     val requiresResolution: Boolean
         get() {

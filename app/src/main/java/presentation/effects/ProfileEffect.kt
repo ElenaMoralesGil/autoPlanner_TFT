@@ -6,6 +6,6 @@ sealed class ProfileEffect : UiEffect {
     data class ShowSnackbar(val message: String) : ProfileEffect()
     object NavigateToLoginScreen : ProfileEffect()
     object NavigateToRegisterScreen : ProfileEffect()
-    object NavigateToEditProfileScreen : ProfileEffect() // Placeholder
-    object ReAuthenticationRequired : ProfileEffect() // For deletion
+    object NavigateToEditProfileScreen : ProfileEffect()
+    object ReAuthenticationRequired : ProfileEffect() 
 }

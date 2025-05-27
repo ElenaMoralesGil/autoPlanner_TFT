@@ -1,4 +1,4 @@
-// =============== Content from: src\main\java\presentation\viewmodel\PlannerViewModel.kt ===============
+
 
 package com.elena.autoplanner.presentation.viewmodel
 
@@ -135,7 +135,7 @@ class PlannerViewModel(
                 setEffect(PlannerEffect.ShowSnackbar("Please select task splitting and overdue task options."))
             }
 
-            PlannerStep.REVIEW_PLAN -> { /* Final step, no next */
+            PlannerStep.REVIEW_PLAN -> { 
             }
         }
     }
@@ -155,7 +155,7 @@ class PlannerViewModel(
                     conflictResolutions = emptyMap(),
                     error = null,
                     planSuccessfullyAdded = false,
-                    tasksFlaggedForManualEdit = emptySet() // Clear flags when going back
+                    tasksFlaggedForManualEdit = emptySet() 
                 )
             }
 
@@ -259,7 +259,7 @@ class PlannerViewModel(
     private fun handleExpiredResolution(task: Task, resolution: ResolutionOption) {
         Log.d("PlannerVM", "Handling Expired Resolution: Task ${task.id}, Option $resolution")
         setState { copy(taskResolutions = taskResolutions + (task.id to resolution)) }
-        // Flag/unflag based on resolution
+
         if (resolution == ResolutionOption.MANUALLY_SCHEDULE) {
             handleFlagForManualEdit(task.id)
         } else {
@@ -271,7 +271,7 @@ class PlannerViewModel(
         val conflictId = conflict.hashCode()
         Log.d("PlannerVM", "Handling Conflict Resolution: Hash $conflictId, Option $resolution")
         setState { copy(conflictResolutions = conflictResolutions + (conflictId to resolution)) }
-        // Flag/unflag based on resolution
+
         val taskToFlag = conflict.conflictingTasks.minByOrNull { it.priority.ordinal }
         taskToFlag?.let {
             if (resolution == ResolutionOption.MANUALLY_SCHEDULE || resolution == ResolutionOption.LEAVE_IT_LIKE_THAT) {
@@ -289,7 +289,7 @@ class PlannerViewModel(
 
     private fun handleAcknowledgeManualEdits() {
         Log.d("PlannerVM", "User acknowledged manual edits (or lack thereof)")
-        // This might trigger saving if all other resolutions are done
+
     }
 
     private fun savePlan() {
@@ -369,7 +369,7 @@ class PlannerViewModel(
                             )
                         )
                         .endDateConf(newEndDateConf)
-                        .scheduledStartDateTime(null) // Clear scheduled time on resolution
+                        .scheduledStartDateTime(null) 
                         .scheduledEndDateTime(null)
                         .build()
                     Log.d(
@@ -406,7 +406,7 @@ class PlannerViewModel(
                                 )
                             )
                             .endDateConf(newEndDateConf)
-                            .scheduledStartDateTime(null) // Clear scheduled time on resolution
+                            .scheduledStartDateTime(null) 
                             .scheduledEndDateTime(null)
                             .build()
                         Log.d(
@@ -432,7 +432,7 @@ class PlannerViewModel(
                 tasksToUpdate[task.id] = Task.from(it)
                     .startDateConf(TimePlanning(dateTime = newDateTime, dayPeriod = DayPeriod.NONE))
                     .endDateConf(newEndDateConf)
-                    .scheduledStartDateTime(null) // Clear scheduled time on postpone
+                    .scheduledStartDateTime(null) 
                     .scheduledEndDateTime(null)
                     .build()
                 Log.d("PlannerVM", "Task ${task.id} updated (Postponed): New Start $newDateTime")

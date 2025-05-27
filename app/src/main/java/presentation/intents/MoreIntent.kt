@@ -13,7 +13,7 @@ sealed class MoreIntent : Intent {
     data object ConfirmDeleteList : MoreIntent()
     data object CancelDeleteList : MoreIntent()
 
-    data class RequestDeleteSection(val sectionId: Long, val listId: Long) : MoreIntent() // listId for context/reload
+    data class RequestDeleteSection(val sectionId: Long, val listId: Long) : MoreIntent() 
     data object ConfirmDeleteSection : MoreIntent()
     data object CancelDeleteSection : MoreIntent()
 

@@ -222,7 +222,7 @@ fun ReviewWeeklyViewContent(
                                 val scheduledTaskIds = scheduledItems.map { it.task.id }.toSet()
                                 val allItemsToRender = scheduledItems + conflictedTasks
                                     .filterNot { scheduledTaskIds.contains(it.id) }
-                                    .map { task -> /* ... create dummy item ... */
+                                    .map { task -> 
                                         val startTime =
                                             conflicts.find { c -> c.conflictingTasks.any { t -> t.id == task.id } }?.conflictTime?.toLocalTime()
                                                 ?: task.startTime

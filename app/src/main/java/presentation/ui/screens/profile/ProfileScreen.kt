@@ -62,15 +62,15 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = koinViewModel(),
     onNavigateToLogin: () -> Unit,
     onNavigateToRegister: () -> Unit,
-    onNavigateToEditProfile: () -> Unit, // Add later
+    onNavigateToEditProfile: () -> Unit, 
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
 
-    LaunchedEffect(state?.user?.uid) { // Key on UID to trigger on login/logout
+    LaunchedEffect(state?.user?.uid) { 
         if (state?.user != null) {
-            // User is logged in, ensure data is loaded/refreshed
+
             Log.d(
                 "ProfileScreen",
                 "User detected (UID: ${state?.user?.uid}), sending LoadData intent."
@@ -86,10 +86,10 @@ fun ProfileScreen(
                 is ProfileEffect.NavigateToRegisterScreen -> onNavigateToRegister()
                 is ProfileEffect.NavigateToEditProfileScreen -> {
                     onNavigateToEditProfile()
-                } // onNavigateToEditProfile()
+                } 
                 is ProfileEffect.ReAuthenticationRequired -> {
                     snackbarHostState.showSnackbar("Please log in again to delete your account.")
-                    onNavigateToLogin() // Force re-login
+                    onNavigateToLogin() 
                 }
             }
         }
@@ -106,7 +106,7 @@ fun ProfileScreen(
                 .fillMaxSize()
         ) {
             when {
-                state?.isLoading == true && (state?.user == null || state?.stats == null) -> { // Show loading only initially
+                state?.isLoading == true && (state?.user == null || state?.stats == null) -> { 
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
@@ -130,7 +130,7 @@ fun ProfileScreen(
                     }
                 }
 
-                else -> { // Not loading and not logged in
+                else -> { 
                     LoggedOutContent(
                         onLogin = { viewModel.sendIntent(ProfileIntent.NavigateToLogin) },
                         onRegister = { viewModel.sendIntent(ProfileIntent.NavigateToRegister) }
@@ -138,7 +138,7 @@ fun ProfileScreen(
                 }
             }
 
-            // Delete Confirmation Dialog
+
             if (state?.showDeleteConfirmDialog == true) {
                 AlertDialog(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -158,7 +158,7 @@ fun ProfileScreen(
                     }
                 )
             }
-            // Loading overlay during delete
+
             if (state?.isLoading == true && state?.showDeleteConfirmDialog == false) {
                 Surface(color = Color.Black.copy(alpha = 0.3f), modifier = Modifier.fillMaxSize()) {
                     CircularProgressIndicator(modifier = Modifier.wrapContentSize(Alignment.Center))
@@ -175,7 +175,7 @@ fun ProfileTopAppBar(isLoggedIn: Boolean) {
         title = { Text("Profile") },
         actions = {
             if (isLoggedIn) {
-                IconButton(onClick = { /* TODO: Navigate to settings */ }) {
+                IconButton(onClick = { }) {
                     Icon(Icons.Default.Settings, contentDescription = "Settings")
                 }
             }
@@ -189,7 +189,7 @@ fun ProfileTopAppBar(isLoggedIn: Boolean) {
 
 @Composable
 fun ProfileContent(
-    // Ensure this signature matches the previous step
+
     user: User,
     stats: ProfileStats?,
     selectedTimeFrame: StatsTimeFrame,
@@ -211,7 +211,7 @@ fun ProfileContent(
             selectedTimeFrame = selectedTimeFrame,
             onTimeFrameSelected = onTimeFrameSelected
         )
-        // Pass the full stats object
+
         DisplayedStatsSection(stats = stats, selectedTimeFrame = selectedTimeFrame)
         ActionsSection(
             onEditProfile = onEditProfile,
@@ -267,25 +267,25 @@ fun TimeFrameSelector(
 
 @Composable
 fun DisplayedStatsSection(stats: ProfileStats?, selectedTimeFrame: StatsTimeFrame) {
-    // Select the correct data based on the time frame
-    // Change the return type of the remember block to List<Any?>
+
+
     val dataList: List<Any?> = remember(stats, selectedTimeFrame) {
         when (selectedTimeFrame) {
-            StatsTimeFrame.WEEKLY -> listOf( // Use listOf instead of Triple
+            StatsTimeFrame.WEEKLY -> listOf( 
                 stats?.completedTasksDailyForWeek,
                 stats?.successRateDailyForWeek,
                 stats?.totalCompletedWeekly,
                 stats?.overallSuccessRateWeekly
             )
 
-            StatsTimeFrame.MONTHLY -> listOf( // Use listOf instead of Triple
+            StatsTimeFrame.MONTHLY -> listOf( 
                 stats?.completedTasksWeeklyForMonth,
                 stats?.successRateWeeklyForMonth,
                 stats?.totalCompletedMonthly,
                 stats?.overallSuccessRateMonthly
             )
 
-            StatsTimeFrame.YEARLY -> listOf( // Use listOf instead of Triple
+            StatsTimeFrame.YEARLY -> listOf( 
                 stats?.completedTasksMonthlyForYear,
                 stats?.successRateMonthlyForYear,
                 stats?.totalCompletedYearly,
@@ -294,34 +294,33 @@ fun DisplayedStatsSection(stats: ProfileStats?, selectedTimeFrame: StatsTimeFram
         }
     }
 
-    // Extract and cast the values from the list (add type safety checks)
-    // Note: The specific type <LocalDate> or <YearMonth> depends on the timeframe
+
     val completedTasksData = when (selectedTimeFrame) {
         StatsTimeFrame.WEEKLY -> dataList[0] as? TimeSeriesStat<LocalDate>
-        StatsTimeFrame.MONTHLY -> dataList[0] as? TimeSeriesStat<LocalDate> // Key is week start date
+        StatsTimeFrame.MONTHLY -> dataList[0] as? TimeSeriesStat<LocalDate> 
         StatsTimeFrame.YEARLY -> dataList[0] as? TimeSeriesStat<YearMonth>
     }
     val successRateData = when (selectedTimeFrame) {
         StatsTimeFrame.WEEKLY -> dataList[1] as? TimeSeriesStat<LocalDate>
-        StatsTimeFrame.MONTHLY -> dataList[1] as? TimeSeriesStat<LocalDate> // Key is week start date
+        StatsTimeFrame.MONTHLY -> dataList[1] as? TimeSeriesStat<LocalDate> 
         StatsTimeFrame.YEARLY -> dataList[1] as? TimeSeriesStat<YearMonth>
     }
     val totalCompleted = dataList[2] as? Int
     val overallSuccess = dataList[3] as? Float
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Pass the correctly typed data to StatCard
+
         StatCard(
             title = "Completed Tasks (${selectedTimeFrame.displayName})",
             value = totalCompleted?.toString() ?: "-",
-            timeSeriesData = completedTasksData, // Pass potentially null TimeSeriesStat
+            timeSeriesData = completedTasksData, 
             selectedTimeFrame = selectedTimeFrame,
             isPercentage = false
         )
         StatCard(
             title = "Success Rate (${selectedTimeFrame.displayName})",
             value = "${String.format("%.1f", overallSuccess ?: 0f)}%",
-            timeSeriesData = successRateData, // Pass potentially null TimeSeriesStat
+            timeSeriesData = successRateData, 
             selectedTimeFrame = selectedTimeFrame,
             isPercentage = true
         )
@@ -347,14 +346,14 @@ fun UserInfoSection(user: User) {
 
 @Composable
 fun <K : Comparable<K>> StatCard(
-    // Generic type K for the time key
+
     title: String,
     value: String,
     timeSeriesData: TimeSeriesStat<K>?,
     selectedTimeFrame: StatsTimeFrame,
-    isPercentage: Boolean, // To format Y-axis correctly
+    isPercentage: Boolean, 
 ) {
-    // Vico chart setup
+
     val chartEntryModelProducer = remember { ChartEntryModelProducer() }
     val chartStyle = m3ChartStyle(
         axisLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -363,16 +362,16 @@ fun <K : Comparable<K>> StatCard(
 
     )
 
-    // Update chart data when timeSeriesData changes
+
     LaunchedEffect(timeSeriesData) {
         val entries =
             timeSeriesData?.entries?.entries?.sortedBy { it.key }?.mapIndexed { index, entry ->
-                entryOf(index.toFloat(), entry.value) // Use index for X-axis
+                entryOf(index.toFloat(), entry.value) 
             } ?: emptyList()
         chartEntryModelProducer.setEntries(entries)
     }
 
-    // Axis formatters
+
     val bottomAxisValueFormatter =
         AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, chartValues ->
             val data = timeSeriesData?.entries?.entries?.sortedBy { it.key }
@@ -380,12 +379,12 @@ fun <K : Comparable<K>> StatCard(
             if (data != null && index >= 0 && index < data.size) {
                 when (val key = data.elementAt(index).key) {
                     is LocalDate -> when (selectedTimeFrame) {
-                        StatsTimeFrame.WEEKLY -> key.format(DateTimeFormatter.ofPattern("E")) // Day initial for weekly
-                        StatsTimeFrame.MONTHLY -> key.format(DateTimeFormatter.ofPattern("dd")) // Week start day for monthly
+                        StatsTimeFrame.WEEKLY -> key.format(DateTimeFormatter.ofPattern("E"))
+                        StatsTimeFrame.MONTHLY -> key.format(DateTimeFormatter.ofPattern("dd")) 
                         else -> ""
                     }
 
-                    is YearMonth -> key.format(DateTimeFormatter.ofPattern("MMM")) // Month abbr for yearly
+                    is YearMonth -> key.format(DateTimeFormatter.ofPattern("MMM")) 
                     else -> ""
                 }
             } else {
@@ -421,14 +420,14 @@ fun <K : Comparable<K>> StatCard(
             )
             Spacer(Modifier.height(12.dp))
 
-            // --- Vico Chart ---
+
             if (timeSeriesData != null && timeSeriesData.entries.isNotEmpty()) {
-                ProvideChartStyle(chartStyle = chartStyle) { // Apply M3 style
+                ProvideChartStyle(chartStyle = chartStyle) { 
                     Chart(
                         chart = lineChart(
                             lines = listOf(
                                 LineChart.LineSpec(
-                                    lineColor = MaterialTheme.colorScheme.primary.hashCode(), // Use primary color
+                                    lineColor = MaterialTheme.colorScheme.primary.hashCode(), 
                                     lineBackgroundShader = verticalGradient(
                                         arrayOf(
                                             MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
@@ -455,16 +454,16 @@ fun <K : Comparable<K>> StatCard(
                         ),
                         bottomAxis = rememberBottomAxis(
                             valueFormatter = bottomAxisValueFormatter,
-                            guideline = null // No vertical guidelines from bottom axis
+                            guideline = null 
                         ),
                         chartScrollState = rememberChartScrollState(),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(100.dp) // Adjust height as needed
+                            .height(100.dp) 
                     )
                 }
             } else {
-                // Placeholder or message when no data
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -482,7 +481,7 @@ fun <K : Comparable<K>> StatCard(
                     )
                 }
             }
-            // Removed the static "weekly" text
+
         }
     }
 }

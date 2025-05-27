@@ -2,7 +2,7 @@ package com.elena.autoplanner.presentation.states
 
 data class EditProfileState(
     val isLoading: Boolean = false,
-    val currentEmail: String = "", // To display, not editable directly here
+    val currentEmail: String = "", 
     val displayName: String = "",
     val newEmail: String = "",
     val newPassword: String = "",
@@ -10,12 +10,12 @@ data class EditProfileState(
     val error: String? = null,
     val needsReAuthentication: Boolean = false,
     val emailUpdateMessage: String? = null,
-    val showReAuthDialog: Boolean = false, // Add this
-    val currentPasswordForReAuth: String = "", // Add this
+    val showReAuthDialog: Boolean = false,
+    val currentPasswordForReAuth: String = "", 
     val pendingDisplayName: String? = null,
     val pendingEmail: String? = null,
-    val pendingPassword: String? = null, // Add these to store pending
-// To inform user about verification email
+    val pendingPassword: String? = null, 
+
 ) {
     val isPasswordChangeValid: Boolean
         get() = newPassword.isBlank() || (newPassword.length >= 6 && newPassword == confirmPassword)

@@ -76,7 +76,7 @@ fun CalendarScreen(
     val calendarState by calendarViewModel.state.collectAsState()
     val tasksState by taskListViewModel.state.collectAsState()
 
-    // Handle effects from CalendarViewModel
+
     LaunchedEffect(calendarViewModel) {
         calendarViewModel.effect.collectLatest { effect ->
             when (effect) {
@@ -163,7 +163,7 @@ fun CalendarScreen(
             }
         }
 
-        // Date picker dialog
+
         calendarState?.let { state ->
             if (state.showDatePicker) {
                 Dialog(
@@ -200,13 +200,13 @@ fun CalendarScreen(
             }
         }
 
-        // Task detail sheet
+
         selectedTaskId?.let { taskId ->
-            // Create a TaskDetailViewModel for the selected task
+
             val detailViewModel: TaskDetailViewModel =
                 koinViewModel(parameters = { parametersOf(taskId) })
 
-            // Handle effects from the detail ViewModel
+
             LaunchedEffect(detailViewModel) {
                 detailViewModel.effect.collectLatest { effect ->
                     when (effect) {
@@ -227,7 +227,7 @@ fun CalendarScreen(
                 }
             }
 
-            // Show the TaskDetailSheet
+
             TaskDetailSheet(
                 taskId = taskId,
                 onDismiss = { selectedTaskId = null },
@@ -235,7 +235,7 @@ fun CalendarScreen(
             )
         }
 
-        // View selector dropdown
+
         if (showViewSelector) {
             ViewSelector(
                 currentView = calendarState?.currentView ?: CalendarView.DAY,
@@ -249,13 +249,13 @@ fun CalendarScreen(
             )
         }
 
-        // Add/edit task sheet
+
         if (showAddEditSheet) {
-            // Create a TaskEditViewModel for editing
+
             val editViewModel: TaskEditViewModel =
                 koinViewModel(parameters = { parametersOf(taskToEdit?.id ?: 0) })
 
-            // Handle effects from the edit ViewModel
+
             LaunchedEffect(editViewModel) {
                 editViewModel.effect.collectLatest { effect ->
                     when (effect) {
@@ -274,12 +274,12 @@ fun CalendarScreen(
                 }
             }
 
-            // Initialize the edit ViewModel with the task to edit
+
             LaunchedEffect(taskToEdit?.id) {
                 editViewModel.sendIntent(TaskEditIntent.LoadTask(taskToEdit?.id ?: 0))
             }
 
-            // Show the ModificationTaskSheet
+
             ModificationTaskSheet(
                 taskEditViewModel = editViewModel,
                 onClose = { editViewModel.sendIntent(TaskEditIntent.Cancel) }

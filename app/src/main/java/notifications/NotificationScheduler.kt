@@ -37,7 +37,7 @@ class NotificationScheduler(
 
         if (triggerTime.isBefore(LocalDateTime.now())) {
             Log.d(TAG, "Reminder time for task $taskId is in the past: $triggerTime")
-            // If it's only slightly in the past (within 5 minutes), show immediately
+
             val minutesPast =
                 java.time.Duration.between(triggerTime, LocalDateTime.now()).toMinutes()
             if (minutesPast <= 5) {

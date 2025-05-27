@@ -105,7 +105,7 @@ class RealDataSeeder(
                 .build()
 
             when (val saveResult = taskRepository.saveTask(sampleTask)) {
-                is TaskResult.Success -> { /* Log success if needed */
+                is TaskResult.Success -> { 
                 }
 
                 is TaskResult.Error -> Log.e(

@@ -48,7 +48,7 @@ fun MoreDrawerContent(
     val snackbarHostState = remember { SnackbarHostState() }
     var showCreateListDialog by remember { mutableStateOf(false) }
     var showCreateSectionDialogForListId by remember { mutableStateOf<Long?>(null) }
-    // Edit dialog states
+
     var listToEdit by remember { mutableStateOf<TaskListInfo?>(null) }
     var sectionToEdit by remember { mutableStateOf<TaskSection?>(null) }
 
@@ -58,7 +58,7 @@ fun MoreDrawerContent(
     LaunchedEffect(viewModel) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
-                is MoreEffect.NavigateToTasks -> {} // Handled by onNavigateToTasks callback
+                is MoreEffect.NavigateToTasks -> {} 
                 is MoreEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
                 is MoreEffect.ShowCreateListDialog -> showCreateListDialog = true
                 is MoreEffect.TriggerWidgetPinRequest -> {}
@@ -109,8 +109,8 @@ fun MoreDrawerContent(
                                 onClick = {
                                 },
                                 onExpandToggle = {},
-                                onEditClick = null, // No edit for "All Tasks"
-                                onDeleteClick = null // No delete for "All Tasks"
+                                onEditClick = null,
+                                onDeleteClick = null 
                             )
                             HorizontalDivider(
                                 thickness = 0.5.dp,
@@ -245,19 +245,19 @@ fun MoreDrawerContent(
                                 modifier = Modifier.padding(top = 8.dp)
                             )
                             ListSectionHeader(title = "Widgets")
-                            // Add Daily Widget Row
+
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { viewModel.sendIntent(MoreIntent.RequestAddDailyWidget) } // Send intent
+                                    .clickable { viewModel.sendIntent(MoreIntent.RequestAddDailyWidget) }
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_day_view), // Use Daily View icon
+                                    painter = painterResource(id = R.drawable.ic_day_view), 
                                     contentDescription = "Add Daily Widget",
                                     modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.secondary // Or primary
+                                    tint = MaterialTheme.colorScheme.secondary 
                                 )
                                 Spacer(Modifier.width(16.dp))
                                 Text(
@@ -266,19 +266,19 @@ fun MoreDrawerContent(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
-                            // Add Weekly Widget Row
+
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { viewModel.sendIntent(MoreIntent.RequestAddWeeklyWidget) } // Send intent
+                                    .clickable { viewModel.sendIntent(MoreIntent.RequestAddWeeklyWidget) }
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_week_view), // Use Weekly View icon
+                                    painter = painterResource(id = R.drawable.ic_week_view), 
                                     contentDescription = "Add Weekly Widget",
                                     modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.secondary // Or primary
+                                    tint = MaterialTheme.colorScheme.secondary 
                                 )
                                 Spacer(Modifier.width(16.dp))
                                 Text(
@@ -294,7 +294,7 @@ fun MoreDrawerContent(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
-                        // --- End Widgets Section ---
+
                     }
                 }
             }
@@ -307,7 +307,7 @@ fun MoreDrawerContent(
 
 
 
-    // --- Dialogs ---
+
     if (showCreateListDialog) {
         CreateEditListDialog(
             onDismiss = { showCreateListDialog = false },
@@ -323,7 +323,7 @@ fun MoreDrawerContent(
             existingList = listInfo.list,
             onDismiss = { listToEdit = null },
             onConfirm = { name, colorHex ->
-                viewModel.sendIntent(MoreIntent.UpdateList(listInfo.list.id, name, colorHex)) // SaveListUseCase handles create/update
+                viewModel.sendIntent(MoreIntent.UpdateList(listInfo.list.id, name, colorHex)) 
                 listToEdit = null
             }
         )
@@ -349,13 +349,13 @@ fun MoreDrawerContent(
             existingSection = section,
             onDismiss = { sectionToEdit = null },
             onConfirm = { name ->
-                MoreIntent.UpdateSection(section.id, section.listId, name) // SaveSectionUseCase handles create/update
+                MoreIntent.UpdateSection(section.id, section.listId, name) 
                 sectionToEdit = null
             }
         )
     }
 
-    // Delete Confirmation Dialogs
+
     state?.listIdPendingDeletion?.let { listId ->
         val listName = state?.lists?.find { it.list.id == listId }?.list?.name ?: "this list"
         GeneralAlertDialog(
@@ -442,10 +442,10 @@ fun ListItemRow(
                 )
             }
         } else {
-            Spacer(Modifier.width(4.dp)) // Reduced spacer when no expand icon
+            Spacer(Modifier.width(4.dp)) 
         }
 
-        // More options for lists (Edit/Delete)
+
         if (onEditClick != null && onDeleteClick != null) {
             Box {
                 IconButton(
@@ -475,7 +475,7 @@ fun ListItemRow(
                     )
                 }
             }
-        } else if (showExpandIcon) { // If only expand icon is shown, add some padding
+        } else if (showExpandIcon) { 
             Spacer(Modifier.width(4.dp))
         }
     }
@@ -494,7 +494,7 @@ fun SectionItemRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 32.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), // Adjusted end padding for icon
+            .padding(start = 32.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), 
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(

@@ -4,17 +4,17 @@ import com.elena.autoplanner.domain.models.Task
 
 data class TaskListState(
     val isLoading: Boolean = false,
-    val tasks: List<Task> = emptyList(), // Tasks for the current view (all or specific list)
-    val filteredTasks: List<Task> = emptyList(), // Tasks after applying status/time filters
+    val tasks: List<Task> = emptyList(),
+    val filteredTasks: List<Task> = emptyList(), 
     val statusFilter: TaskStatus = TaskStatus.ALL,
-    val timeFrameFilter: TimeFrame = TimeFrame.ALL, // Default to ALL now? Or keep TODAY?
+    val timeFrameFilter: TimeFrame = TimeFrame.ALL, 
     val error: String? = null,
     val isNavigating: Boolean = false,
-    val currentListId: Long? = null, // ID of the list being viewed (null for default view)
+    val currentListId: Long? = null, 
     val currentListName: String? = null,
-    val currentListColor: String? = null, // Color of the list being viewed
+    val currentListColor: String? = null, 
     val currentSectionName: String? = null,
-    val currentSectionId: Long? = null, // ID of the section being viewed
-    val requestedListId: Long? = null, // <-- ADD THIS
-    val requestedSectionId: Long? = null, // <-- ADD THIS
+    val currentSectionId: Long? = null,
+    val requestedListId: Long? = null,
+    val requestedSectionId: Long? = null, 
 )

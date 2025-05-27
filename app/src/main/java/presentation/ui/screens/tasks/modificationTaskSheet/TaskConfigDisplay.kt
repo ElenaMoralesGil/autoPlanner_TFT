@@ -69,7 +69,7 @@ fun TaskConfigDisplay(
             }
 
             duration?.takeIf { it.totalMinutes != null && it.totalMinutes > 0 }
-                ?.let { // Only show if > 0
+                ?.let { 
                 ConfigItem(
                     painter = painterResource(R.drawable.ic_duration),
                     label = "Duration",
@@ -77,7 +77,7 @@ fun TaskConfigDisplay(
                 )
             }
 
-            reminder?.takeIf { it.mode != ReminderMode.NONE }?.let { // Only show if not NONE
+            reminder?.takeIf { it.mode != ReminderMode.NONE }?.let { 
                 ConfigItem(
                     painter = painterResource(R.drawable.ic_reminder),
                     label = "Reminder",
@@ -86,7 +86,7 @@ fun TaskConfigDisplay(
             }
 
             repeat?.takeIf { it.frequencyType != com.elena.autoplanner.domain.models.FrequencyType.NONE }
-                ?.let { // Only show if not NONE
+                ?.let { 
                 ConfigItem(
                     painter = painterResource(R.drawable.ic_repeat),
                     label = "Repeat",

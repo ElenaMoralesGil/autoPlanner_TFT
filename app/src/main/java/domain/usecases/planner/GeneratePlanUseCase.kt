@@ -69,7 +69,7 @@ class GeneratePlanUseCase(
                 "Phase 0: Preparation - Scope: $scheduleStartDate to $scheduleEndDate, Tasks: ${context.planningTaskMap.size}"
             )
 
-            // --- Phase 0.1: Handle Overdue ---
+
             overdueTaskHandler.handleOverdueTasks(
                 context = context,
                 strategy = input.overdueTaskHandling,
@@ -82,10 +82,9 @@ class GeneratePlanUseCase(
                 "After Overdue Handling: Tasks to Plan=${context.getTasksToPlan().size}, Postponed=${context.postponedTasks.size}, Manual=${context.expiredForResolution.size}"
             )
 
-            // --- Phase 0.2: Categorize ---
-            // Categorization still useful to identify fixed vs flexible initially
+
             val categorizationResult = taskCategorizer.categorizeTasks(
-                planningTasks = context.getTasksToPlan(), // Get tasks not yet handled by overdue
+                planningTasks = context.getTasksToPlan(), 
                 scopeStart = scheduleStartDate,
                 scopeEnd = scheduleEndDate,
                 defaultTime = input.workStartTime,
@@ -97,13 +96,13 @@ class GeneratePlanUseCase(
                 "Categorization Result: Fixed=${categorizationResult.fixedOccurrences.size}, Period=${categorizationResult.periodTasksPending.values.sumOf { it.values.sumOf { list -> list.size } }}, DateFlex=${categorizationResult.dateFlexPending.values.sumOf { it.size }}, DeadlineFlex=${categorizationResult.deadlineFlexibleTasks.size}, FullFlex=${categorizationResult.fullyFlexibleTasks.size}"
             )
 
-            // --- Phase 0.3: Initialize Timeline ---
+
             timelineManager.initialize(
                 start = scheduleStartDate,
                 end = scheduleEndDate,
                 workStart = input.workStartTime,
                 workEnd = input.workEndTime,
-                // Don't pass initial period tasks here anymore, they'll be placed in the main loop
+
                 initialPeriodTasks = emptyMap()
             )
             Log.d(
@@ -111,7 +110,7 @@ class GeneratePlanUseCase(
                 "Timeline initialized for ${timelineManager.getDates().size} days."
             )
 
-            // --- Phase 1: Place STRICTLY Fixed Tasks ---
+
             Log.i(
                 "GeneratePlanUseCase",
                 "--- Phase 1: Place Fixed Tasks (${categorizationResult.fixedOccurrences.size}) ---"
@@ -122,21 +121,21 @@ class GeneratePlanUseCase(
                 context
             )
 
-            // --- Phase 2: Prioritized Placement of ALL Remaining Tasks ---
+
             Log.i("GeneratePlanUseCase", "--- Phase 2: Place Prioritized Remaining Tasks ---")
 
-            // Combine all non-fixed tasks that haven't been handled yet
+
             val tasksToPrioritize = (
                     categorizationResult.periodTasksPending.values.flatMap { it.values.flatten() } +
                             categorizationResult.dateFlexPending.values.flatten() +
                             categorizationResult.deadlineFlexibleTasks +
                             categorizationResult.fullyFlexibleTasks
                     )
-                .mapNotNull { context.planningTaskMap[it.id] } // Get the PlanningTask object
-                .filterNot { context.placedTaskIds.contains(it.id) } // Filter already placed/conflicted
-                .distinctBy { it.id } // Ensure uniqueness
+                .mapNotNull { context.planningTaskMap[it.id] }
+                .filterNot { context.placedTaskIds.contains(it.id) }
+                .distinctBy { it.id }
 
-            // Sort the combined list by priority score
+
             val sortedTasksToPlace = tasksToPrioritize
                 .sortedByDescending {
                     taskPrioritizer.calculateRobustScore(
@@ -151,9 +150,9 @@ class GeneratePlanUseCase(
                 "Prioritized ${sortedTasksToPlace.size} tasks for placement."
             )
 
-            // Loop through sorted tasks and attempt placement
+
             sortedTasksToPlace.forEach { planningTask ->
-                if (!context.placedTaskIds.contains(planningTask.id)) { // Double-check if handled
+                if (!context.placedTaskIds.contains(planningTask.id)) { 
                     taskPlacer.placePrioritizedTask(
                         planningTask = planningTask,
                         timelineManager = timelineManager,
@@ -166,16 +165,16 @@ class GeneratePlanUseCase(
                 }
             }
 
-            // --- Phase 3: Consolidation ---
+
             Log.i("GeneratePlanUseCase", "--- Consolidating Results ---")
-            consolidateResults(context, timelineManager) // Keep consolidation logic
+            consolidateResults(context, timelineManager) 
 
             Log.i(
                 "GeneratePlanUseCase",
                 "Final Results: Scheduled=${context.scheduledItemsMap.values.sumOf { it.size }}, Conflicts=${context.conflicts.size}, Expired=${context.expiredForResolution.size}, Postponed=${context.postponedTasks.size}, Info=${context.infoItems.size}"
             )
 
-            // --- Phase 4: Return Output ---
+
             return@withContext PlannerOutput(
                 scheduledTasks = context.scheduledItemsMap,
                 unresolvedExpired = context.expiredForResolution,
@@ -198,7 +197,7 @@ class GeneratePlanUseCase(
     }
 
     private fun consolidateResults(context: PlanningContext, timelineManager: TimelineManager) {
-        // Add unplaced period tasks from timeline manager's state as conflicts
+
         timelineManager.getPendingPeriodTasks().forEach { (date, periodMap) ->
             periodMap.forEach { (period, tasks) ->
                 tasks.forEach { taskRef ->
@@ -212,7 +211,7 @@ class GeneratePlanUseCase(
                                     taskRef.startDateConf.dateTime ?: date.atStartOfDay(),
                                     ConflictType.CANNOT_FIT_PERIOD
                                 ),
-                                taskRef.id // Mark as handled (conflicted)
+                                taskRef.id 
                             )
                             Log.w(
                                 "Consolidate",
@@ -224,7 +223,7 @@ class GeneratePlanUseCase(
             }
         }
 
-        // Ensure tasks involved in hard conflicts earlier are marked as handled if not placed
+
         val hardConflictTaskIds = context.conflicts
             .filter { it.conflictType == ConflictType.FIXED_VS_FIXED || it.conflictType == ConflictType.RECURRENCE_ERROR }
             .flatMap { it.conflictingTasks.map { t -> t.id } }
@@ -233,7 +232,7 @@ class GeneratePlanUseCase(
         hardConflictTaskIds.forEach { taskId ->
             if (!context.placedTaskIds.contains(taskId)) {
                 context.planningTaskMap[taskId]?.task?.let { task ->
-                    // Avoid adding *another* conflict if one already exists for this task
+
                     if (context.conflicts.none { c -> c.conflictingTasks.any { it.id == taskId } }) {
                         context.addConflict(
                             ConflictItem(
@@ -242,35 +241,35 @@ class GeneratePlanUseCase(
                                 task.startDateConf.dateTime,
                                 ConflictType.PLACEMENT_ERROR
                             ),
-                            taskId // Mark as handled (conflicted)
+                            taskId 
                         )
                         Log.w(
                             "Consolidate",
                             "Task ${taskId} remains unplaced due to prior hard conflict, adding conflict."
                         )
                     } else {
-                        context.placedTaskIds.add(taskId) // Ensure it's marked handled even if conflict already exists
+                        context.placedTaskIds.add(taskId) 
                     }
                 }
             }
         }
 
-        // Sort scheduled items within each day
+
         context.scheduledItemsMap.values.forEach { it.sortBy { item -> item.scheduledStartTime } }
     }
 }
 
-// --- PlanningContext --- (Holds mutable state)
+
 class PlanningContext(initialTasks: List<Task>) {
     val planningTaskMap: MutableMap<Int, PlanningTask> =
         initialTasks.associate { it.id to PlanningTask(it) }.toMutableMap()
     val conflicts: MutableList<ConflictItem> = mutableListOf()
-    val expiredForResolution: MutableList<Task> = mutableListOf() // Tasks needing manual review
-    val postponedTasks: MutableList<Task> = mutableListOf()      // Tasks flagged for postponement
+    val expiredForResolution: MutableList<Task> = mutableListOf()
+    val postponedTasks: MutableList<Task> = mutableListOf()      
     val infoItems: MutableList<InfoItem> = mutableListOf()
     val scheduledItemsMap: MutableMap<LocalDate, MutableList<ScheduledTaskItem>> = mutableMapOf()
     val placedTaskIds: MutableSet<Int> =
-        mutableSetOf() // Tracks IDs handled (placed, conflicted, postponed, etc.)
+        mutableSetOf() 
 
     fun getTasksToPlan(): Collection<PlanningTask> = planningTaskMap.values.filterNot {
         placedTaskIds.contains(it.id) || it.flags.isPostponed || it.flags.needsManualResolution
@@ -280,15 +279,15 @@ class PlanningContext(initialTasks: List<Task>) {
         if (conflicts.none { it.hashCode() == conflict.hashCode() }) {
             conflicts.add(conflict)
         }
-        // Mark all involved tasks as handled
+
         conflict.conflictingTasks.forEach { task ->
             placedTaskIds.add(task.id)
-            // Mark flags for hard conflicts
+
             if (conflict.conflictType == ConflictType.FIXED_VS_FIXED || conflict.conflictType == ConflictType.RECURRENCE_ERROR) {
                 planningTaskMap[task.id]?.flags?.isHardConflict = true
             }
         }
-        // Also mark the explicitly passed ID if different (e.g., the task *causing* the conflict)
+
         taskIdToMarkHandled?.let { placedTaskIds.add(it) }
     }
 
@@ -307,7 +306,7 @@ class PlanningContext(initialTasks: List<Task>) {
         if (postponedTasks.none { it.id == task.id }) {
             postponedTasks.add(task)
         }
-        // Don't remove from planningTaskMap, just mark flags and handled ID
+
         planningTaskMap[task.id]?.flags?.isPostponed = true
         placedTaskIds.add(task.id)
     }
@@ -316,13 +315,13 @@ class PlanningContext(initialTasks: List<Task>) {
         if (expiredForResolution.none { it.id == task.id }) {
             expiredForResolution.add(task)
         }
-        // Don't remove from planningTaskMap, just mark flags and handled ID
+
         planningTaskMap[task.id]?.flags?.needsManualResolution = true
         placedTaskIds.add(task.id)
     }
 }
 
-// --- OverdueTaskHandler ---
+
 class OverdueTaskHandler {
     fun handleOverdueTasks(
         context: PlanningContext,
@@ -343,15 +342,15 @@ class OverdueTaskHandler {
 
         overdueTaskIds.forEach { taskId ->
             val planningTask = context.planningTaskMap[taskId] ?: return@forEach
-            if (context.placedTaskIds.contains(taskId)) return@forEach // Double check
+            if (context.placedTaskIds.contains(taskId)) return@forEach 
 
             when (strategy) {
                 OverdueTaskHandling.POSTPONE_TO_TOMORROW -> {
-                    context.addPostponedTask(planningTask.task) // Uses context method to set flags/ID
+                    context.addPostponedTask(planningTask.task) 
                 }
 
                 OverdueTaskHandling.MANAGE_WHEN_FREE -> {
-                    context.addExpiredForManualResolution(planningTask.task) // Uses context method
+                    context.addExpiredForManualResolution(planningTask.task) 
                 }
 
                 OverdueTaskHandling.ADD_TODAY_FREE_TIME -> {
@@ -359,13 +358,13 @@ class OverdueTaskHandler {
                         planningTask.flags.isOverdue = true
                         planningTask.flags.constraintDate = today
                         Log.d("OverdueTaskHandler", "Task ${taskId} marked for placement today.")
-                        // Keep in taskMap for placement attempts, will be filtered by getTasksToPlan
+
                     } else {
                         Log.w(
                             "OverdueTaskHandler",
                             "Cannot schedule overdue task ${taskId} today (scope outside). Fallback to Manual."
                         )
-                        context.addExpiredForManualResolution(planningTask.task) // Uses context method
+                        context.addExpiredForManualResolution(planningTask.task) 
                     }
                 }
             }
@@ -434,7 +433,7 @@ class TaskPrioritizer {
     }
 }
 
-// --- RecurrenceExpander --- (No significant changes needed, error handling seems okay)
+
 class RecurrenceExpander {
 
     companion object {
@@ -668,7 +667,7 @@ class RecurrenceExpander {
     }
 }
 
-// --- TaskCategorizer --- (No significant changes needed)
+
 class TaskCategorizer {
     fun categorizeTasks(
         planningTasks: Collection<PlanningTask>,
@@ -688,12 +687,12 @@ class TaskCategorizer {
 
         planningTasks.forEach taskLoop@{ planningTask ->
             if (context.placedTaskIds.contains(planningTask.id) || planningTask.flags.isHardConflict) {
-                // Log.v("Categorizer", "Skipping already handled/conflicted task ${planningTask.id}")
+
                 return@taskLoop
             }
             val task = planningTask.task
 
-            // --- Recurrence Handling (Keep as is) ---
+
             if (task.repeatPlan?.frequencyType != FrequencyType.NONE) {
                 val occurrences = recurrenceExpander.expandRecurringTask(
                     planningTask,
@@ -705,37 +704,37 @@ class TaskCategorizer {
                     occurrences.forEach { time -> fixed.add(planningTask to time) }
                     context.placedTaskIds.add(task.id)
                 } else if (planningTask.flags.isHardConflict) {
-                    // Error handled by expander
+
                 } else {
                     if (!taskFitsScope(task, scopeStart, scopeEnd)) return@taskLoop
-                    // Log.d("Categorizer", "Recurring task ${task.id} had no occurrences in scope, categorizing based on start/end dates.")
+
                 }
                 if (occurrences.isNotEmpty() || planningTask.flags.isHardConflict) return@taskLoop
             }
 
-            // --- Scope Check (Keep as is) ---
+
             if (!taskFitsScope(task, scopeStart, scopeEnd) && !planningTask.flags.isOverdue) {
-                // Log.v("Categorizer", "Skipping task ${task.id} outside scope.")
+
                 return@taskLoop
             }
 
-            // --- Revised Categorization Logic ---
+
             val startDate = task.startDateConf.dateTime
             val startPeriod = task.startDateConf.dayPeriod
             val endDate = task.endDateConf?.dateTime
             val hasSpecificStartTime =
-                startDate != null && startDate.toLocalTime() != LocalTime.MIDNIGHT // Check if time is not just midnight default
+                startDate != null && startDate.toLocalTime() != LocalTime.MIDNIGHT 
             val hasEndDate = endDate != null
             val hasPeriod = startPeriod != DayPeriod.NONE && startPeriod != DayPeriod.ALLDAY
 
             when {
-                // 1. Overdue constrained to Today (Highest precedence after fixed recurrence)
+
                 planningTask.flags.isOverdue && planningTask.flags.constraintDate == today -> {
                     Log.v("Categorizer", "Task ${task.id} - Type: Overdue Today -> DateFlex")
                     dateFlex.computeIfAbsent(today) { mutableListOf() }.add(planningTask)
                 }
 
-                // 2. Explicit Start Date & Time, NO End Date (FIXED)
+
                 startDate != null && hasSpecificStartTime && !hasEndDate && !hasPeriod -> {
                     Log.v(
                         "Categorizer",
@@ -748,11 +747,11 @@ class TaskCategorizer {
                             "Categorizer",
                             "Task ${task.id} - Fixed time outside scope -> FullFlex"
                         )
-                        fullFlex.add(planningTask) // Fallback if date outside scope
+                        fullFlex.add(planningTask) 
                     }
                 }
 
-                // 3. Explicit Start Date & Time, WITH End Date (Deadline Flexible)
+
                 startDate != null && hasSpecificStartTime && hasEndDate -> {
                     Log.v(
                         "Categorizer",
@@ -761,7 +760,7 @@ class TaskCategorizer {
                     deadlineFlex.add(planningTask)
                 }
 
-                // 4. Start Date + Period, NO End Date (Period Constrained)
+
                 startDate != null && hasPeriod && !hasEndDate -> {
                     Log.v(
                         "Categorizer",
@@ -780,7 +779,7 @@ class TaskCategorizer {
                         fullFlex.add(planningTask)
                     }
                 }
-                // 5. Start Date + Period, WITH End Date (Deadline Flexible - Period is preference)
+
                 startDate != null && hasPeriod && hasEndDate -> {
                     Log.v(
                         "Categorizer",
@@ -789,7 +788,7 @@ class TaskCategorizer {
                     deadlineFlex.add(planningTask)
                 }
 
-                // 6. Start Date Only (No Time/Period), NO End Date (Date-Constrained Flexible)
+
                 startDate != null && !hasSpecificStartTime && !hasPeriod && !hasEndDate -> {
                     Log.v(
                         "Categorizer",
@@ -807,7 +806,7 @@ class TaskCategorizer {
                     }
                 }
 
-                // 7. Start Date Only (No Time/Period), WITH End Date (Deadline Flexible)
+
                 startDate != null && !hasSpecificStartTime && !hasPeriod && hasEndDate -> {
                     Log.v(
                         "Categorizer",
@@ -816,13 +815,13 @@ class TaskCategorizer {
                     deadlineFlex.add(planningTask)
                 }
 
-                // 8. Only End Date (Deadline Flexible)
-                hasEndDate -> { // Catches cases where only end date is set
+
+                hasEndDate -> { 
                     Log.v("Categorizer", "Task ${task.id} - Type: End Date Only -> DeadlineFlex")
                     deadlineFlex.add(planningTask)
                 }
 
-                // 9. Fully Flexible (No dates/times/periods)
+
                 else -> {
                     Log.v("Categorizer", "Task ${task.id} - Type: Fully Flexible -> FullFlex")
                     fullFlex.add(planningTask)
@@ -852,7 +851,7 @@ class TaskCategorizer {
     }
 }
 
-// --- TimelineManager --- (No significant changes needed)
+
 class TimelineManager {
     private val timeline: MutableMap<LocalDate, DaySchedule> = mutableMapOf()
     private val bufferTimeMinutes = 10L
@@ -1091,20 +1090,20 @@ class TimelineManager {
 }
 
 class TaskPlacer(
-    private val taskPrioritizer: TaskPrioritizer, // Inject scorer
+    private val taskPrioritizer: TaskPrioritizer, 
 ) {
-    // Constants for placement logic
+
     private val MIN_SPLIT_DURATION_MINUTES = 30L
     private val FLEXIBLE_PLACEMENT_MAX_ATTEMPTS = 200
 
-    // --- Phase 1: Fixed Tasks (Keep as is) ---
+
     fun placeFixedTasks(
         timelineManager: TimelineManager,
         fixedOccurrences: List<Pair<PlanningTask, LocalDateTime>>,
         context: PlanningContext,
     ) {
-        // ... (Existing placeFixedTasks logic remains the same) ...
-        // ... (Including multi-day handling and reportPlacementResult helper) ...
+
+
         fixedOccurrences
             .filterNot { context.placedTaskIds.contains(it.first.id) }
             .sortedBy { it.second }
@@ -1128,9 +1127,9 @@ class TaskPlacer(
                 }
                 val endTime = occurrenceTime.plus(duration)
                 val startDate = occurrenceTime.toLocalDate()
-                val endDate = endTime.toLocalDate() // Might be the next day
+                val endDate = endTime.toLocalDate()
 
-                // --- Validation for Multi-Day Fixed Tasks ---
+
                 if (startDate != endDate) {
                     val startDaySchedule = timelineManager.getDaySchedule(startDate)
                     val endDaySchedule = timelineManager.getDaySchedule(endDate)
@@ -1171,7 +1170,7 @@ class TaskPlacer(
                     )
                     if (result2 !is PlacementResultInternal.Success) {
                         reportPlacementResult(result2, task, startOfNextDay, context)
-                        context.placedTaskIds.add(task.id) // Mark placed because first part succeeded
+                        context.placedTaskIds.add(task.id) 
                         return@fixedLoop
                     }
 
@@ -1196,7 +1195,7 @@ class TaskPlacer(
                     )
 
                 } else {
-                    // --- Single-Day Fixed Tasks ---
+
                     val daySchedule = timelineManager.getDaySchedule(startDate)
                     if (daySchedule == null) {
                         context.addConflict(
@@ -1217,7 +1216,7 @@ class TaskPlacer(
                         Occupancy.FIXED_TASK,
                         allowOverwriteFree = false
                     )
-                    reportPlacementResult(result, task, occurrenceTime, context) // Use helper
+                    reportPlacementResult(result, task, occurrenceTime, context) 
                     if (result is PlacementResultInternal.Success) {
                         context.addScheduledItem(
                             ScheduledTaskItem(
@@ -1242,11 +1241,11 @@ class TaskPlacer(
     private fun reportPlacementResult(
         result: PlacementResultInternal,
         task: Task,
-        placementTime: LocalDateTime, // Time relevant to this specific placement attempt
+        placementTime: LocalDateTime, 
         context: PlanningContext,
     ) {
         when (result) {
-            is PlacementResultInternal.Success -> { /* Handled by caller */
+            is PlacementResultInternal.Success -> { 
             }
 
             is PlacementResultInternal.Conflict -> {
@@ -1263,7 +1262,7 @@ class TaskPlacer(
                         result.conflictTime,
                         result.type
                     ),
-                    task.id // Mark this task as handled (due to conflict)
+                    task.id 
                 )
                 if (result.type == ConflictType.FIXED_VS_FIXED && result.conflictingTaskId != null) {
                     context.placedTaskIds.add(result.conflictingTaskId)
@@ -1287,15 +1286,14 @@ class TaskPlacer(
     }
 
 
-    // --- Phase 2: Combined Prioritized Placement ---
     fun placePrioritizedTask(
         planningTask: PlanningTask,
         timelineManager: TimelineManager,
         context: PlanningContext,
         input: PlannerInput,
         today: LocalDate,
-        scopeStartDate: LocalDate, // Pass scope for fallback window calculation
-        scopeEndDate: LocalDate,   // Pass scope for fallback window calculation
+        scopeStartDate: LocalDate,
+        scopeEndDate: LocalDate,   
     ) {
         val task = planningTask.task
         Log.d("TaskPlacer", "Attempting prioritized placement for Task ${task.id} ('${task.name}')")
@@ -1314,33 +1312,33 @@ class TaskPlacer(
             return
         }
 
-        // --- Determine Primary Search Window & Placement Type ---
+
         var minSearchTime: LocalDateTime
         var maxSearchTime: LocalDateTime
-        var placementOccupancy = Occupancy.FLEXIBLE_TASK // Default
-        var isFlexible = true // Assume flexible unless proven otherwise
-        var primaryFailed = false // Track if the first attempt failed
+        var placementOccupancy = Occupancy.FLEXIBLE_TASK
+        var isFlexible = true
+        var primaryFailed = false 
 
         val taskStartDateTime = task.startDateConf.dateTime
         val taskStartDate = taskStartDateTime?.toLocalDate()
         val taskStartPeriod = task.startDateConf.dayPeriod
         val taskEndDate = task.endDateConf?.dateTime?.toLocalDate()
-            ?: scopeEndDate // Use scope end if no deadline
+            ?: scopeEndDate
 
-        // Determine constraints based on task properties and flags
+
         when {
-            // 1. Overdue constrained to Today
+
             planningTask.flags.isOverdue && planningTask.flags.constraintDate == today -> {
                 Log.v("TaskPlacer", "Task ${task.id} - Type: Overdue Today")
                 val daySchedule = timelineManager.getDaySchedule(today)
                 minSearchTime = today.atTime(daySchedule?.workStartTime ?: input.workStartTime)
-                maxSearchTime = today.plusDays(1).atStartOfDay() // End of today
-                isFlexible = false // Must be placed today
+                maxSearchTime = today.plusDays(1).atStartOfDay()
+                isFlexible = false 
             }
-            // 2. Period Constraint (on specific date or fallback date)
+
             taskStartPeriod != DayPeriod.NONE && taskStartPeriod != DayPeriod.ALLDAY -> {
                 Log.v("TaskPlacer", "Task ${task.id} - Type: Period (${taskStartPeriod})")
-                val targetDate = taskStartDate ?: today // Use task date or today if null
+                val targetDate = taskStartDate ?: today 
                 val daySchedule = timelineManager.getDaySchedule(targetDate)
                 if (daySchedule != null && targetDate >= scopeStartDate && targetDate <= scopeEndDate) {
                     val (periodStart, periodEnd) = calculateEffectivePeriodWindow(
@@ -1351,9 +1349,9 @@ class TaskPlacer(
                     minSearchTime = targetDate.atTime(periodStart)
                     maxSearchTime = targetDate.atTime(periodEnd)
                     placementOccupancy = Occupancy.PERIOD_TASK
-                    isFlexible = taskEndDate > targetDate // Flexible if deadline allows other days
+                    isFlexible = taskEndDate > targetDate 
                 } else {
-                    // Period date outside scope, treat as fully flexible within scope/deadline
+
                     Log.v(
                         "TaskPlacer",
                         "Task ${task.id} - Period date outside scope, treating as flexible."
@@ -1368,27 +1366,27 @@ class TaskPlacer(
                     )
                 }
             }
-            // 3. Date Constraint (Specific date, but no specific time/period)
+
             taskStartDate != null -> {
                 Log.v("TaskPlacer", "Task ${task.id} - Type: Date Constrained (${taskStartDate})")
                 val daySchedule = timelineManager.getDaySchedule(taskStartDate)
                 if (daySchedule != null && taskStartDate >= scopeStartDate && taskStartDate <= scopeEndDate) {
                     minSearchTime = taskStartDate.atTime(daySchedule.workStartTime)
-                    // Handle overnight work end time correctly for maxSearchTime
+
                     maxSearchTime =
                         if (daySchedule.workEndTime <= daySchedule.workStartTime && daySchedule.workStartTime != daySchedule.workEndTime) {
                             taskStartDate.plusDays(1).atTime(daySchedule.workEndTime)
                         } else {
                             taskStartDate.atTime(daySchedule.workEndTime)
                         }
-                    // Also consider task deadline if it's earlier than work end
+
                     task.endDateConf?.dateTime?.let { deadline ->
                         maxSearchTime = minOf(maxSearchTime, deadline)
                     }
                     isFlexible =
-                        taskEndDate > taskStartDate // Flexible if deadline allows other days
+                        taskEndDate > taskStartDate 
                 } else {
-                    // Date outside scope, treat as fully flexible within scope/deadline
+
                     Log.v(
                         "TaskPlacer",
                         "Task ${task.id} - Date constraint outside scope, treating as flexible."
@@ -1403,7 +1401,7 @@ class TaskPlacer(
                     )
                 }
             }
-            // 4. Deadline or Fully Flexible
+
             else -> {
                 Log.v("TaskPlacer", "Task ${task.id} - Type: Deadline/Fully Flexible")
                 minSearchTime = maxOf(
@@ -1417,7 +1415,7 @@ class TaskPlacer(
             }
         }
 
-        // --- Attempt Placement (Primary Window) ---
+
         Log.d(
             "TaskPlacer",
             "Task ${task.id}: Primary search window: $minSearchTime -> $maxSearchTime"
@@ -1432,15 +1430,15 @@ class TaskPlacer(
             allowSplitting = input.allowSplitting,
             heuristic = input.flexiblePlacementHeuristic,
             context = context,
-            occupancyType = placementOccupancy // Use determined type
+            occupancyType = placementOccupancy 
         )
 
-        // --- Handle Primary Placement Result ---
+
         when (placementResult) {
             is PlacementResult.Success -> {
                 Log.d("TaskPlacer", "Successfully placed task ${task.id} in primary window.")
-                context.placedTaskIds.add(task.id) // Ensure marked placed
-                // Info item if placed outside preferred period (fallback from period constraint)
+                context.placedTaskIds.add(task.id) 
+                
                 if (planningTask.flags.failedPeriod) {
                     context.addInfoItem(
                         InfoItem(
@@ -1450,7 +1448,7 @@ class TaskPlacer(
                         )
                     )
                 }
-                return // Done with this task
+                return 
             }
 
             is PlacementResult.Failure -> {
@@ -1458,8 +1456,8 @@ class TaskPlacer(
                     "TaskPlacer",
                     "Task ${task.id}: Primary placement failed: ${placementResult.reason}"
                 )
-                primaryFailed = true // Mark primary attempt as failed
-                // Continue to fallback if flexible
+                primaryFailed = true 
+                
             }
 
             is PlacementResult.Conflict -> {
@@ -1467,7 +1465,7 @@ class TaskPlacer(
                     "TaskPlacer",
                     "Task ${task.id}: Primary placement conflict: ${placementResult.reason}"
                 )
-                // Report conflict immediately if primary attempt causes conflict
+
                 val conflictingTaskObj =
                     placementResult.conflictingTaskId?.let { cId -> context.planningTaskMap[cId]?.task }
                 context.addConflict(
@@ -1479,17 +1477,17 @@ class TaskPlacer(
                     ),
                     task.id
                 )
-                return // Done with this task (conflicted)
+                return 
             }
         }
 
-        // --- Attempt Fallback Placement (if primary failed AND task is flexible) ---
+
         if (primaryFailed && isFlexible) {
             Log.i(
                 "TaskPlacer",
                 "Task ${task.id}: Primary placement failed, attempting fallback placement."
             )
-            // Define wider fallback window (entire scope up to deadline)
+
             val fallbackMinSearch = maxOf(
                 task.startDateConf.dateTime ?: scopeStartDate.atStartOfDay(),
                 scopeStartDate.atStartOfDay()
@@ -1499,7 +1497,7 @@ class TaskPlacer(
                 scopeEndDate.plusDays(1).atStartOfDay()
             )
 
-            // Avoid redundant search if primary window was already the full scope
+
             if (fallbackMinSearch >= minSearchTime && fallbackMaxSearch <= maxSearchTime) {
                 Log.d(
                     "TaskPlacer",
@@ -1520,19 +1518,19 @@ class TaskPlacer(
                     allowSplitting = input.allowSplitting,
                     heuristic = input.flexiblePlacementHeuristic,
                     context = context,
-                    occupancyType = Occupancy.FLEXIBLE_TASK // Fallback is always flexible
+                    occupancyType = Occupancy.FLEXIBLE_TASK 
                 )
             }
         }
 
-        // --- Handle Final Placement Result (after primary and potential fallback) ---
+
         when (placementResult) {
             is PlacementResult.Success -> {
-                // This case should ideally be handled after the primary/fallback attempt succeeds
-                // If we reach here, it means fallback succeeded.
+
+
                 Log.d("TaskPlacer", "Successfully placed task ${task.id} in fallback window.")
                 context.placedTaskIds.add(task.id)
-                // Add info item indicating fallback placement
+
                 context.addInfoItem(
                     InfoItem(
                         task,
@@ -1543,33 +1541,33 @@ class TaskPlacer(
             }
 
             is PlacementResult.Failure -> {
-                // If both primary and fallback (if attempted) failed
+
                 Log.w(
                     "TaskPlacer",
                     "Task ${task.id}: All placement attempts failed: ${placementResult.reason}"
                 )
-                // Determine the final conflict type based on original constraints
+
                 val finalConflictType = when {
-                    planningTask.flags.isOverdue && planningTask.flags.constraintDate == today -> ConflictType.NO_SLOT_ON_DATE // Overdue couldn't fit today
-                    taskStartPeriod != DayPeriod.NONE && taskStartPeriod != DayPeriod.ALLDAY -> ConflictType.CANNOT_FIT_PERIOD // Original period failed
-                    taskStartDate != null -> ConflictType.NO_SLOT_ON_DATE // Original date failed
-                    else -> ConflictType.NO_SLOT_IN_SCOPE // No slot anywhere
+                    planningTask.flags.isOverdue && planningTask.flags.constraintDate == today -> ConflictType.NO_SLOT_ON_DATE
+                    taskStartPeriod != DayPeriod.NONE && taskStartPeriod != DayPeriod.ALLDAY -> ConflictType.CANNOT_FIT_PERIOD
+                    taskStartDate != null -> ConflictType.NO_SLOT_ON_DATE
+                    else -> ConflictType.NO_SLOT_IN_SCOPE 
                 }
-                // Report the final conflict
+
                 context.addConflict(
                     ConflictItem(
                         listOf(task),
                         placementResult.reason ?: "No suitable time slot found",
                         minSearchTime,
                         finalConflictType
-                    ), // Use original minSearchTime for context
+                    ), 
                     task.id
                 )
             }
 
             is PlacementResult.Conflict -> {
-                // This case was handled after the primary attempt, should not be reached here
-                // unless fallback itself caused a *new* conflict (less likely with findAndPlace logic)
+
+
                 Log.e(
                     "TaskPlacer",
                     "Task ${task.id}: Fallback placement conflict: ${placementResult.reason}"
@@ -1590,8 +1588,6 @@ class TaskPlacer(
     }
 
 
-    // --- findAndPlaceFlexibleTask (Handles Splitting) ---
-    // Add occupancyType parameter
     private fun findAndPlaceFlexibleTask(
         timelineManager: TimelineManager,
         task: Task,
@@ -1602,7 +1598,7 @@ class TaskPlacer(
         allowSplitting: Boolean,
         heuristic: PlacementHeuristic,
         context: PlanningContext,
-        occupancyType: Occupancy, // Added parameter
+        occupancyType: Occupancy, 
     ): PlacementResult {
         var remainingDuration = totalDuration
         val placedBlocksResult = mutableListOf<TimeBlock>()
@@ -1676,7 +1672,7 @@ class TaskPlacer(
                     placementStartTime,
                     endOfDay1,
                     occupancyType
-                ) // Use occupancyType
+                ) 
                 if (result1 !is PlacementResultInternal.Success) {
                     Log.e(
                         "TaskPlacerFlex",
@@ -1690,7 +1686,7 @@ class TaskPlacer(
                     startOfDay2,
                     placementEndTime,
                     occupancyType
-                ) // Use occupancyType
+                ) 
                 if (result2 !is PlacementResultInternal.Success) {
                     Log.e(
                         "TaskPlacerFlex",
@@ -1718,13 +1714,13 @@ class TaskPlacer(
                 )
 
             } else {
-                // --- Single-Day Placement ---
+
                 val placementInternalResult = timelineManager.placeTask(
                     task,
                     placementStartTime,
                     placementEndTime,
                     occupancyType
-                ) // Use occupancyType
+                ) 
                 when (placementInternalResult) {
                     is PlacementResultInternal.Success -> {
                         val placedBlock = placementInternalResult.placedBlock
@@ -1785,7 +1781,7 @@ class TaskPlacer(
                     }
                 }
             }
-        } // End while loop
+        } 
 
         if (attempts >= FLEXIBLE_PLACEMENT_MAX_ATTEMPTS) {
             Log.w("TaskPlacer", "Max placement attempts reached for flexible task ${task.id}")
@@ -1813,7 +1809,7 @@ class TaskPlacer(
         }
     }
 
-    // ... (handlePlacementFailure, calculateEffectivePeriodWindow, checkAndLogOutsideWorkHours, format, minOf, maxOf) ...
+
     private fun handlePlacementFailure(
         result: PlacementResultInternal,
         task: Task,

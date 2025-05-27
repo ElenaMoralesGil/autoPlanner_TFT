@@ -39,14 +39,14 @@ class EditProfileViewModel(
                     showReAuthDialog = true,
                     error = null
                 )
-            } // Clear error when showing dialog
+            } 
             is EditProfileIntent.HideReAuthDialog -> setState {
                 copy(
                     showReAuthDialog = false,
                     currentPasswordForReAuth = "",
                     error = null
                 )
-            } // Clear password and error
+            } 
             is EditProfileIntent.UpdateCurrentPasswordForReAuth -> setState {
                 copy(
                     currentPasswordForReAuth = intent.password
@@ -79,7 +79,7 @@ class EditProfileViewModel(
             } else {
                 setState { copy(isLoading = false, error = "Failed to load user data.") }
                 setEffect(EditProfileEffect.ShowSnackbar("Could not load profile."))
-                setEffect(EditProfileEffect.NavigateBack) // Can't edit if not logged in
+                setEffect(EditProfileEffect.NavigateBack) 
             }
         }
     }
@@ -92,16 +92,16 @@ class EditProfileViewModel(
                 return@launch
             }
 
-            setState { copy(isLoading = true, error = null) } // Show loading during re-auth
+            setState { copy(isLoading = true, error = null) }
 
-            // *** Use the UseCase here ***
+
             val reAuthResult = reauthenticateUseCase(state.currentPasswordForReAuth)
 
             when (reAuthResult) {
                 is AuthResult.Success -> {
                     Log.d("EditProfileVM", "Re-authentication successful. Retrying update.")
                     setState { copy(showReAuthDialog = false, currentPasswordForReAuth = "") }
-                    retryProfileUpdate() // Retry with stored pending changes
+                    retryProfileUpdate() 
                 }
 
                 is AuthResult.Error -> {
@@ -111,7 +111,7 @@ class EditProfileViewModel(
                             isLoading = false,
                             error = reAuthResult.message
                         )
-                    } // Keep dialog open, show error
+                    } 
                 }
             }
         }
@@ -122,12 +122,12 @@ class EditProfileViewModel(
             val state = currentState
             var validationError: String? = null
 
-            // --- Validation ---
+
             if (state.newPassword.isNotEmpty() && !state.isPasswordChangeValid) {
                 validationError = when {
                     state.newPassword.length < 6 -> "New password must be at least 6 characters."
                     state.newPassword != state.confirmPassword -> "New passwords do not match."
-                    else -> "Invalid password input." // Should not happen if logic is correct
+                    else -> "Invalid password input." 
                 }
             } else if (state.newEmail.isNotEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(
                     state.newEmail
@@ -154,7 +154,7 @@ class EditProfileViewModel(
                 return@launch
             }
 
-            // --- Execute UseCase ---
+
             setState {
                 copy(
                     pendingDisplayName = displayNameToUpdate,
@@ -163,7 +163,7 @@ class EditProfileViewModel(
                 )
             }
 
-            // --- Attempt Update (might require re-auth) ---
+
             attemptProfileUpdate(displayNameToUpdate, emailToUpdate, passwordToUpdate)
         }
     }
@@ -192,11 +192,11 @@ class EditProfileViewModel(
         )
         Log.d("EditProfileVM", "Initial update attempt result: $result")
 
-        setState { copy(isLoading = false) } // Stop loading after initial attempt
+        setState { copy(isLoading = false) } 
 
         when (result) {
             is AuthResult.Success -> {
-                handleUpdateSuccess(email) // Handle success (clear fields, show message)
+                handleUpdateSuccess(email) 
             }
 
             is AuthResult.Error -> {
@@ -207,10 +207,10 @@ class EditProfileViewModel(
                             showReAuthDialog = true,
                             error = null
                         )
-                    } // Show dialog, clear previous errors
-                    // Pending changes are already stored in the state
+                    } 
+                    
                 } else {
-                    // Handle other errors
+
                     Log.e("EditProfileVM", "Update failed: ${result.message}")
                     setState { copy(error = result.message) }
                     setEffect(EditProfileEffect.ShowSnackbar("Error: ${result.message}"))
@@ -221,16 +221,16 @@ class EditProfileViewModel(
 
     private suspend fun retryProfileUpdate() {
         val state = currentState
-        // Use the stored pending changes
+
         val displayName = state.pendingDisplayName
         val email = state.pendingEmail
         val password = state.pendingPassword
 
-        // Clear pending changes now that we are retrying
+
         setState { copy(pendingDisplayName = null, pendingEmail = null, pendingPassword = null) }
 
-        // Re-attempt the update (should succeed now if re-auth was the only issue)
-        setState { copy(isLoading = true, error = null) } // Show loading for the retry
+
+        setState { copy(isLoading = true, error = null) } 
         Log.d(
             "EditProfileVM",
             "Retrying update after re-auth: name=$displayName, email=$email, password=${password != null}"
@@ -241,19 +241,19 @@ class EditProfileViewModel(
             newPassword = password
         )
         Log.d("EditProfileVM", "Retry update result: $result")
-        setState { copy(isLoading = false) } // Stop loading after retry
+        setState { copy(isLoading = false) } 
 
         when (result) {
             is AuthResult.Success -> {
-                handleUpdateSuccess(email) // Handle success as before
+                handleUpdateSuccess(email) 
             }
 
             is AuthResult.Error -> {
-                // If it *still* fails after re-auth, show the error
+
                 Log.e("EditProfileVM", "Update failed even after re-auth: ${result.message}")
                 setState { copy(error = result.message) }
                 setEffect(EditProfileEffect.ShowSnackbar("Error: ${result.message}"))
-                // Keep user on the screen to see the error
+
             }
         }
     }
@@ -275,7 +275,7 @@ class EditProfileViewModel(
                     emailUpdateMessage = emailMsg
                 )
             }
-            shouldReloadData = false // Don't reload immediately after email verification request
+            shouldReloadData = false 
             Log.d("EditProfileVM", "Email verification sent. State updated.")
         } else {
             setState { copy(newPassword = "", confirmPassword = "") }
@@ -284,7 +284,7 @@ class EditProfileViewModel(
 
         setEffect(EditProfileEffect.ShowSnackbar(finalMessage))
 
-        // Reload data only if display name might have changed and email didn't trigger verification
+
         if (shouldReloadData && currentState.pendingDisplayName != null) {
             Log.d("EditProfileVM", "Reloading data after non-email update.")
             loadInitialData()

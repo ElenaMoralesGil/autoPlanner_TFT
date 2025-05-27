@@ -78,14 +78,14 @@ class MainActivity : ComponentActivity() {
                     this,
                     Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED -> {
-                    // Permission already granted
+
                     Log.d("MainActivity", "Notification permission already granted")
                 }
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
                     showNotificationPermissionRationale()
                 }
                 else -> {
-                    // Request permission
+
                     notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
@@ -93,7 +93,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showNotificationPermissionRationale() {
-        // Show a dialog explaining why notifications are important
+
         AlertDialog.Builder(this)
             .setTitle("Notification Permission Needed")
             .setMessage("Notifications are required to remind you about your tasks.")
@@ -147,15 +147,15 @@ class MainActivity : ComponentActivity() {
                 Log.d("MainActivity", "Navigating to task $taskId from notification")
 
                 lifecycleScope.launch {
-                    delay(100) // Small delay to ensure navigation is ready
+                    delay(100) 
 
                     try {
-                        // Fetch task details to get its list/section
+
                         val taskResult = taskRepository.getTask(taskId)
                         if (taskResult is TaskResult.Success) {
                             val task = taskResult.data
 
-                            // Navigate to the task's list
+
                             val route = when {
                                 task.listId != null && task.sectionId != null -> {
                                     "tasks?listId=${task.listId}&sectionId=${task.sectionId}"
@@ -166,7 +166,7 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 else -> {
-                                    "tasks" // All tasks view
+                                    "tasks" 
                                 }
                             }
 
@@ -183,11 +183,10 @@ class MainActivity : ComponentActivity() {
                                 restoreState = true
                             }
 
-                            // Optionally, you could also highlight or scroll to the specific task
-                            // by passing the taskId as an additional parameter
+
                         } else {
                             Log.e("MainActivity", "Failed to fetch task details for navigation")
-                            // Fallback: just go to tasks screen
+
                             navController.navigate("tasks")
                         }
                     } catch (e: Exception) {
@@ -195,7 +194,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Clear the intent to avoid re-navigation
+
                 it.removeExtra("navigate_to_task_id")
             }
         }
@@ -215,11 +214,11 @@ fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
         val appWidgetManager = AppWidgetManager.getInstance(context)
         val snackbarHostState = remember { SnackbarHostState() }
 
-        // Notify when NavController is ready
+
         LaunchedEffect(navController) {
             onNavControllerReady(navController)
         }
-        // Handle MoreViewModel Effects (like triggering widget add)
+
         LaunchedEffect(moreViewModel) {
             moreViewModel.effect.collectLatest { effect ->
                 when (effect) {
@@ -234,10 +233,10 @@ fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
                             }
                         }
                     }
-                    // Handle other MoreEffects if necessary
+
                     is MoreEffect.ShowSnackbar -> scope.launch { snackbarHostState.showSnackbar(effect.message) }
-                    is MoreEffect.ShowCreateListDialog -> { /* Dialog shown in MoreDrawerContent */ }
-                    is MoreEffect.NavigateToTasks -> { /* Navigation handled elsewhere */ }
+                    is MoreEffect.ShowCreateListDialog -> {}
+                    is MoreEffect.NavigateToTasks -> {}
                 }
             }
         }
@@ -249,7 +248,7 @@ fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
             drawerContent = {
                 MoreDrawerContent(
                     drawerState = drawerState,
-                    viewModel = moreViewModel, // Pass the view model instance
+                    viewModel = moreViewModel, 
                     onNavigateToTasks = { listId, sectionId ->
                         scope.launch {
                             Log.d("MainActivity", "[ACTION] onNavigateToTasks triggered: listId=$listId, sectionId=$sectionId")
@@ -264,12 +263,12 @@ fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
                             Log.d("MainActivity", "[ACTION] Closing drawer")
                             drawerState.close()
 
-                            // --- Navigation Logic (Keep as is) ---
+
                             val routeBase = Screen.Tasks.routeBase
                             val route = if (listId == null && sectionId == null) {
-                                routeBase // Navigate to base "tasks" for "All Tasks"
+                                routeBase 
                             } else {
-                                // Build route with non-null parameters
+
                                 val params = listOfNotNull(
                                     listId?.let { "listId=$it" },
                                     sectionId?.let { "sectionId=$it" }
@@ -290,7 +289,7 @@ fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
             }
         ) {
             Scaffold(
-                snackbarHost = { SnackbarHost(snackbarHostState) }, // Add SnackbarHost
+                snackbarHost = { SnackbarHost(snackbarHostState) }, 
                 bottomBar = {
                     BottomNavigationBar(
                         navController = navController,

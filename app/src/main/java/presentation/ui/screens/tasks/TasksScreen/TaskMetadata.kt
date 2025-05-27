@@ -1,4 +1,4 @@
-// src/main/java/presentation/ui/screens/tasks/TasksScreen/TaskMetadata.kt
+
 package com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen
 
 import androidx.compose.foundation.layout.Arrangement

@@ -15,8 +15,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay // Optional: For extra safety if needed
-import org.koin.java.KoinJavaComponent // Use KoinJavaComponent
+import kotlinx.coroutines.delay
+import org.koin.java.KoinJavaComponent 
 
 class BootReceiver : BroadcastReceiver() {
 
@@ -38,7 +38,7 @@ class BootReceiver : BroadcastReceiver() {
                     val notificationScheduler: NotificationScheduler by inject(NotificationScheduler::class.java)
 
                     Log.d(TAG, "Koin dependencies retrieved. Fetching tasks...")
-                    // Fetch the TaskResult first
+
                     val tasksResult: TaskResult<List<Task>>? =
                         taskRepository.getTasks().firstOrNull()
 
@@ -76,7 +76,7 @@ class BootReceiver : BroadcastReceiver() {
                     }
 
                 } catch (e: Exception) {
-                    // Catch potential Koin resolution errors here as well
+
                     Log.e(TAG, "Error rescheduling notifications after boot", e)
                 } finally {
                     Log.d(TAG, "Finishing background work for BootReceiver.")

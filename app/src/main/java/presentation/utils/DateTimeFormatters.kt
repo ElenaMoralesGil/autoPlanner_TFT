@@ -23,7 +23,7 @@ object DateTimeFormatters {
         return dateTime.format(formatter)
     }
 
-    // In DateTimeFormatters.kt
+
     fun formatDateShort(dateTime: TimePlanning): String {
         return dateTime.dateTime?.format(dateFormatter) ?: ""
     }

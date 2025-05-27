@@ -2,7 +2,7 @@ package com.elena.autoplanner.domain.usecases.lists
 
 import android.graphics.Color.parseColor
 import com.elena.autoplanner.domain.models.Task
-import com.elena.autoplanner.domain.repositories.ListRepository // Need this for list details
+import com.elena.autoplanner.domain.repositories.ListRepository 
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.results.TaskResult
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +19,7 @@ class GetTasksByListUseCase(
     private val taskRepository: TaskRepository,
     private val listRepository: ListRepository,
 ) {
-    // Returns flow of tasks belonging to the list, enriched with list details
+
     operator fun invoke(listId: Long?): Flow<Pair<TaskList?, List<Task>>> {
 
         return taskRepository.getTasks()
@@ -32,7 +32,7 @@ class GetTasksByListUseCase(
                             "GetTasksByListUseCase",
                             "Error fetching tasks: ${taskResult.message}"
                         )
-                        emptyList() // Return empty list on task fetch error
+                        emptyList() 
                     }
                 }
 
@@ -43,7 +43,7 @@ class GetTasksByListUseCase(
                             "GetTasksByListUseCase",
                             "Error fetching list info: ${listInfoResult.message}"
                         )
-                        emptyMap() // Proceed without list info if fetch fails
+                        emptyMap() 
                     }
                 }
 
@@ -69,18 +69,18 @@ class GetTasksByListUseCase(
                             }
                         }
 
-                        // Only copy if enrichment data is available and different
+
                         if (taskListName != task.listName || taskListColor != task.listColor) {
                             task.copy(
                                 listName = taskListName,
                                 listColor = taskListColor
-                                // sectionName could be enriched here too if needed/fetched
+
                             )
                         } else {
-                            task // Return original if no change
+                            task 
                         }
                     }
-                    // TODO: Add sorting logic here if needed (e.g., by displayOrder, then name)
+
                     .sortedWith(compareBy({ it.displayOrder }, { it.name }))
 
 
@@ -89,12 +89,12 @@ class GetTasksByListUseCase(
                     "Filtered/Enriched Tasks Count=${filteredAndEnrichedTasks.size} for List ID=$listId"
                 )
 
-                // Return the target list (null if viewing all) and the processed tasks
+
                 Pair(targetList, filteredAndEnrichedTasks)
             }
             .catch { error ->
                 Log.e("GetTasksByListUseCase", "Error combining flows", error)
-                emit(Pair(null, emptyList())) // Emit empty on error
+                emit(Pair(null, emptyList())) 
             }
     }
 }

@@ -89,7 +89,7 @@ fun WeeklyWidgetContent(context: Context, tasks: List<Task>, weekStartDate: Loca
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(WidgetColors.widgetBackground) // Themed: Very Light Gray
+            .background(WidgetColors.widgetBackground) 
             .padding(16.dp)
             .cornerRadius(24.dp)
     ) {
@@ -103,7 +103,7 @@ fun WeeklyWidgetContent(context: Context, tasks: List<Task>, weekStartDate: Loca
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
-                        color = WidgetColors.titleText // Themed: Cute Light Orange
+                        color = WidgetColors.titleText 
                     )
                 )
                 Text(
@@ -118,7 +118,7 @@ fun WeeklyWidgetContent(context: Context, tasks: List<Task>, weekStartDate: Loca
                     }",
                     style = TextStyle(
                         fontSize = 15.sp,
-                        color = WidgetColors.secondaryText, // Themed: Lighter Dark Gray
+                        color = WidgetColors.secondaryText, 
                         fontWeight = FontWeight.Normal
                     ),
                     modifier = GlanceModifier.padding(top = 2.dp)
@@ -126,7 +126,7 @@ fun WeeklyWidgetContent(context: Context, tasks: List<Task>, weekStartDate: Loca
             }
             Spacer(GlanceModifier.width(8.dp))
             Image(
-                provider = ImageProvider(R.drawable.ic_refresh), // Ensure icon matches or is neutral
+                provider = ImageProvider(R.drawable.ic_refresh), 
                 contentDescription = context.getString(R.string.widget_refresh_description),
                 modifier = GlanceModifier
                     .size(28.dp)
@@ -166,7 +166,7 @@ fun WeeklyWidgetContent(context: Context, tasks: List<Task>, weekStartDate: Loca
                             itemId = { task -> task.id.hashCode().toLong() }
                         ) { task ->
                             WeeklyTaskWidgetItem(task = task, isToday = isCurrentDay)
-                            // Add spacer only if it's not the last task for the day, or handle spacing inside WeeklyTaskWidgetItem's padding
+
                             Spacer(GlanceModifier.height(6.dp))
                         }
                     } else {
@@ -176,8 +176,8 @@ fun WeeklyWidgetContent(context: Context, tasks: List<Task>, weekStartDate: Loca
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp)
                                     .background(
-                                        if (isCurrentDay) WidgetColors.todayEmptyDayBackground // Themed: Light Orange (30% alpha)
-                                        else WidgetColors.emptyDayBackground // Themed: White (50% alpha)
+                                        if (isCurrentDay) WidgetColors.todayEmptyDayBackground
+                                        else WidgetColors.emptyDayBackground 
                                     )
                                     .cornerRadius(10.dp)
                                     .padding(vertical = 12.dp, horizontal = 12.dp)
@@ -187,7 +187,7 @@ fun WeeklyWidgetContent(context: Context, tasks: List<Task>, weekStartDate: Loca
                                     text = context.getString(R.string.widget_no_tasks_for_this_day),
                                     style = TextStyle(
                                         fontSize = 13.sp,
-                                        color = WidgetColors.tertiaryText, // Themed: Medium Gray
+                                        color = WidgetColors.tertiaryText, 
                                         textAlign = TextAlign.Center
                                     ),
                                     modifier = GlanceModifier.fillMaxWidth(),
@@ -224,7 +224,7 @@ fun WeeklyDayHeader(date: LocalDate, isToday: Boolean, taskCount: Int, context: 
             style = TextStyle(
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                color = if (isToday) WidgetColors.todayHighlightText else WidgetColors.dayHeaderText // Themed
+                color = if (isToday) WidgetColors.todayHighlightText else WidgetColors.dayHeaderText 
             )
         )
         Spacer(GlanceModifier.width(8.dp))
@@ -233,7 +233,7 @@ fun WeeklyDayHeader(date: LocalDate, isToday: Boolean, taskCount: Int, context: 
             style = TextStyle(
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                color = if (isToday) WidgetColors.todayHighlightText else WidgetColors.dayHeaderText // Themed
+                color = if (isToday) WidgetColors.todayHighlightText else WidgetColors.dayHeaderText 
             )
         )
         if (isToday) {
@@ -243,7 +243,7 @@ fun WeeklyDayHeader(date: LocalDate, isToday: Boolean, taskCount: Int, context: 
                 style = TextStyle(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = WidgetColors.todayHighlightText // Themed
+                    color = WidgetColors.todayHighlightText 
                 )
             )
         }
@@ -257,7 +257,7 @@ fun WeeklyDayHeader(date: LocalDate, isToday: Boolean, taskCount: Int, context: 
                 ),
                 style = TextStyle(
                     fontSize = 13.sp,
-                    color = if (isToday) WidgetColors.todayHighlightText else WidgetColors.tertiaryText // Themed
+                    color = if (isToday) WidgetColors.todayHighlightText else WidgetColors.tertiaryText 
                 )
             )
         }
@@ -274,7 +274,7 @@ fun WeeklyTaskWidgetItem(task: Task, isToday: Boolean) {
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .background(backgroundProvider) // Themed
+            .background(backgroundProvider) 
             .cornerRadius(12.dp)
             .padding(vertical = 10.dp, horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -282,7 +282,7 @@ fun WeeklyTaskWidgetItem(task: Task, isToday: Boolean) {
         Box(
             modifier = GlanceModifier
                 .size(width = 4.dp, height = 30.dp)
-                .background(WidgetColors.accent) // Themed: Cute Light Orange
+                .background(WidgetColors.accent) 
                 .cornerRadius(2.dp),
             contentAlignment = Alignment.Center,
             content = {}
@@ -292,9 +292,9 @@ fun WeeklyTaskWidgetItem(task: Task, isToday: Boolean) {
             Text(
                 text = task.name,
                 style = TextStyle(
-                    fontWeight = FontWeight.Bold, // Slightly less than Bold
+                    fontWeight = FontWeight.Bold, 
                     fontSize = 15.sp,
-                    color = WidgetColors.primaryText // Themed: Dark Gray
+                    color = WidgetColors.primaryText 
                 ),
                 maxLines = 2
             )
@@ -303,7 +303,7 @@ fun WeeklyTaskWidgetItem(task: Task, isToday: Boolean) {
                     text = it.format(timeFormatter),
                     style = TextStyle(
                         fontSize = 13.sp,
-                        color = WidgetColors.secondaryText // Themed: Lighter Dark Gray
+                        color = WidgetColors.secondaryText 
                     ),
                     modifier = GlanceModifier.padding(top = 3.dp)
                 )

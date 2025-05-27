@@ -81,7 +81,7 @@ class UserRepositoryImpl(
                     continuation.resume(AuthResult.Success(Unit))
                 } else {
                     val errorMsg = task.exception?.localizedMessage ?: "Failed to delete account."
-                    // Check if re-authentication is required
+
                     if (task.exception is FirebaseAuthRecentLoginRequiredException) {
                         continuation.resume(AuthResult.Error("Re-authentication required to delete account."))
                     } else {
@@ -95,11 +95,11 @@ class UserRepositoryImpl(
         val user = firebaseAuth.currentUser ?: return AuthResult.Error("No user logged in.")
         return try {
             user.verifyBeforeUpdateEmail(newEmail)
-                .await() // Use verifyBeforeUpdateEmail for better security
-            // Email verification link sent. Actual update happens after user clicks the link.
-            // Inform the user to check their email.
-            AuthResult.Success(Unit) // Indicate verification email sent
-        } catch (e: FirebaseAuthWeakPasswordException) { // Should not happen for email, but include for safety
+                .await()
+
+
+            AuthResult.Success(Unit)
+        } catch (e: FirebaseAuthWeakPasswordException) { 
             AuthResult.Error("Invalid email format.")
         } catch (e: FirebaseAuthInvalidCredentialsException) {
             AuthResult.Error("Invalid email format.")

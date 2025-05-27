@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
-    private val getProfileStatsUseCase: GetProfileStatsUseCase, // Injected UseCase
+    private val getProfileStatsUseCase: GetProfileStatsUseCase, 
     private val logoutUseCase: LogoutUseCase,
     private val deleteAccountUseCase: DeleteAccountUseCase,
     private val getTasksUseCase: GetTasksUseCase,
@@ -63,7 +63,7 @@ class ProfileViewModel(
                                     "ProfileViewModel",
                                     "Task list changed (${tasks.size} tasks), recalculating stats..."
                                 )
-                                calculateAndSetStats(tasks) // Pass the collected list
+                                calculateAndSetStats(tasks) 
                             }
                     }
                 } else {
@@ -75,12 +75,12 @@ class ProfileViewModel(
 
     private suspend fun calculateAndSetStats(tasks: List<Task>) {
         try {
-            // Call the injected use case, passing the task list
+
             val statsResult = getProfileStatsUseCase(tasks)
-            // The use case now directly returns ProfileStats, not TaskResult
+
             setState { copy(stats = statsResult, isLoading = false, error = null) }
         } catch (e: Exception) {
-            // Handle potential exceptions during calculation within the use case
+
             setState {
                 copy(
                     error = "Failed to update stats: ${e.message}",
@@ -96,10 +96,10 @@ class ProfileViewModel(
         viewModelScope.launch {
             setState { copy(isLoading = true, error = null) }
             try {
-                // *** Step 1: Fetch the LATEST user data FIRST ***
+
                 val latestUser = getCurrentUserUseCase().firstOrNull()
                 if (latestUser == null) {
-                    // Handle case where user might have logged out in the meantime
+
                     setState {
                         copy(
                             isLoading = false,
@@ -110,14 +110,14 @@ class ProfileViewModel(
                     }
                     return@launch
                 }
-                // Update the user state immediately with the latest fetched data
-                setState { copy(user = latestUser) } // This ensures ProfileScreen gets the latest name
 
-                // *** Step 2: Fetch tasks (assuming it uses the current user context implicitly) ***
+                setState { copy(user = latestUser) }
+
+
                 val tasks = getTasksUseCase().firstOrNull()
                 if (tasks != null) {
-                    // *** Step 3: Calculate stats based on fetched tasks ***
-                    calculateAndSetStats(tasks) // This will set isLoading = false inside
+
+                    calculateAndSetStats(tasks) 
                 } else {
                     setState { copy(isLoading = false, error = "Could not load tasks for stats.") }
                 }
@@ -127,7 +127,7 @@ class ProfileViewModel(
                     copy(
                         error = "Failed to load profile data: ${e.message}",
                         isLoading = false,
-                        stats = null // Clear stats on error
+                        stats = null 
                     )
                 }
                 setEffect(ProfileEffect.ShowSnackbar("Error loading profile statistics."))
@@ -164,9 +164,9 @@ class ProfileViewModel(
                 setState { copy(isLoading = true, showDeleteConfirmDialog = false) }
                 when (val result = deleteAccountUseCase()) {
                     is AuthResult.Success -> {
-                        // Logout should happen automatically via AuthStateListener
+
                         setEffect(ProfileEffect.ShowSnackbar("Account deleted successfully."))
-                        // State update handled by observeUser
+
                     }
 
                     is AuthResult.Error -> {
@@ -174,7 +174,7 @@ class ProfileViewModel(
                         setEffect(ProfileEffect.ShowSnackbar("Error deleting account: ${result.message}"))
                         if (result.message.contains("Re-authentication required")) {
                             setEffect(ProfileEffect.ReAuthenticationRequired)
-                            // You might want to navigate to login here for re-auth
+
                             setEffect(ProfileEffect.NavigateToLoginScreen)
                         }
                     }
@@ -183,7 +183,7 @@ class ProfileViewModel(
 
             is ProfileIntent.NavigateToLogin -> setEffect(ProfileEffect.NavigateToLoginScreen)
             is ProfileIntent.NavigateToRegister -> setEffect(ProfileEffect.NavigateToRegisterScreen)
-            is ProfileIntent.NavigateToEditProfile -> setEffect(ProfileEffect.NavigateToEditProfileScreen) // Placeholder
+            is ProfileIntent.NavigateToEditProfile -> setEffect(ProfileEffect.NavigateToEditProfileScreen) 
             is ProfileIntent.SelectTimeFrame -> {
                 setState { copy(selectedTimeFrame = intent.timeFrame) }
             }

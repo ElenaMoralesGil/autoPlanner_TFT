@@ -83,30 +83,30 @@ private fun PriorityOptionItem(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
-    val priorityVisuals = priority.getVisuals() // Get the updated visuals
+    val priorityVisuals = priority.getVisuals() 
     val backgroundColor = if (isSelected) {
         priorityVisuals.color.copy(alpha = 0.15f)
     } else {
         Color.Transparent
     }
-    // Content color is the priority color when selected, otherwise default onSurface
+
     val contentColor = if (isSelected) {
         priorityVisuals.color
     } else {
         MaterialTheme.colorScheme.onSurface
     }
-    // Icon tint follows content color, except for the default priority icon when not selected
+
     val iconTint = if (isSelected) {
-        contentColor // Use priority color for CheckCircle
+        contentColor 
     } else {
-        priorityVisuals.color // Use priority color for the flag icon
+        priorityVisuals.color 
     }
 
-    // Determine which icon to show
+
     val iconToShowVector =
-        if (isSelected) Icons.Filled.CheckCircle else null // Only CheckCircle uses vector
+        if (isSelected) Icons.Filled.CheckCircle else null 
     val iconToShowResId =
-        if (isSelected) null else priorityVisuals.iconResId // Use flag resource otherwise
+        if (isSelected) null else priorityVisuals.iconResId 
 
     Surface(
         modifier = Modifier
@@ -124,27 +124,27 @@ private fun PriorityOptionItem(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Conditional Icon rendering
+
             when {
-                iconToShowVector != null -> { // For CheckCircle when selected
+                iconToShowVector != null -> { 
                     Icon(
                         imageVector = iconToShowVector,
                         contentDescription = "${priority.name} Priority Selected",
-                        tint = iconTint, // Use priority color
+                        tint = iconTint, 
                         modifier = Modifier.size(24.dp)
                     )
                 }
 
-                iconToShowResId != null -> { // For the flag icon when not selected
+                iconToShowResId != null -> { 
                     Icon(
                         painter = painterResource(id = iconToShowResId),
                         contentDescription = "${priority.name} Priority",
-                        tint = iconTint, // Use priority color for the flag
+                        tint = iconTint, 
                         modifier = Modifier.size(24.dp)
                     )
                 }
 
-                else -> Spacer(Modifier.size(24.dp)) // Fallback
+                else -> Spacer(Modifier.size(24.dp)) 
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -154,13 +154,13 @@ private fun PriorityOptionItem(
                     .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                color = contentColor // Text color changes based on selection
+                color = contentColor 
             )
-        } // End Row
-    } // End Surface
+        }
+    } 
 }
 
-// Helper data class remains the same
+
 private data class PriorityVisuals(
     val color: Color,
     val iconVector: ImageVector? = null,
@@ -182,22 +182,22 @@ private fun Priority.getVisuals(): PriorityVisuals {
     return when (this) {
         Priority.HIGH -> PriorityVisuals(
             color = MaterialTheme.colorScheme.error,
-            iconResId = R.drawable.priority // Use flag icon
+            iconResId = R.drawable.priority 
         )
 
         Priority.MEDIUM -> PriorityVisuals(
-            color = Color(0xFFFFA500), // Orange
-            iconResId = R.drawable.priority // Use flag icon
+            color = Color(0xFFFFA500),
+            iconResId = R.drawable.priority 
         )
 
         Priority.LOW -> PriorityVisuals(
-            color = Color(0xFF4CAF50), // Green
-            iconResId = R.drawable.priority // Use flag icon
+            color = Color(0xFF4CAF50),
+            iconResId = R.drawable.priority 
         )
 
         Priority.NONE -> PriorityVisuals(
-            color = MaterialTheme.colorScheme.onSurfaceVariant, // Use a neutral color for tint
-            iconResId = R.drawable.priority // Use flag icon
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconResId = R.drawable.priority 
         )
     }
 }

@@ -63,7 +63,7 @@ class NotificationReceiver : BroadcastReceiver() {
             return
         }
 
-        // Fetch additional task details
+
         scope.launch {
             try {
                 val taskRepository: TaskRepository by inject(TaskRepository::class.java)
@@ -72,7 +72,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 if (taskResult is TaskResult.Success) {
                     showEnhancedNotification(context, taskResult.data)
                 } else {
-                    // Fallback to basic notification
+
                     showBasicNotification(context, taskId, taskName)
                 }
             } catch (e: Exception) {
@@ -87,7 +87,7 @@ class NotificationReceiver : BroadcastReceiver() {
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         ensureNotificationChannel(context, notificationManager)
 
-        // Build notification content
+
         val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
         val dateFormatter = DateTimeFormatter.ofPattern("MMM d")
 
@@ -106,20 +106,20 @@ class NotificationReceiver : BroadcastReceiver() {
             }
         }
 
-        // Priority-based styling
+
         val (icon, accentColor) = when (task.priority) {
-            Priority.HIGH -> R.drawable.priority to android.graphics.Color.parseColor("#DC2626") // Red
-            Priority.MEDIUM -> R.drawable.priority to android.graphics.Color.parseColor("#F59E0B") // Amber
-            Priority.LOW -> R.drawable.priority to android.graphics.Color.parseColor("#3B82F6") // Blue
-            else -> R.drawable.autoplanner to android.graphics.Color.parseColor("#6366F1") // Indigo
+            Priority.HIGH -> R.drawable.priority to android.graphics.Color.parseColor("#DC2626")
+            Priority.MEDIUM -> R.drawable.priority to android.graphics.Color.parseColor("#F59E0B")
+            Priority.LOW -> R.drawable.priority to android.graphics.Color.parseColor("#3B82F6")
+            else -> R.drawable.autoplanner to android.graphics.Color.parseColor("#6366F1") 
         }
 
-        // Create intents for actions
+
         val openIntent = createOpenTaskIntent(context, task.id)
         val completeIntent = createActionIntent(context, ACTION_COMPLETE_TASK, task.id)
         val snoozeIntent = createActionIntent(context, ACTION_SNOOZE_TASK, task.id)
 
-        // Build the notification
+
         val builder =
             NotificationCompat.Builder(context, AutoPlannerApplication.REMINDER_CHANNEL_ID)
                 .setSmallIcon(icon)
@@ -145,7 +145,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 .setWhen(System.currentTimeMillis())
 
 
-        // Add action buttons
+
         builder.addAction(
             R.drawable.ic_completed,
             "Complete",
@@ -158,7 +158,7 @@ class NotificationReceiver : BroadcastReceiver() {
             snoozeIntent
         )
 
-        // Add subtasks preview if available
+
         if (task.subtasks.isNotEmpty()) {
             val subtaskInfo =
                 "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size} subtasks completed"
@@ -228,7 +228,7 @@ class NotificationReceiver : BroadcastReceiver() {
 
         return PendingIntent.getBroadcast(
             context,
-            taskId + action.hashCode(), // Unique request code
+            taskId + action.hashCode(), 
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -244,12 +244,12 @@ class NotificationReceiver : BroadcastReceiver() {
                 val result = taskRepository.updateTaskCompletion(taskId, true)
 
                 if (result is TaskResult.Success) {
-                    // Cancel the notification
+
                     val notificationManager =
                         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     notificationManager.cancel(taskId)
 
-                    // Show success feedback
+
                     showFeedbackNotification(context, "Task completed! ✅", "Great job!")
                 } else {
                     Log.e(TAG, "Failed to complete task $taskId")
@@ -273,16 +273,16 @@ class NotificationReceiver : BroadcastReceiver() {
                 if (taskResult is TaskResult.Success) {
                     val task = taskResult.data
 
-                    // Cancel current notification
+
                     val notificationManager =
                         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     notificationManager.cancel(taskId)
 
-                    // Schedule new notification for 10 minutes later
+
                     val snoozeTime = LocalDateTime.now().plusMinutes(10)
                     notificationScheduler.scheduleNotificationAt(task, snoozeTime)
 
-                    // Show feedback
+
                     showFeedbackNotification(
                         context,
                         "Snoozed for 10 minutes",
@@ -296,7 +296,7 @@ class NotificationReceiver : BroadcastReceiver() {
     }
 
     private fun handleOpenTask(context: Context, intent: Intent) {
-        // MainActivity will handle navigation based on the task ID extra
+
         Log.d(TAG, "Opening task from notification")
     }
 
@@ -311,7 +311,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 .setContentText(message)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setAutoCancel(true)
-                .setTimeoutAfter(3000) // Auto-dismiss after 3 seconds
+                .setTimeoutAfter(3000) 
                 .build()
 
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)

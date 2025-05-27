@@ -7,7 +7,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue // <-- Import getValue
+import androidx.compose.runtime.getValue 
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -18,7 +18,7 @@ import com.elena.autoplanner.presentation.navigation.Screen
 @Composable
 fun BottomNavigationBar(
     navController: NavHostController,
-    onMoreClick: () -> Unit, // Add callback for More button
+    onMoreClick: () -> Unit, 
 ) {
     val items = listOf(
         BottomNavItem("More", R.drawable.baseline_dehaze_24, "more_drawer_trigger"),
@@ -31,10 +31,10 @@ fun BottomNavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.primary
     ) {
-        // Use 'by' for property delegation to get the NavBackStackEntry? directly
+
         val navBackStackEntry by navController.currentBackStackEntryAsState()
 
-        // Now you can safely access destination and route
+
         val currentRouteBase = navBackStackEntry?.destination?.route?.substringBefore("?")
 
         items.forEach { item ->
@@ -48,13 +48,13 @@ fun BottomNavigationBar(
                     )
                 },
                 label = { Text(item.label) },
-                selected = isSelected, // More is never selected
+                selected = isSelected, 
                 onClick = {
                     if (item.route == "more_drawer_trigger") {
-                        onMoreClick() // Open the drawer
+                        onMoreClick() 
                     } else {
-                        // Standard navigation for other items
-                        navController.navigate(item.route) { // Navigate to routeBase for Tasks
+
+                        navController.navigate(item.route) { 
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
                             }
@@ -76,7 +76,7 @@ fun BottomNavigationBar(
     }
 }
 
-// BottomNavItem data class remains the same
+
 data class BottomNavItem(
     val label: String,
     val icon: Int,

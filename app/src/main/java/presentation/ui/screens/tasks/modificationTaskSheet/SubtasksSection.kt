@@ -32,12 +32,12 @@ fun SubtasksSection(
     onSubtaskDeleted: (Subtask) -> Unit,
     showDeleteButton: Boolean,
     showAddButton: Boolean,
-    errorMessage: String?, // For errors from ViewModel
+    errorMessage: String?, 
     modifier: Modifier = Modifier,
 ) {
 
     var newSubtaskText by remember { mutableStateOf("") }
-    // State specifically to track if the user tried adding an empty subtask
+
     var showEmptyInputError by remember { mutableStateOf(false) }
 
     Column(modifier = modifier) {
@@ -47,7 +47,7 @@ fun SubtasksSection(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        // Display errors coming from the ViewModel (e.g., save errors)
+
         errorMessage?.let {
             Text(
                 text = it,
@@ -60,7 +60,7 @@ fun SubtasksSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp, horizontal = 16.dp)
-                .heightIn(min = 0.dp, max = 200.dp) // Constrain height
+                .heightIn(min = 0.dp, max = 200.dp) 
         ) {
             items(subtasks, key = { it.id }) { subtask ->
                 SubtaskItem(

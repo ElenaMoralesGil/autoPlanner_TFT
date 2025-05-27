@@ -18,10 +18,10 @@ fun TaskSection.toEntity(
     lastUpdated: Long? = null
 ): SectionEntity {
     return SectionEntity(
-        id = this.id, // Use domain ID (0 for new)
+        id = this.id, 
         firestoreId = firestoreId,
         userId = userId,
-        listId = this.listId, // Use the local list ID it belongs to
+        listId = this.listId, 
         name = this.name,
         displayOrder = this.displayOrder,
         lastUpdated = lastUpdated ?: System.currentTimeMillis()

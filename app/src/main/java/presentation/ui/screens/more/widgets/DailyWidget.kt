@@ -43,7 +43,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Locale // For capitalizing date
+import java.util.Locale 
 
 class DailyWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = DailyWidget()
@@ -74,7 +74,7 @@ fun DailyWidgetContent(context: Context, tasks: List<Task>, date: LocalDate) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(WidgetColors.widgetBackground) // Themed: Very Light Gray
+            .background(WidgetColors.widgetBackground) 
             .padding(16.dp)
             .cornerRadius(24.dp)
     ) {
@@ -87,12 +87,12 @@ fun DailyWidgetContent(context: Context, tasks: List<Task>, date: LocalDate) {
                 style = TextStyle(
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
-                    color = WidgetColors.titleText // Themed: Cute Light Orange
+                    color = WidgetColors.titleText 
                 )
             )
             Spacer(GlanceModifier.defaultWeight())
             Image(
-                provider = ImageProvider(R.drawable.ic_refresh), // Ensure this icon is neutral or matches orange
+                provider = ImageProvider(R.drawable.ic_refresh), 
                 contentDescription = context.getString(R.string.widget_refresh_description),
                 modifier = GlanceModifier
                     .size(28.dp)
@@ -105,7 +105,7 @@ fun DailyWidgetContent(context: Context, tasks: List<Task>, date: LocalDate) {
             },
             style = TextStyle(
                 fontSize = 15.sp,
-                color = WidgetColors.secondaryText, // Themed: Lighter Dark Gray
+                color = WidgetColors.secondaryText, 
                 fontWeight = FontWeight.Normal
             ),
             modifier = GlanceModifier.padding(bottom = 12.dp)
@@ -119,7 +119,7 @@ fun DailyWidgetContent(context: Context, tasks: List<Task>, date: LocalDate) {
                 Text(
                     context.getString(R.string.widget_no_tasks_today),
                     style = TextStyle(
-                        color = WidgetColors.tertiaryText, // Themed: Medium Gray
+                        color = WidgetColors.tertiaryText, 
                         fontSize = 14.sp
                     )
                 )
@@ -144,20 +144,20 @@ fun DailyTaskWidgetItem(task: Task) {
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .background(WidgetColors.itemBackground) // Themed: White
+            .background(WidgetColors.itemBackground) 
             .cornerRadius(16.dp)
             .padding(vertical = 10.dp, horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            // Caja para la barra de acento
+
             modifier = GlanceModifier
                 .size(width = 4.dp, height = 32.dp)
-                .background(WidgetColors.accent) // Themed: Cute Light Orange
+                .background(WidgetColors.accent) 
                 .cornerRadius(2.dp),
             contentAlignment = Alignment.Center,
             content = {}
-        ) // No se especifica contentAlignment ni content si es solo una barra de color
+        ) 
 
         Spacer(GlanceModifier.width(12.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
@@ -166,7 +166,7 @@ fun DailyTaskWidgetItem(task: Task) {
                 style = TextStyle(
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = WidgetColors.primaryText // Themed: Dark Gray
+                    color = WidgetColors.primaryText 
                 ),
                 maxLines = 2
             )
@@ -175,7 +175,7 @@ fun DailyTaskWidgetItem(task: Task) {
                     text = it.format(timeFormatter),
                     style = TextStyle(
                         fontSize = 13.sp,
-                        color = WidgetColors.secondaryText // Themed: Lighter Dark Gray
+                        color = WidgetColors.secondaryText 
                     ),
                     modifier = GlanceModifier.padding(top = 3.dp)
                 )

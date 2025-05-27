@@ -47,7 +47,7 @@ fun TaskDetailSheet(
 
     val state by viewModel.state.collectAsState()
 
-    // Handle side effects
+
     LaunchedEffect(viewModel) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
@@ -64,7 +64,7 @@ fun TaskDetailSheet(
         }
     }
 
-    // Load task details when the sheet appears
+
     LaunchedEffect(taskId) {
         viewModel.sendIntent(TaskDetailIntent.LoadTask(taskId))
     }
@@ -159,7 +159,7 @@ fun TaskDetailSheet(
                     }
                 }
 
-                // Completion toggle
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
