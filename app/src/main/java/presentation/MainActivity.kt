@@ -1,7 +1,13 @@
 package com.elena.autoplanner.presentation
 
 import android.Manifest
+import android.app.AlarmManager
+import android.app.AlertDialog
+import android.app.NotificationManager
 import android.appwidget.AppWidgetManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -22,10 +28,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.elena.autoplanner.AutoPlannerApplication
+import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.utils.DataSeeder
@@ -38,6 +48,7 @@ import com.elena.autoplanner.presentation.ui.screens.more.MoreDrawerContent
 import com.elena.autoplanner.presentation.ui.theme.AppTheme
 import com.elena.autoplanner.presentation.viewmodel.MoreViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -49,41 +60,48 @@ class MainActivity : ComponentActivity() {
     private val dataSeeder: DataSeeder by inject()
     private val taskRepository: TaskRepository by inject()
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                Log.i("MainActivity", "POST_NOTIFICATIONS permission granted.")
-                // You might trigger a refresh of alarms here if needed
-            } else {
-                Log.w("MainActivity", "POST_NOTIFICATIONS permission denied.")
-                // Explain to the user why the permission is needed (e.g., via Snackbar or Dialog)
-                // Show snackbar: scope.launch { snackbarHostState.showSnackbar("Notifications disabled. Reminders won't work.") }
-            }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d("MainActivity", "Notification permission granted")
+        } else {
+            Log.w("MainActivity", "Notification permission denied")
         }
+    }
 
     private fun checkAndRequestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
                 ContextCompat.checkSelfPermission(
-                    this, Manifest.permission.POST_NOTIFICATIONS
-                ) == android.content.pm.PackageManager.PERMISSION_GRANTED -> {
-                    Log.d("MainActivity", "POST_NOTIFICATIONS permission already granted.")
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permission already granted
+                    Log.d("MainActivity", "Notification permission already granted")
                 }
-
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
-                    Log.w("MainActivity", "Showing rationale for POST_NOTIFICATIONS.")
-                    // Show an explanation to the user *asynchronously* before requesting again.
-                    // For now, just request again or show snackbar.
-                    // scope.launch { snackbarHostState.showSnackbar("Please allow notifications for reminders.") }
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) // Or request after showing rationale dialog
+                    showNotificationPermissionRationale()
                 }
-
                 else -> {
-                    Log.i("MainActivity", "Requesting POST_NOTIFICATIONS permission.")
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    // Request permission
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
         }
+    }
+
+    private fun showNotificationPermissionRationale() {
+        // Show a dialog explaining why notifications are important
+        AlertDialog.Builder(this)
+            .setTitle("Notification Permission Needed")
+            .setMessage("Notifications are required to remind you about your tasks.")
+            .setPositiveButton("Grant") { _, _ ->
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,23 +133,92 @@ class MainActivity : ComponentActivity() {
         checkAndRequestNotificationPermission()
 
         setContent {
-            MainApp()
+            MainApp { navController ->
+                handleNotificationNavigation(intent, navController)
+            }
+        }
+    }
+
+
+    private fun handleNotificationNavigation(intent: Intent?, navController: NavHostController) {
+        intent?.let {
+            val taskId = it.getIntExtra("navigate_to_task_id", -1)
+            if (taskId != -1) {
+                Log.d("MainActivity", "Navigating to task $taskId from notification")
+
+                lifecycleScope.launch {
+                    delay(100) // Small delay to ensure navigation is ready
+
+                    try {
+                        // Fetch task details to get its list/section
+                        val taskResult = taskRepository.getTask(taskId)
+                        if (taskResult is TaskResult.Success) {
+                            val task = taskResult.data
+
+                            // Navigate to the task's list
+                            val route = when {
+                                task.listId != null && task.sectionId != null -> {
+                                    "tasks?listId=${task.listId}&sectionId=${task.sectionId}"
+                                }
+
+                                task.listId != null -> {
+                                    "tasks?listId=${task.listId}"
+                                }
+
+                                else -> {
+                                    "tasks" // All tasks view
+                                }
+                            }
+
+                            Log.d(
+                                "MainActivity",
+                                "Navigating to route: $route for task in list: ${task.listName}"
+                            )
+
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+
+                            // Optionally, you could also highlight or scroll to the specific task
+                            // by passing the taskId as an additional parameter
+                        } else {
+                            Log.e("MainActivity", "Failed to fetch task details for navigation")
+                            // Fallback: just go to tasks screen
+                            navController.navigate("tasks")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "Error handling notification navigation", e)
+                    }
+                }
+
+                // Clear the intent to avoid re-navigation
+                it.removeExtra("navigate_to_task_id")
+            }
         }
     }
 }
 
+
 @Composable
-fun MainApp() {
+fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
     AppTheme {
         val navController = rememberNavController()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         val listViewModel: TaskListViewModel = koinViewModel()
-        val moreViewModel: MoreViewModel = koinViewModel() // Get MoreViewModel instance
-        val context = LocalContext.current // Get context
-        val appWidgetManager = AppWidgetManager.getInstance(context) // Get AppWidgetManager
-        val snackbarHostState = remember { SnackbarHostState() } // For showing messages
+        val moreViewModel: MoreViewModel = koinViewModel()
+        val context = LocalContext.current
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val snackbarHostState = remember { SnackbarHostState() }
 
+        // Notify when NavController is ready
+        LaunchedEffect(navController) {
+            onNavControllerReady(navController)
+        }
         // Handle MoreViewModel Effects (like triggering widget add)
         LaunchedEffect(moreViewModel) {
             moreViewModel.effect.collectLatest { effect ->

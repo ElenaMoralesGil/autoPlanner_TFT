@@ -1,5 +1,5 @@
-package com.elena.autoplanner.notifications
 
+package com.elena.autoplanner.notifications
 import com.elena.autoplanner.notifications.NotificationScheduler
 import org.koin.java.KoinJavaComponent.inject
 import android.content.BroadcastReceiver
@@ -34,10 +34,6 @@ class BootReceiver : BroadcastReceiver() {
 
             scope.launch {
                 try {
-                    // Delay slightly JUST IN CASE Koin init is slow on boot
-                    // delay(500) // Try without this first, add if necessary
-
-                    // Resolve dependencies LAZILY *inside* the coroutine
                     val taskRepository: TaskRepository by KoinJavaComponent.inject(TaskRepository::class.java)
                     val notificationScheduler: NotificationScheduler by inject(NotificationScheduler::class.java)
 

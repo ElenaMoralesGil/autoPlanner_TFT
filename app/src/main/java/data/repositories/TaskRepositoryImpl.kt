@@ -448,10 +448,12 @@ class TaskRepositoryImpl(
                     Log.d(TAG, "saveTask (Update): Updated Room task $finalLocalId")
                 }
                 updateRelatedEntitiesLocal(finalLocalId, task.copy(id = finalLocalId))
-
+                Log.d("TaskDebug", "Saving task: ${task.name}, reminderPlan: ${task.reminderPlan}")
                 if (task.reminderPlan != null && task.reminderPlan.mode != ReminderMode.NONE) {
+                    Log.d("TaskDebug", "Scheduling notification for task: ${task.id}")
                     notificationScheduler.scheduleNotification(task)
                 } else {
+                    Log.d("TaskDebug", "No notification needed for task: ${task.id}")
                     notificationScheduler.cancelNotification(finalLocalId)
                 }
 
@@ -484,6 +486,14 @@ class TaskRepositoryImpl(
                     task.id
                 }
                 updateRelatedEntitiesLocal(savedLocalId, task.copy(id = savedLocalId))
+                val savedTask = task.copy(id = savedLocalId)
+                if (savedTask.reminderPlan != null && savedTask.reminderPlan.mode != ReminderMode.NONE) {
+                    Log.d("TaskDebug", "Scheduling notification for local task: ${savedTask.id}")
+                    notificationScheduler.scheduleNotification(savedTask)
+                } else {
+                    notificationScheduler.cancelNotification(savedLocalId)
+                }
+
                 TaskResult.Success(savedLocalId)
             }
         } catch (e: Exception) {

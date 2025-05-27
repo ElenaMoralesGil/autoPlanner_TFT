@@ -23,15 +23,27 @@ class NotificationScheduler(
     }
 
     fun scheduleNotification(task: Task) {
-        val taskId = task.id
         val triggerTime = calculateReminderTime(task)
+        if (triggerTime != null) {
+            scheduleNotificationAt(task, triggerTime)
+        } else {
+            Log.d(TAG, "No reminder time calculated for task ${task.id}")
+            cancelNotification(task.id)
+        }
+    }
 
-        if (triggerTime == null || triggerTime.isBefore(LocalDateTime.now())) {
-            Log.d(
-                TAG,
-                "Reminder for task $taskId is null or in the past. Canceling any existing alarm."
-            )
-            cancelNotification(taskId) // Cancel if time is invalid or past
+    fun scheduleNotificationAt(task: Task, triggerTime: LocalDateTime) {
+        val taskId = task.id
+
+        if (triggerTime.isBefore(LocalDateTime.now())) {
+            Log.d(TAG, "Reminder time for task $taskId is in the past: $triggerTime")
+            // If it's only slightly in the past (within 5 minutes), show immediately
+            val minutesPast =
+                java.time.Duration.between(triggerTime, LocalDateTime.now()).toMinutes()
+            if (minutesPast <= 5) {
+                Log.d(TAG, "Reminder is only $minutesPast minutes past, showing immediately")
+                showImmediateNotification(task)
+            }
             return
         }
 
@@ -40,20 +52,16 @@ class NotificationScheduler(
             putExtra(EXTRA_TASK_NAME, task.name)
         }
 
-        // Use task ID as request code for uniqueness
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            taskId, // Use task ID as request code
+            taskId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Ensure exact alarm permission before scheduling
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!alarmManager.canScheduleExactAlarms()) {
                 Log.w(TAG, "Cannot schedule exact alarms. Skipping notification for task $taskId.")
-                // Optionally, inform the user or use setAndAllowWhileIdle instead
-                // For now, we just skip if permission not granted
                 return
             }
         }
@@ -61,32 +69,53 @@ class NotificationScheduler(
         try {
             val triggerMillis =
                 triggerTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerMillis,
-                pendingIntent
-            )
-            Log.i(
-                TAG,
-                "Scheduled notification for task $taskId ('${task.name}') at $triggerTime ($triggerMillis)"
-            )
-        } catch (e: SecurityException) {
-            Log.e(
-                TAG,
-                "SecurityException: Failed to schedule exact alarm for task $taskId. Check SCHEDULE_EXACT_ALARM permission.",
-                e
-            )
+
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms() -> {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerMillis,
+                        pendingIntent
+                    )
+                    Log.i(TAG, "Scheduled exact alarm for task $taskId at $triggerTime")
+                }
+
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
+                    alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerMillis,
+                        pendingIntent
+                    )
+                    Log.i(TAG, "Scheduled inexact alarm for task $taskId at $triggerTime")
+                }
+
+                else -> {
+                    alarmManager.set(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerMillis,
+                        pendingIntent
+                    )
+                    Log.i(TAG, "Scheduled alarm for task $taskId at $triggerTime")
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to schedule notification for task $taskId", e)
         }
     }
 
+    private fun showImmediateNotification(task: Task) {
+        val intent = Intent(context, NotificationReceiver::class.java).apply {
+            putExtra(EXTRA_TASK_ID, task.id)
+            putExtra(EXTRA_TASK_NAME, task.name)
+        }
+        context.sendBroadcast(intent)
+    }
+
     fun cancelNotification(taskId: Int) {
         val intent = Intent(context, NotificationReceiver::class.java)
-        // Recreate the *exact same* PendingIntent used for scheduling
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            taskId, // Use the same task ID
+            taskId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -97,16 +126,15 @@ class NotificationScheduler(
 
     internal fun calculateReminderTime(task: Task): LocalDateTime? {
         val reminderPlan = task.reminderPlan ?: return null
-        val startTime = task.startDateConf.dateTime ?: return null // Reminder needs a start time
+        val startTime = task.startDateConf.dateTime ?: return null
 
         return when (reminderPlan.mode) {
             ReminderMode.NONE -> null
             ReminderMode.PRESET_OFFSET -> {
                 reminderPlan.offsetMinutes?.let { offset ->
                     startTime.minusMinutes(offset.toLong())
-                } ?: startTime // If offset is somehow null, remind at start time
+                } ?: startTime
             }
-
             ReminderMode.EXACT -> reminderPlan.exactDateTime
             ReminderMode.CUSTOM -> {
                 var reminderDateTime = startTime
@@ -114,12 +142,10 @@ class NotificationScheduler(
                     reminderDateTime = reminderDateTime.minusWeeks(weeks.toLong())
                 }
                 reminderPlan.customDayOffset?.let { days ->
-                    // Important: Day offset is relative to the (potentially week-adjusted) date
                     reminderDateTime = reminderDateTime.minusDays(days.toLong())
                 }
                 reminderPlan.customHour?.let { hour ->
                     reminderPlan.customMinute?.let { minute ->
-                        // Set the specific time on the calculated date
                         reminderDateTime =
                             reminderDateTime.withHour(hour).withMinute(minute).withSecond(0)
                                 .withNano(0)
