@@ -27,7 +27,9 @@ android {
             useSupportLibrary = true
         }
     }
-
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -78,12 +80,16 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.room.common)
+
+
+    implementation(libs.androidx.room.runtime) 
     implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
     implementation(libs.jems2)
     implementation(libs.rfc5545.datetime)
     implementation(libs.lib.recur)
-    implementation(libs.androidx.navigation.safe.args.generator)
+    implementation(libs.androidx.navigation.safe.args.generator) 
     implementation(libs.androidx.material3.android)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
@@ -92,25 +98,37 @@ dependencies {
     implementation(libs.androidx.foundation.layout.android)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.animation.core.android)
-    implementation(libs.androidx.compose.testing)
+    implementation(libs.androidx.compose.testing) 
     implementation(libs.protolite.well.known.types)
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m2)
     implementation(libs.vico.compose.m3)
     implementation(libs.vico.views)
-    implementation("androidx.glance:glance-appwidget:1.1.0-beta01") // Or latest stable
+    implementation("androidx.glance:glance-appwidget:1.1.0-beta01")
     implementation("androidx.glance:glance-material3:1.1.0-beta01")
-    ksp(libs.androidx.room.compiler)
-    testImplementation(libs.kotlinx.coroutines.test)
+
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test) 
     testImplementation(libs.turbine)
-    testImplementation(libs.kotlinx.coroutines.test.v171)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.inline)
-    testImplementation(libs.kotlinx.coroutines.test.v164)
-    testImplementation(libs.junit)
     testImplementation(libs.mockk)
-    androidTestImplementation(libs.mockk.android)
-    androidTestImplementation(libs.androidx.espresso.core)
+    testImplementation(libs.truth)
+
+
+    testImplementation(libs.androidx.test.core.ktx)
+    testImplementation(libs.androidx.test.ext.junit.ktx)
+    testImplementation(libs.androidx.test.runner)
+    testImplementation(libs.androidx.test.rules)
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.androidx.arch.core.testing)
+    testImplementation(libs.androidx.espresso.core)
+    testImplementation(libs.mockk.android)
+    testImplementation(libs.truth)
+
+
+    
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
 }
