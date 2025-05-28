@@ -37,7 +37,6 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE firestoreId = :firestoreId") 
     suspend fun getAnyTaskByFirestoreId(firestoreId: String): TaskEntity?
 
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTask(task: TaskEntity): Long 
 

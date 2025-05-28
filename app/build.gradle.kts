@@ -23,16 +23,31 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] =
+            "ACTIVITY-MISSING,EMULATOR,LOW-BATTERY,UNLOCKED,UNSUSTAINED-ACTIVITY,DEBUGGABLE"
+
         vectorDrawables {
             useSupportLibrary = true
         }
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+
     }
     buildTypes {
         release {
             isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+
+        create("benchmark") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -127,6 +142,7 @@ dependencies {
     testImplementation(libs.mockk.android)
     testImplementation(libs.truth)
     testImplementation(libs.mockito.kotlin)
+    testImplementation("androidx.benchmark:benchmark-junit4:1.2.2")
 
     
     debugImplementation(libs.ui.tooling)
