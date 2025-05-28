@@ -126,9 +126,10 @@ dependencies {
     testImplementation(libs.androidx.espresso.core)
     testImplementation(libs.mockk.android)
     testImplementation(libs.truth)
-
+    testImplementation(libs.mockito.kotlin)
 
     
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
+    testImplementation(kotlin("test"))
 }

@@ -17,6 +17,7 @@ libRecurVersion = "0.9.2"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.1"
 mockitoCore = "4.11.0"
+mockitoKotlin = "4.1.0"
 mockk = "1.14.2"
 navigationRuntimeKtx = "2.8.9"
 navigationCompose = "2.8.9"
@@ -69,6 +70,7 @@ kotlinx-coroutines-test-v171 = { module = "org.jetbrains.kotlinx:kotlinx-corouti
 lib-recur = { module = "org.dmfs:lib-recur", version.ref = "libRecurVersion" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockitoCore" }
 mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockitoCore" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockitoKotlin" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockk" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
