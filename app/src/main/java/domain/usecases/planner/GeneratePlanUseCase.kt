@@ -100,8 +100,9 @@ class GeneratePlanUseCase(
                 end = scheduleEndDate,
                 workStart = input.workStartTime,
                 workEnd = input.workEndTime,
+                initialPeriodTasks = emptyMap(),
+                dayOrganization = input.dayOrganization
 
-                initialPeriodTasks = emptyMap()
             )
             Log.d(
                 "GeneratePlanUseCase",
@@ -874,6 +875,7 @@ class TimelineManager {
     fun initialize(
         start: LocalDate, end: LocalDate, workStart: LocalTime, workEnd: LocalTime,
         initialPeriodTasks: Map<LocalDate, Map<DayPeriod, List<PlanningTask>>>,
+        dayOrganization: DayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
     ) {
         timeline.clear()
         var current = start
@@ -887,6 +889,10 @@ class TimelineManager {
             timeline[current] = daySchedule
             current = current.plusDays(1)
         }
+        timeline.values.forEach { daySchedule ->
+            addRegularBreaks(daySchedule, dayOrganization)
+        }
+
     }
 
     private fun initializeDayBlocks(daySchedule: DaySchedule) {
@@ -1027,8 +1033,14 @@ class TimelineManager {
         return PlacementResultInternal.Success(taskBlock)
     }
 
-    fun addBufferOrBreak(taskEndTime: LocalDateTime, strategy: DayOrganization) {
-        val bufferDuration = getBufferDuration(strategy)
+    fun addBufferOrBreak(taskEndTime: LocalDateTime, task: Task, strategy: DayOrganization) {
+        val bufferDuration = when (strategy) {
+            DayOrganization.SMART_BUFFERS, DayOrganization.BALANCED_SCHEDULE -> calculateAdaptiveBuffer(
+                task
+            )
+
+            else -> Duration.ZERO
+        }
         if (bufferDuration <= Duration.ZERO) return
         val bufferStartTime = taskEndTime
         val bufferEndTime = taskEndTime.plus(bufferDuration)
@@ -1086,9 +1098,70 @@ class TimelineManager {
     }
 
     fun getBufferDuration(strategy: DayOrganization): Duration = when (strategy) {
-        DayOrganization.FOCUS_URGENT_BUFFER -> Duration.ofMinutes(bufferTimeMinutes)
-        DayOrganization.LOOSE_SCHEDULE_BREAKS -> Duration.ofMinutes(breakTimeMinutes)
+        DayOrganization.SMART_BUFFERS, DayOrganization.BALANCED_SCHEDULE -> Duration.ofMinutes(10) // Temporal
         else -> Duration.ZERO
+    }
+
+    private fun calculateAdaptiveBuffer(task: Task): Duration = when {
+        task.priority == Priority.HIGH -> Duration.ofMinutes(20)
+        task.effectiveDurationMinutes >= 120 -> Duration.ofMinutes(15)
+        task.effectiveDurationMinutes >= 60 -> Duration.ofMinutes(10)
+        else -> Duration.ofMinutes(5)
+    }
+
+    private fun addRegularBreaks(daySchedule: DaySchedule, strategy: DayOrganization) {
+        if (strategy != DayOrganization.BALANCED_SCHEDULE) return
+
+        val workStart = daySchedule.workStartTime
+        val workEnd = daySchedule.workEndTime
+        val date = daySchedule.date
+
+        var currentBreakTime = workStart.plusHours(2).plusMinutes(30)
+        while (currentBreakTime.plusMinutes(15).isBefore(workEnd.minusHours(1))) {
+            val breakStart = date.atTime(currentBreakTime)
+            val breakEnd = breakStart.plusMinutes(15)
+
+            val exactSlot = findSlot(
+                Duration.ofMinutes(15),
+                breakStart,
+                breakEnd.plusNanos(1),
+                PlacementHeuristic.EARLIEST_FIT
+            )
+
+            if (exactSlot?.start == breakStart && exactSlot.end == breakEnd) {
+                val breakTask = Task.Builder().id(-2).name("Coffee Break").build()
+                placeTask(breakTask, breakStart, breakEnd, Occupancy.BUFFER, true)
+            }
+
+            currentBreakTime = currentBreakTime.plusHours(3)
+        }
+
+        val lunchStart = findBestLunchTime(date, workStart, workEnd)
+        if (lunchStart != null) {
+            val lunchEnd = lunchStart.plusMinutes(60)
+            val lunchTask = Task.Builder().id(-3).name("Lunch Break").build()
+            placeTask(lunchTask, lunchStart, lunchEnd, Occupancy.BUFFER, true)
+        }
+    }
+
+    private fun findBestLunchTime(
+        date: LocalDate,
+        workStart: LocalTime,
+        workEnd: LocalTime,
+    ): LocalDateTime? {
+        val preferredStart = LocalTime.of(12, 30)
+        return if (preferredStart.isAfter(workStart) && preferredStart.plusHours(1)
+                .isBefore(workEnd)
+        ) {
+            date.atTime(preferredStart)
+        } else {
+            findSlot(
+                Duration.ofMinutes(60),
+                date.atTime(maxOf(workStart, LocalTime.of(12, 0))),
+                date.atTime(minOf(workEnd, LocalTime.of(14, 0))),
+                PlacementHeuristic.EARLIEST_FIT
+            )?.start
+        }
     }
 
     fun getPeriodStartTime(period: DayPeriod): LocalTime = when (period) {
@@ -1720,7 +1793,7 @@ class TaskPlacer(
                         placementStartTime.toLocalDate()
                     ), task.id
                 )
-                timelineManager.addBufferOrBreak(placementEndTime, dayOrganization)
+                timelineManager.addBufferOrBreak(placementEndTime, task, dayOrganization)
                 Log.d(
                     "TaskPlacerFlex",
                     "Task ${task.id}: Placed multi-day flex chunk ${result1.placedBlock.start.toLocalTime()}-${result2.placedBlock.end.toLocalTime()}. Rem: ${remainingDuration.toMinutes()}m"
@@ -1759,7 +1832,7 @@ class TaskPlacer(
                                 placedBlock.start.toLocalDate()
                             ), task.id
                         )
-                        timelineManager.addBufferOrBreak(placedBlock.end, dayOrganization)
+                        timelineManager.addBufferOrBreak(placedBlock.end, task, dayOrganization)
                         Log.d(
                             "TaskPlacerFlex",
                             "Task ${task.id}: Placed flex chunk ${placedBlock.start.toLocalTime()}-${placedBlock.end.toLocalTime()} on ${placedBlock.start.toLocalDate()}. Rem: ${remainingDuration.toMinutes()}m"
