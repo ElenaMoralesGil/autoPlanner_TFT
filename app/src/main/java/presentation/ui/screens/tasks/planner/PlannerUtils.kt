@@ -13,9 +13,9 @@ fun PrioritizationStrategy.toDisplayString(): String = when (this) {
 }
 
 fun DayOrganization.toDisplayString(): String = when (this) {
-    DayOrganization.MAXIMIZE_PRODUCTIVITY -> "Maximize productivity (tight schedule)"
-    DayOrganization.FOCUS_URGENT_BUFFER -> "Focus on urgent (add buffers)"
-    DayOrganization.LOOSE_SCHEDULE_BREAKS -> "Relaxed schedule (add breaks)"
+    DayOrganization.MAXIMIZE_PRODUCTIVITY -> "No gaps between tasks (tight schedule)"
+    DayOrganization.FOCUS_URGENT_BUFFER -> "Extra time between tasks (add buffers)"
+    DayOrganization.LOOSE_SCHEDULE_BREAKS -> "Breaks every few hours (add breaks)"
 }
 
 fun OverdueTaskHandling.toDisplayString(): String = when (this) {
