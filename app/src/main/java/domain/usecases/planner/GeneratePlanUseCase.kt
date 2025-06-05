@@ -345,7 +345,7 @@ class OverdueTaskHandler {
 
             when (strategy) {
                 OverdueTaskHandling.POSTPONE_TO_TOMORROW -> {
-                    context.addPostponedTask(planningTask.task) 
+                    context.addPostponedTask(planningTask.task)
                 }
 
                 OverdueTaskHandling.MANAGE_WHEN_FREE -> {
@@ -353,20 +353,64 @@ class OverdueTaskHandler {
                 }
 
                 OverdueTaskHandling.ADD_TODAY_FREE_TIME -> {
-                    if (scopeStartDate <= today && scopeEndDate >= today) {
-                        planningTask.flags.isOverdue = true
-                        planningTask.flags.constraintDate = today
-                        Log.d("OverdueTaskHandler", "Task ${taskId} marked for placement today.")
-
-                    } else {
-                        Log.w(
-                            "OverdueTaskHandler",
-                            "Cannot schedule overdue task ${taskId} today (scope outside). Fallback to Manual."
-                        )
-                        context.addExpiredForManualResolution(planningTask.task) 
-                    }
+                    handleAddToFreeTime(
+                        context,
+                        overdueTaskIds,
+                        today,
+                        scopeStartDate,
+                        scopeEndDate
+                    )
                 }
             }
+        }
+    }
+
+    private fun handleAddToFreeTime(
+        context: PlanningContext,
+        overdueTaskIds: List<Int>,
+        today: LocalDate,
+        scopeStartDate: LocalDate,
+        scopeEndDate: LocalDate,
+    ) {
+        val availableDays = mutableListOf<LocalDate>()
+        var currentDate = maxOf(today, scopeStartDate)
+        while (!currentDate.isAfter(scopeEndDate)) {
+            availableDays.add(currentDate)
+            currentDate = currentDate.plusDays(1)
+        }
+
+        if (availableDays.isEmpty()) {
+            overdueTaskIds.forEach { taskId ->
+                context.planningTaskMap[taskId]?.let { planningTask ->
+                    context.addExpiredForManualResolution(planningTask.task)
+                }
+            }
+            return
+        }
+
+        val sortedOverdueTasks = overdueTaskIds
+            .mapNotNull { context.planningTaskMap[it] }
+            .sortedByDescending {
+                when (it.task.priority) {
+                    Priority.HIGH -> 3
+                    Priority.MEDIUM -> 2
+                    Priority.LOW -> 1
+                    Priority.NONE -> 0
+                }
+            }
+
+        var dayIndex = 0
+        sortedOverdueTasks.forEach { planningTask ->
+            val taskId = planningTask.id
+            val targetDate = availableDays[dayIndex % availableDays.size]
+
+            planningTask.flags.isOverdue = true
+            planningTask.flags.constraintDate = targetDate
+
+            Log.d("OverdueTaskHandler", "Task $taskId marked for placement on $targetDate")
+
+            // Move to next day for distribution
+            dayIndex++
         }
     }
 }
@@ -700,12 +744,53 @@ class TaskCategorizer {
         val today = LocalDate.now()
 
         planningTasks.forEach taskLoop@{ planningTask ->
+
             if (context.placedTaskIds.contains(planningTask.id) || planningTask.flags.isHardConflict) {
 
                 return@taskLoop
             }
             val task = planningTask.task
+            Log.d(
+                "CategoryDebug",
+                "Task ${task.id}: isOverdue=${planningTask.flags.isOverdue}, constraintDate=${planningTask.flags.constraintDate}, startDate=${task.startDateConf.dateTime}"
+            )
 
+
+            if (planningTask.flags.isOverdue) {
+                when {
+
+                    planningTask.flags.constraintDate == today -> {
+                        Log.d("Categorizer", "Task ${task.id} - Type: Overdue Today -> DateFlex")
+                        dateFlex.computeIfAbsent(today) { mutableListOf() }.add(planningTask)
+                        return@taskLoop
+                    }
+
+                    planningTask.flags.constraintDate == null -> {
+                        Log.d("Categorizer", "Task ${task.id} - Type: Overdue Flexible -> FullFlex")
+                        fullFlex.add(planningTask)
+                        return@taskLoop
+                    }
+
+                    else -> {
+                        val constraintDate = planningTask.flags.constraintDate!!
+                        if (constraintDate in scopeStart..scopeEnd) {
+                            Log.d(
+                                "Categorizer",
+                                "Task ${task.id} - Type: Overdue on $constraintDate -> DateFlex"
+                            )
+                            dateFlex.computeIfAbsent(constraintDate) { mutableListOf() }
+                                .add(planningTask)
+                        } else {
+                            Log.d(
+                                "Categorizer",
+                                "Task ${task.id} - Type: Overdue outside scope -> FullFlex"
+                            )
+                            fullFlex.add(planningTask)
+                        }
+                        return@taskLoop
+                    }
+                }
+            }
 
             if (task.repeatPlan?.frequencyType != FrequencyType.NONE) {
                 val occurrences = recurrenceExpander.expandRecurringTask(
@@ -841,6 +926,21 @@ class TaskCategorizer {
                     fullFlex.add(planningTask)
                 }
             }
+        }
+
+        val uncategorizedTasks = planningTasks.filter { planningTask ->
+            val taskId = planningTask.id
+            !fixed.any { it.first.id == taskId } &&
+                    !periodPending.values.any { it.values.any { list -> list.any { it.id == taskId } } } &&
+                    !dateFlex.values.any { it.any { it.id == taskId } } &&
+                    !deadlineFlex.any { it.id == taskId } &&
+                    !fullFlex.any { it.id == taskId }
+        }
+
+        Log.w("CategoryDebug", "Uncategorized tasks: ${uncategorizedTasks.size}")
+        uncategorizedTasks.forEach {
+            Log.w("CategoryDebug", "Uncategorized: Task ${it.id} - ${it.task.name}")
+            fullFlex.add(it)
         }
         return CategorizationResult(fixed, periodPending, dateFlex, deadlineFlex, fullFlex)
     }
@@ -1417,9 +1517,30 @@ class TaskPlacer(
             planningTask.flags.isOverdue && planningTask.flags.constraintDate == today -> {
                 Log.v("TaskPlacer", "Task ${task.id} - Type: Overdue Today")
                 val daySchedule = timelineManager.getDaySchedule(today)
-                minSearchTime = today.atTime(daySchedule?.workStartTime ?: input.workStartTime)
+
+
+                minSearchTime = LocalDateTime.now()
                 maxSearchTime = today.plusDays(1).atStartOfDay()
-                isFlexible = false 
+
+                val workStartTime = daySchedule?.workStartTime ?: input.workStartTime
+                val todayWorkStart = today.atTime(workStartTime)
+                if (minSearchTime.isBefore(todayWorkStart)) {
+                    minSearchTime = todayWorkStart
+                }
+
+                isFlexible = true
+            }
+
+            planningTask.flags.isOverdue && planningTask.flags.constraintDate == null -> {
+                Log.v("TaskPlacer", "Task ${task.id} - Type: Overdue Flexible (scope-wide)")
+
+                minSearchTime = maxOf(
+                    LocalDateTime.now(),
+                    scopeStartDate.atTime(input.workStartTime)
+                )
+                maxSearchTime = scopeEndDate.plusDays(1).atStartOfDay()
+
+                isFlexible = true
             }
 
             taskStartPeriod != DayPeriod.NONE && taskStartPeriod != DayPeriod.ALLDAY -> {
