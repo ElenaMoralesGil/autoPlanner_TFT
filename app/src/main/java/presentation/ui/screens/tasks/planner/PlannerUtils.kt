@@ -7,10 +7,9 @@ import com.elena.autoplanner.domain.models.ResolutionOption
 import com.elena.autoplanner.domain.models.ScheduleScope
 
 fun PrioritizationStrategy.toDisplayString(): String = when (this) {
-    PrioritizationStrategy.URGENT_FIRST -> "Urgent Tasks First"
-    PrioritizationStrategy.HIGH_PRIORITY_FIRST -> "Highest Priority First"
-    PrioritizationStrategy.SHORT_TASKS_FIRST -> "Shortest Tasks First"
-    PrioritizationStrategy.EARLIER_DEADLINES_FIRST -> "Earliest Deadlines First"
+    PrioritizationStrategy.BY_URGENCY -> "By Urgency (tasks with closer deadline and priority)"
+    PrioritizationStrategy.BY_IMPORTANCE -> "By Importance (priority level)"
+    PrioritizationStrategy.BY_DURATION -> "By Duration (shortest tasks first)"
 }
 
 fun DayOrganization.toDisplayString(): String = when (this) {

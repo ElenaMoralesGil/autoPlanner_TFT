@@ -6,7 +6,11 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 
 enum class ScheduleScope { TODAY, TOMORROW, THIS_WEEK }
-enum class PrioritizationStrategy { URGENT_FIRST, HIGH_PRIORITY_FIRST, SHORT_TASKS_FIRST, EARLIER_DEADLINES_FIRST }
+enum class PrioritizationStrategy {
+    BY_URGENCY,
+    BY_IMPORTANCE,
+    BY_DURATION
+}
 enum class DayOrganization { MAXIMIZE_PRODUCTIVITY, FOCUS_URGENT_BUFFER, LOOSE_SCHEDULE_BREAKS }
 enum class OverdueTaskHandling { ADD_TODAY_FREE_TIME, MANAGE_WHEN_FREE, POSTPONE_TO_TOMORROW }
 enum class ResolutionOption { MOVE_TO_NEAREST_FREE, MOVE_TO_TOMORROW, MANUALLY_SCHEDULE, LEAVE_IT_LIKE_THAT, RESOLVED }

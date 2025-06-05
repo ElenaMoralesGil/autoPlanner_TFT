@@ -40,7 +40,7 @@ class PlannerViewModel(
 
     override fun createInitialState(): PlannerState = PlannerState(
         isLoading = true,
-        selectedPriority = PrioritizationStrategy.URGENT_FIRST,
+        selectedPriority = PrioritizationStrategy.BY_URGENCY,
         selectedDayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
         allowSplitting = true,
         selectedPlacementHeuristic = PlacementHeuristic.EARLIEST_FIT

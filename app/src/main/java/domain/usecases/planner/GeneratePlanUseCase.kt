@@ -50,9 +50,7 @@ class GeneratePlanUseCase(
     private val overdueTaskHandler: OverdueTaskHandler,
     private val taskPrioritizer: TaskPrioritizer,
 ) {
-    companion object {
-        const val RECURRENCE_ITERATION_LIMIT = 1000
-    }
+
 
     suspend operator fun invoke(input: PlannerInput): PlannerOutput =
         withContext(Dispatchers.Default) {
@@ -379,57 +377,72 @@ class TaskPrioritizer {
         today: LocalDate,
     ): Double {
         val task = planningTask.task
-        var score = 0.0
-        score += when (task.priority) {
-            Priority.HIGH -> 10000.0
-            Priority.MEDIUM -> 5000.0
-            Priority.LOW -> 1000.0
-            Priority.NONE -> 100.0
+
+        return when (strategy) {
+            PrioritizationStrategy.BY_URGENCY -> calculateUrgencyScore(task)
+            PrioritizationStrategy.BY_IMPORTANCE -> calculateImportanceScore(task)
+            PrioritizationStrategy.BY_DURATION -> calculateDurationScore(task)
         }
+    }
+
+    private fun calculateUrgencyScore(task: Task): Double {
+        var score = 0.0
 
         task.endDateConf?.dateTime?.let { deadline ->
-            val now = LocalDateTime.now()
-            val hours = Duration.between(now, deadline).toHours()
+            val hours = Duration.between(LocalDateTime.now(), deadline).toHours()
             score += when {
-                hours < 0 -> 50000.0
-                hours <= 8 -> 20000.0 / (hours + 1).coerceAtLeast(1L)
-                hours <= 24 -> 10000.0 / (hours + 1).coerceAtLeast(1L)
-                hours <= 72 -> 5000.0 / (hours + 1).coerceAtLeast(1L)
-                else -> 1000.0 / (hours + 1).coerceAtLeast(1L)
-            }
-        } ?: run {
-            if (task.priority != Priority.HIGH) score *= 0.7
-        }
-
-        val durationHours = task.effectiveDurationMinutes / 60.0
-        when (strategy) {
-            PrioritizationStrategy.URGENT_FIRST -> if (task.endDateConf != null) score *= 1.1
-            PrioritizationStrategy.HIGH_PRIORITY_FIRST -> if (task.priority == Priority.HIGH) score *= 1.2 else if (task.priority == Priority.MEDIUM) score *= 1.1
-            PrioritizationStrategy.SHORT_TASKS_FIRST -> score += 1000.0 / (durationHours + 0.1).coerceAtLeast(
-                0.1
-            )
-
-            PrioritizationStrategy.EARLIER_DEADLINES_FIRST -> if (task.endDateConf != null) score *= 1.05
-        }
-
-        task.startDateConf.dateTime?.let { start ->
-            val now = LocalDateTime.now()
-            val hours = Duration.between(now, start).toHours()
-            if (hours > 0 && hours < 48) {
-                score += 200.0 / (hours + 1).coerceAtLeast(1L)
-            } else if (hours <= 0) {
-                score += 100.0
+                hours < 0 -> 100000.0
+                hours <= 8 -> 50000.0
+                hours <= 24 -> 25000.0
+                hours <= 72 -> 10000.0
+                else -> 1000.0
             }
         }
 
-        if (planningTask.flags.isOverdue) {
-            score *= 5.0
-            if (planningTask.flags.constraintDate == today) {
-                score += 100000.0
-            }
+        val priorityMultiplier = when (task.priority) {
+            Priority.HIGH -> 2.0
+            Priority.MEDIUM -> 1.5
+            Priority.LOW -> 1.0
+            Priority.NONE -> 0.5
         }
 
-        return maxOf(0.1, score)
+        return score * priorityMultiplier
+    }
+
+    private fun calculateImportanceScore(task: Task): Double {
+
+        val priorityScore = when (task.priority) {
+            Priority.HIGH -> 100000.0
+            Priority.MEDIUM -> 50000.0
+            Priority.LOW -> 10000.0
+            Priority.NONE -> 1000.0
+        }
+
+        val deadlineBoost = task.endDateConf?.dateTime?.let { deadline ->
+            val hours = Duration.between(LocalDateTime.now(), deadline).toHours()
+            when {
+                hours < 0 -> 500.0
+                hours <= 24 -> 200.0
+                hours <= 72 -> 100.0
+                else -> 10.0
+            }
+        } ?: 0.0
+
+        return priorityScore + deadlineBoost
+    }
+
+    private fun calculateDurationScore(task: Task): Double {
+        val minutes = task.effectiveDurationMinutes
+        val durationScore = 100000.0 / (minutes + 1.0)
+
+        val priorityBoost = when (task.priority) {
+            Priority.HIGH -> 500.0
+            Priority.MEDIUM -> 200.0
+            Priority.LOW -> 100.0
+            Priority.NONE -> 0.0
+        }
+
+        return durationScore + priorityBoost
     }
 }
 

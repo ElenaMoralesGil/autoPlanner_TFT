@@ -21,7 +21,7 @@ data class PlannerState(
     val workStartTime: LocalTime = LocalTime.of(8, 0),
     val workEndTime: LocalTime = LocalTime.of(20, 0),
     val scheduleScope: ScheduleScope? = null,
-    val selectedPriority: PrioritizationStrategy? = PrioritizationStrategy.URGENT_FIRST,
+    val selectedPriority: PrioritizationStrategy? = PrioritizationStrategy.BY_URGENCY,
     val selectedDayOrganization: DayOrganization? = DayOrganization.MAXIMIZE_PRODUCTIVITY,
     val allowSplitting: Boolean? = true,
     val selectedOverdueHandling: OverdueTaskHandling? = null,
