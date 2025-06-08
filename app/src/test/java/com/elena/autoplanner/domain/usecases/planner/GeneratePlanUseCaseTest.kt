@@ -13,7 +13,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
-class GeneratePlanUseCaseEdgeCasesTest {
+class GeneratePlanUseCaseTest {
 
     @Mock
     private lateinit var taskCategorizer: TaskCategorizer
@@ -67,7 +67,7 @@ class GeneratePlanUseCaseEdgeCasesTest {
             workStartTime = LocalTime.of(9, 0),
             workEndTime = LocalTime.of(17, 0),
             scheduleScope = ScheduleScope.TODAY,
-            prioritizationStrategy = PrioritizationStrategy.URGENT_FIRST,
+            prioritizationStrategy = PrioritizationStrategy.BY_URGENCY,
             dayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
             allowSplitting = true,
             overdueTaskHandling = OverdueTaskHandling.ADD_TODAY_FREE_TIME
@@ -98,7 +98,7 @@ class GeneratePlanUseCaseEdgeCasesTest {
             workStartTime = LocalTime.of(9, 0),
             workEndTime = LocalTime.of(17, 0),
             scheduleScope = ScheduleScope.TODAY,
-            prioritizationStrategy = PrioritizationStrategy.URGENT_FIRST,
+            prioritizationStrategy = PrioritizationStrategy.BY_URGENCY,
             dayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
             allowSplitting = true,
             overdueTaskHandling = OverdueTaskHandling.ADD_TODAY_FREE_TIME
@@ -122,7 +122,7 @@ class GeneratePlanUseCaseEdgeCasesTest {
             workStartTime = LocalTime.of(22, 0),
             workEndTime = LocalTime.of(6, 0),
             scheduleScope = ScheduleScope.TODAY,
-            prioritizationStrategy = PrioritizationStrategy.URGENT_FIRST,
+            prioritizationStrategy = PrioritizationStrategy.BY_URGENCY,
             dayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
             allowSplitting = true,
             overdueTaskHandling = OverdueTaskHandling.ADD_TODAY_FREE_TIME
@@ -147,7 +147,7 @@ class GeneratePlanUseCaseEdgeCasesTest {
             workStartTime = LocalTime.of(9, 0),
             workEndTime = LocalTime.of(17, 0),
             scheduleScope = ScheduleScope.TODAY,
-            prioritizationStrategy = PrioritizationStrategy.URGENT_FIRST,
+            prioritizationStrategy = PrioritizationStrategy.BY_URGENCY,
             dayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
             allowSplitting = false,
             overdueTaskHandling = OverdueTaskHandling.ADD_TODAY_FREE_TIME
@@ -203,7 +203,7 @@ class GeneratePlanUseCaseEdgeCasesTest {
             workStartTime = LocalTime.of(9, 0),
             workEndTime = LocalTime.of(17, 0),
             scheduleScope = ScheduleScope.TODAY,
-            prioritizationStrategy = PrioritizationStrategy.URGENT_FIRST,
+            prioritizationStrategy = PrioritizationStrategy.BY_URGENCY,
             dayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
             allowSplitting = false,
             overdueTaskHandling = OverdueTaskHandling.ADD_TODAY_FREE_TIME
@@ -263,7 +263,7 @@ class GeneratePlanUseCaseEdgeCasesTest {
             workStartTime = LocalTime.of(9, 0),
             workEndTime = LocalTime.of(17, 0),
             scheduleScope = ScheduleScope.TODAY,
-            prioritizationStrategy = PrioritizationStrategy.URGENT_FIRST,
+            prioritizationStrategy = PrioritizationStrategy.BY_URGENCY,
             dayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
             allowSplitting = true,
             overdueTaskHandling = OverdueTaskHandling.ADD_TODAY_FREE_TIME
@@ -272,4 +272,6 @@ class GeneratePlanUseCaseEdgeCasesTest {
         val result = generatePlanUseCase(input)
         assertNotNull(result)
     }
+
+
 }

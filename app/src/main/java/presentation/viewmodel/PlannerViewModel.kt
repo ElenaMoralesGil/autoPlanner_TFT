@@ -1,5 +1,3 @@
-
-
 package com.elena.autoplanner.presentation.viewmodel
 
 import android.util.Log
@@ -30,6 +28,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
 
 class PlannerViewModel(
@@ -82,9 +81,9 @@ class PlannerViewModel(
         when (intent) {
             is PlannerIntent.GoToNextStep -> handleNextStep()
             is PlannerIntent.GoToPreviousStep -> handlePreviousStep()
-            is PlannerIntent.UpdateWorkStartTime -> setState { copy(workStartTime = intent.time) }
+            is PlannerIntent.UpdateWorkStartTime -> handleUpdateWorkStartTime(intent.time)
             is PlannerIntent.UpdateWorkEndTime -> setState { copy(workEndTime = intent.time) }
-            is PlannerIntent.SelectScheduleScope -> setState { copy(scheduleScope = intent.scope) }
+            is PlannerIntent.SelectScheduleScope -> handleSelectScheduleScope(intent.scope)
             is PlannerIntent.SelectPriority -> setState { copy(selectedPriority = intent.priority) }
             is PlannerIntent.SelectDayOrganization -> setState { copy(selectedDayOrganization = intent.organization) }
             is PlannerIntent.SelectAllowSplitting -> setState { copy(allowSplitting = intent.allow) }
@@ -106,6 +105,50 @@ class PlannerViewModel(
             is PlannerIntent.AcknowledgeManualEdits -> handleAcknowledgeManualEdits()
             is PlannerIntent.AddPlanToCalendar -> savePlan()
             is PlannerIntent.CancelPlanner -> setEffect(PlannerEffect.NavigateBack)
+        }
+    }
+
+    private fun handleUpdateWorkStartTime(newTime: LocalTime) {
+        val currentState = currentState
+        val adjustedTime = if (currentState.scheduleScope == ScheduleScope.TODAY) {
+            adjustWorkStartTimeForToday(newTime)
+        } else {
+            newTime
+        }
+
+        setState { copy(workStartTime = adjustedTime) }
+
+        if (adjustedTime != newTime && currentState.scheduleScope == ScheduleScope.TODAY) {
+            setEffect(PlannerEffect.ShowSnackbar("Start time adjusted to current time to avoid scheduling tasks in the past"))
+        }
+    }
+
+    private fun handleSelectScheduleScope(scope: ScheduleScope) {
+        val currentState = currentState
+        val adjustedStartTime = if (scope == ScheduleScope.TODAY) {
+            adjustWorkStartTimeForToday(currentState.workStartTime)
+        } else {
+            currentState.workStartTime
+        }
+
+        setState {
+            copy(
+                scheduleScope = scope,
+                workStartTime = adjustedStartTime
+            )
+        }
+
+        if (adjustedStartTime != currentState.workStartTime && scope == ScheduleScope.TODAY) {
+            setEffect(PlannerEffect.ShowSnackbar("Start time adjusted to current time to avoid scheduling tasks in the past"))
+        }
+    }
+
+    private fun adjustWorkStartTimeForToday(requestedTime: LocalTime): LocalTime {
+        val now = LocalTime.now()
+        return if (requestedTime.isBefore(now)) {
+            now
+        } else {
+            requestedTime
         }
     }
 
@@ -135,7 +178,7 @@ class PlannerViewModel(
                 setEffect(PlannerEffect.ShowSnackbar("Please select task splitting and overdue task options."))
             }
 
-            PlannerStep.REVIEW_PLAN -> { 
+            PlannerStep.REVIEW_PLAN -> {
             }
         }
     }
@@ -155,7 +198,7 @@ class PlannerViewModel(
                     conflictResolutions = emptyMap(),
                     error = null,
                     planSuccessfullyAdded = false,
-                    tasksFlaggedForManualEdit = emptySet() 
+                    tasksFlaggedForManualEdit = emptySet()
                 )
             }
 
@@ -212,9 +255,16 @@ class PlannerViewModel(
             Log.d("PlannerVM", "Tasks loaded for planning: ${allTasks.size}")
 
             try {
+                val effectiveWorkStartTime =
+                    if (currentState.scheduleScope == ScheduleScope.TODAY) {
+                        adjustWorkStartTimeForToday(currentState.workStartTime)
+                    } else {
+                        currentState.workStartTime
+                    }
+
                 val plannerInput = PlannerInput(
                     tasks = allTasks,
-                    workStartTime = currentState.workStartTime,
+                    workStartTime = effectiveWorkStartTime,
                     workEndTime = currentState.workEndTime,
                     scheduleScope = currentState.scheduleScope!!,
                     prioritizationStrategy = currentState.selectedPriority!!,
@@ -232,6 +282,7 @@ class PlannerViewModel(
                 setState {
                     copy(
                         isLoading = false,
+                        workStartTime = effectiveWorkStartTime, // Update the state with the adjusted time
                         generatedPlan = plannerOutput.scheduledTasks,
                         expiredTasksToResolve = plannerOutput.unresolvedExpired,
                         conflictsToResolve = plannerOutput.unresolvedConflicts,
@@ -289,7 +340,6 @@ class PlannerViewModel(
 
     private fun handleAcknowledgeManualEdits() {
         Log.d("PlannerVM", "User acknowledged manual edits (or lack thereof)")
-
     }
 
     private fun savePlan() {
@@ -369,7 +419,7 @@ class PlannerViewModel(
                             )
                         )
                         .endDateConf(newEndDateConf)
-                        .scheduledStartDateTime(null) 
+                        .scheduledStartDateTime(null)
                         .scheduledEndDateTime(null)
                         .build()
                     Log.d(
@@ -406,7 +456,7 @@ class PlannerViewModel(
                                 )
                             )
                             .endDateConf(newEndDateConf)
-                            .scheduledStartDateTime(null) 
+                            .scheduledStartDateTime(null)
                             .scheduledEndDateTime(null)
                             .build()
                         Log.d(
@@ -432,7 +482,7 @@ class PlannerViewModel(
                 tasksToUpdate[task.id] = Task.from(it)
                     .startDateConf(TimePlanning(dateTime = newDateTime, dayPeriod = DayPeriod.NONE))
                     .endDateConf(newEndDateConf)
-                    .scheduledStartDateTime(null) 
+                    .scheduledStartDateTime(null)
                     .scheduledEndDateTime(null)
                     .build()
                 Log.d("PlannerVM", "Task ${task.id} updated (Postponed): New Start $newDateTime")
@@ -545,6 +595,7 @@ class PlannerViewModel(
             setEffect(PlannerEffect.NavigateBack)
         }
     }
+
     private fun calculatePostponeDate(originalScope: ScheduleScope, today: LocalDate): LocalDate {
         return when (originalScope) {
             ScheduleScope.TODAY -> today.plusDays(1)
