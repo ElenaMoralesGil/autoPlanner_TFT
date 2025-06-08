@@ -927,21 +927,6 @@ class TaskCategorizer {
                 }
             }
         }
-
-        val uncategorizedTasks = planningTasks.filter { planningTask ->
-            val taskId = planningTask.id
-            !fixed.any { it.first.id == taskId } &&
-                    !periodPending.values.any { it.values.any { list -> list.any { it.id == taskId } } } &&
-                    !dateFlex.values.any { it.any { it.id == taskId } } &&
-                    !deadlineFlex.any { it.id == taskId } &&
-                    !fullFlex.any { it.id == taskId }
-        }
-
-        Log.w("CategoryDebug", "Uncategorized tasks: ${uncategorizedTasks.size}")
-        uncategorizedTasks.forEach {
-            Log.w("CategoryDebug", "Uncategorized: Task ${it.id} - ${it.task.name}")
-            fullFlex.add(it)
-        }
         return CategorizationResult(fixed, periodPending, dateFlex, deadlineFlex, fullFlex)
     }
 

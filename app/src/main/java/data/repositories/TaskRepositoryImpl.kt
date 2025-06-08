@@ -559,7 +559,7 @@ class TaskRepositoryImpl(
         val user = userRepository.getCurrentUser().firstOrNull()
         try {
 
-            val localEntity = taskDao.getAnyTaskByFirestoreId(localId.toString()) 
+            val localEntity = taskDao.getAnyTaskByLocalId(localId)
                 ?: return@withContext TaskResult.Error("Task with ID $localId not found locally.")
 
             val firestoreId = localEntity.firestoreId
