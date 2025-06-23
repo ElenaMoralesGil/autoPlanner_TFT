@@ -429,12 +429,30 @@ class TaskRepositoryImpl(
 
                     finalLocalId = task.id
 
-                    val existingLocalEntity = taskDao.getAnyTaskByFirestoreId(task.id.toString()) 
-                    val taskFirestoreId = existingLocalEntity?.firestoreId ?: run {
-                        Log.e(TAG, "saveTask (Update): Cannot update task $finalLocalId - Firestore ID missing on local entity.")
+                    val existingLocalEntity = taskDao.getAnyTaskByLocalId(finalLocalId)
+                        ?: run {
+                            Log.e(
+                                TAG,
+                                "saveTask (Update): Task with local ID $finalLocalId not found in database."
+                            )
+                            return@withContext TaskResult.Error("Task not found in local database.")
+                        }
+
+                    val taskFirestoreId = existingLocalEntity.firestoreId ?: run {
+                        Log.e(
+                            TAG,
+                            "saveTask (Update): Task $finalLocalId exists locally but has no Firestore ID. This shouldn't happen for synced tasks."
+                        )
                         return@withContext TaskResult.Error("Cannot sync update, task metadata missing.")
                     }
 
+                    if (existingLocalEntity.userId != userId) {
+                        Log.e(
+                            TAG,
+                            "saveTask (Update): Permission denied. Task $finalLocalId belongs to user ${existingLocalEntity.userId}, not $userId"
+                        )
+                        return@withContext TaskResult.Error("Permission denied to update task.")
+                    }
 
                     getUserTasksCollection(userId).document(taskFirestoreId)
                         .set(firestoreMap, SetOptions.merge()).await()
