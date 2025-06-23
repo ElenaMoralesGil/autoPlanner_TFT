@@ -4,9 +4,11 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.elena.autoplanner.data.local.TaskDatabase
-import com.elena.autoplanner.data.local.dao.TaskDao
-import com.elena.autoplanner.data.local.entities.*
+import com.elena.autoplanner.data.TaskDatabase
+import com.elena.autoplanner.data.dao.TaskDao
+import com.elena.autoplanner.data.entities.ListEntity
+import com.elena.autoplanner.data.entities.SectionEntity
+import com.elena.autoplanner.data.entities.TaskEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After

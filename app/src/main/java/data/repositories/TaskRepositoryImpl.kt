@@ -3,9 +3,14 @@ package com.elena.autoplanner.data.repositories
 import android.content.Context
 import android.database.sqlite.SQLiteException
 import android.util.Log
-import com.elena.autoplanner.R
-import com.elena.autoplanner.data.local.dao.*
-import com.elena.autoplanner.data.local.entities.TaskEntity
+import com.elena.autoplanner.data.dao.ListDao
+import com.elena.autoplanner.data.dao.ReminderDao
+import com.elena.autoplanner.data.dao.RepeatConfigDao
+import com.elena.autoplanner.data.dao.SectionDao
+import com.elena.autoplanner.data.dao.SubtaskDao
+import com.elena.autoplanner.data.dao.TaskDao
+import com.elena.autoplanner.data.dao.TaskWithRelations
+import com.elena.autoplanner.data.entities.TaskEntity
 import com.elena.autoplanner.data.mappers.*
 import com.elena.autoplanner.domain.models.*
 import com.elena.autoplanner.domain.repositories.ListRepository
@@ -23,7 +28,7 @@ import java.time.LocalDateTime
 
 
 class TaskRepositoryImpl(
-    private val context: Context, 
+    private val context: Context,
     private val taskDao: TaskDao,
     private val reminderDao: ReminderDao,
     private val listDao: ListDao,

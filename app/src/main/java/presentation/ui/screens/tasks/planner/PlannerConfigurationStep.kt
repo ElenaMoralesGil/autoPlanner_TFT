@@ -103,16 +103,6 @@ fun PlannerConfigurationStep(
     }
 
 
-    BooleanSettingCard(
-        title = "Task Splitting",
-        icon = Icons.Outlined.Menu,
-        description = "Allow splitting long tasks with durations?",
-        checked = state.allowSplitting,
-        onCheckedChange = { allow -> onIntent(PlannerIntent.SelectAllowSplitting(allow)) }
-    )
-
-
-
     AnimatedVisibility(visible = state.numOverdueTasks > 0) {
         QuestionnaireSectionCard(
             title = "Overdue Tasks (${state.numOverdueTasks})",

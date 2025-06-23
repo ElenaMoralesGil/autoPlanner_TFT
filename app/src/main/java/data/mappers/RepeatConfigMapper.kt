@@ -1,6 +1,6 @@
 package com.elena.autoplanner.data.mappers
 
-import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
+import com.elena.autoplanner.data.entities.RepeatConfigEntity
 import com.elena.autoplanner.domain.models.FrequencyType
 import com.elena.autoplanner.domain.models.RepeatPlan
 

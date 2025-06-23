@@ -1,6 +1,6 @@
 package com.elena.autoplanner.data.mappers
 
-import com.elena.autoplanner.data.local.entities.SubtaskEntity
+import com.elena.autoplanner.data.entities.SubtaskEntity
 import com.elena.autoplanner.domain.models.Subtask
 
 class SubtaskMapper : EntityMapper<SubtaskEntity, Subtask> {

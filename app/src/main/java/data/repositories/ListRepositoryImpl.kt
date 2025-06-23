@@ -1,11 +1,12 @@
 package com.elena.autoplanner.data.repositories
 
-import android.content.Context 
 import android.database.sqlite.SQLiteException
 import android.util.Log
-import com.elena.autoplanner.data.local.dao.*
-import com.elena.autoplanner.data.local.entities.ListEntity
-import com.elena.autoplanner.data.local.entities.SectionEntity
+import com.elena.autoplanner.data.dao.ListDao
+import com.elena.autoplanner.data.dao.SectionDao
+import com.elena.autoplanner.data.dao.TaskDao
+import com.elena.autoplanner.data.entities.ListEntity
+import com.elena.autoplanner.data.entities.SectionEntity
 import com.elena.autoplanner.data.mappers.* 
 import com.elena.autoplanner.domain.models.*
 import com.elena.autoplanner.domain.repositories.ListRepository

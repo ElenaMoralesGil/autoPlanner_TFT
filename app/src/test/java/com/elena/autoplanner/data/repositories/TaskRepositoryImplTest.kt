@@ -1,8 +1,14 @@
 package com.elena.autoplanner.data.repositories
 
 import app.cash.turbine.test
-import com.elena.autoplanner.data.local.dao.*
-import com.elena.autoplanner.data.local.entities.*
+import com.elena.autoplanner.data.dao.ListDao
+import com.elena.autoplanner.data.dao.ReminderDao
+import com.elena.autoplanner.data.dao.RepeatConfigDao
+import com.elena.autoplanner.data.dao.SectionDao
+import com.elena.autoplanner.data.dao.SubtaskDao
+import com.elena.autoplanner.data.dao.TaskDao
+import com.elena.autoplanner.data.dao.TaskWithRelations
+import com.elena.autoplanner.data.entities.TaskEntity
 import com.elena.autoplanner.domain.models.*
 import com.elena.autoplanner.domain.repositories.ListRepository
 import com.elena.autoplanner.domain.repositories.UserRepository

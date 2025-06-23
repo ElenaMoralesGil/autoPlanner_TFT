@@ -1,22 +1,22 @@
-package com.elena.autoplanner.data.local
+package com.elena.autoplanner.data
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.elena.autoplanner.data.local.dao.ListDao
-import com.elena.autoplanner.data.local.dao.ReminderDao
-import com.elena.autoplanner.data.local.dao.RepeatConfigDao
-import com.elena.autoplanner.data.local.dao.SectionDao
-import com.elena.autoplanner.data.local.dao.SubtaskDao
-import com.elena.autoplanner.data.local.dao.TaskDao
-import com.elena.autoplanner.data.local.entities.ListEntity
-import com.elena.autoplanner.data.local.entities.ReminderEntity
-import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
-import com.elena.autoplanner.data.local.entities.SectionEntity
-import com.elena.autoplanner.data.local.entities.SubtaskEntity
-import com.elena.autoplanner.data.local.entities.TaskEntity
+import com.elena.autoplanner.data.dao.ListDao
+import com.elena.autoplanner.data.dao.ReminderDao
+import com.elena.autoplanner.data.dao.RepeatConfigDao
+import com.elena.autoplanner.data.dao.SectionDao
+import com.elena.autoplanner.data.dao.SubtaskDao
+import com.elena.autoplanner.data.dao.TaskDao
+import com.elena.autoplanner.data.entities.ListEntity
+import com.elena.autoplanner.data.entities.ReminderEntity
+import com.elena.autoplanner.data.entities.RepeatConfigEntity
+import com.elena.autoplanner.data.entities.SectionEntity
+import com.elena.autoplanner.data.entities.SubtaskEntity
+import com.elena.autoplanner.data.entities.TaskEntity
 
 @Database(
     entities = [
@@ -25,7 +25,7 @@ import com.elena.autoplanner.data.local.entities.TaskEntity
         RepeatConfigEntity::class,
         SubtaskEntity::class,
         ListEntity::class,
-        SectionEntity::class    
+        SectionEntity::class
     ],
     version = 10,
     exportSchema = true

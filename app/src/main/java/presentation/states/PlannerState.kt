@@ -25,7 +25,7 @@ data class PlannerState(
     val selectedDayOrganization: DayOrganization? = DayOrganization.MAXIMIZE_PRODUCTIVITY,
     val allowSplitting: Boolean? = true,
     val selectedOverdueHandling: OverdueTaskHandling? = null,
-    val selectedPlacementHeuristic: PlacementHeuristic = PlacementHeuristic.EARLIEST_FIT,
+    val selectedPlacementHeuristic: PlacementHeuristic = PlacementHeuristic.BEST_FIT,
 
 
     val numOverdueTasks: Int = 0,

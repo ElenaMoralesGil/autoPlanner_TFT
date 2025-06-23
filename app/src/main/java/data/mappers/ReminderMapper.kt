@@ -1,6 +1,6 @@
 package com.elena.autoplanner.data.mappers
 
-import com.elena.autoplanner.data.local.entities.ReminderEntity
+import com.elena.autoplanner.data.entities.ReminderEntity
 import com.elena.autoplanner.domain.models.ReminderMode
 import com.elena.autoplanner.domain.models.ReminderPlan
 

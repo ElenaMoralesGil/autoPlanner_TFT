@@ -4,7 +4,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.elena.autoplanner.data.local.TaskDatabase
+import com.elena.autoplanner.data.TaskDatabase
 import com.elena.autoplanner.data.repositories.TaskRepositoryImpl
 import com.elena.autoplanner.domain.models.*
 import com.elena.autoplanner.domain.repositories.UserRepository
@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.Dispatchers
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule

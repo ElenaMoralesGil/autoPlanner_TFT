@@ -4,7 +4,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.elena.autoplanner.data.local.TaskDatabase
+import com.elena.autoplanner.data.TaskDatabase
 import com.elena.autoplanner.data.repositories.ListRepositoryImpl
 import com.elena.autoplanner.domain.models.*
 import com.elena.autoplanner.domain.repositories.UserRepository

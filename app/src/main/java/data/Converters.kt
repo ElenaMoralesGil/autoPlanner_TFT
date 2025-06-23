@@ -1,4 +1,4 @@
-package com.elena.autoplanner.data.local
+package com.elena.autoplanner.data
 
 import androidx.room.TypeConverter
 import com.elena.autoplanner.domain.models.DayOfWeek

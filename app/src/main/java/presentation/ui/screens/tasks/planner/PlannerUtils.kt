@@ -19,8 +19,8 @@ fun DayOrganization.toDisplayString(): String = when (this) {
 }
 
 fun OverdueTaskHandling.toDisplayString(): String = when (this) {
-    OverdueTaskHandling.ADD_TODAY_FREE_TIME -> "Schedule automatically"
-    OverdueTaskHandling.MANAGE_WHEN_FREE -> "Schedule manually later"
+    OverdueTaskHandling.NEXT_AVAILABLE -> "Schedule automatically"
+    OverdueTaskHandling.USER_REVIEW_REQUIRED -> "Schedule manually later"
     OverdueTaskHandling.POSTPONE_TO_TOMORROW -> "Postpone to tomorrow"
 }
 

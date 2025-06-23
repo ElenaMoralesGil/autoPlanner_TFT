@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -132,10 +133,10 @@ fun TaskCard(
                         .size(10.dp)
                         .background(
                             color = when (task.priority) {
-                                Priority.HIGH -> MaterialTheme.colorScheme.error
-                                Priority.MEDIUM -> MaterialTheme.colorScheme.tertiary
-                                Priority.LOW -> MaterialTheme.colorScheme.secondary
-                                else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                Priority.HIGH -> Color.Red
+                                Priority.MEDIUM -> Color(0xFFFFA500)
+                                Priority.LOW -> Color(0xFF4CAF50)
+                                Priority.NONE -> Color.Gray
                             },
                             shape = CircleShape
                         )

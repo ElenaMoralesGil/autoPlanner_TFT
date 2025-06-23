@@ -1,14 +1,13 @@
-package com.elena.autoplanner.data.local.entities
+package com.elena.autoplanner.data.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.elena.autoplanner.domain.models.DayOfWeek
-import com.elena.autoplanner.domain.models.IntervalUnit
+import java.time.LocalDateTime
 
 @Entity(
-    tableName = "repeat_configs",
+    tableName = "reminders",
     foreignKeys = [
         ForeignKey(
             entity = TaskEntity::class,
@@ -19,12 +18,19 @@ import com.elena.autoplanner.domain.models.IntervalUnit
     ],
     indices = [Index(value = ["taskId"])]
 )
-data class RepeatConfigEntity(
+data class ReminderEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val taskId: Int,
 
-    val frequencyType: String,
-    val interval: Int? = null,
-    val intervalUnit: IntervalUnit? = null,
-    val selectedDays: Set<DayOfWeek> = emptySet(),
-)
+
+    val mode: String,
+    val offsetMinutes: Int? = null,
+    val exactDateTime: LocalDateTime? = null,
+) {
+    init {
+        require(offsetMinutes == null || offsetMinutes >= 0) {
+            "Offset cannot be negative"
+        }
+
+    }
+}

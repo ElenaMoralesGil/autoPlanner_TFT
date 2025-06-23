@@ -2,11 +2,10 @@ package com.elena.autoplanner.data.mappers
 
 import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.toColorInt
-import com.elena.autoplanner.data.local.dao.TaskWithRelations
-import com.elena.autoplanner.data.local.entities.ReminderEntity
-import com.elena.autoplanner.data.local.entities.RepeatConfigEntity
-import com.elena.autoplanner.data.local.entities.SubtaskEntity
-import com.elena.autoplanner.data.local.entities.TaskEntity
+import com.elena.autoplanner.data.entities.ReminderEntity
+import com.elena.autoplanner.data.entities.RepeatConfigEntity
+import com.elena.autoplanner.data.entities.SubtaskEntity
+import com.elena.autoplanner.data.entities.TaskEntity
 import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.DurationPlan
 import com.elena.autoplanner.domain.models.Priority

@@ -1,4 +1,4 @@
-package com.elena.autoplanner.data.local.dao
+package com.elena.autoplanner.data.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -7,7 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.elena.autoplanner.data.local.entities.TaskEntity
+import com.elena.autoplanner.data.entities.TaskEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 

@@ -348,11 +348,11 @@ class OverdueTaskHandler {
                     context.addPostponedTask(planningTask.task)
                 }
 
-                OverdueTaskHandling.MANAGE_WHEN_FREE -> {
+                OverdueTaskHandling.USER_REVIEW_REQUIRED -> {
                     context.addExpiredForManualResolution(planningTask.task) 
                 }
 
-                OverdueTaskHandling.ADD_TODAY_FREE_TIME -> {
+                OverdueTaskHandling.NEXT_AVAILABLE -> {
                     handleAddToFreeTime(
                         context,
                         overdueTaskIds,
@@ -1052,10 +1052,16 @@ class TimelineManager {
             }
         if (potentialSlots.isEmpty()) return null
         return when (heuristic) {
-            PlacementHeuristic.EARLIEST_FIT -> potentialSlots.minByOrNull { it.first.start }?.first
-            PlacementHeuristic.BEST_FIT -> potentialSlots.minByOrNull { (slot, originalBlock) ->
-                (originalBlock.duration - slot.duration).abs().toNanos()
-            }?.first ?: potentialSlots.minByOrNull { it.first.start }?.first
+            PlacementHeuristic.EARLIEST_FIT ->
+                potentialSlots.minByOrNull { it.first.start }?.first
+
+            PlacementHeuristic.BEST_FIT ->
+                potentialSlots.minByOrNull { (slot, originalBlock) ->
+                    val blockStart = maxOf(originalBlock.start, minSearchTime)
+                    val blockEnd = minOf(originalBlock.end, maxSearchTime)
+                    val availableSpace = Duration.between(blockStart, blockEnd)
+                    (availableSpace - durationNeeded).toNanos()
+                }?.first ?: potentialSlots.minByOrNull { it.first.start }?.first
         }
     }
 

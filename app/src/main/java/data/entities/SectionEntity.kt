@@ -1,4 +1,4 @@
-package com.elena.autoplanner.data.local.entities
+package com.elena.autoplanner.data.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey

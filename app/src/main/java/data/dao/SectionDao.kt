@@ -1,4 +1,4 @@
-package com.elena.autoplanner.data.local.dao
+package com.elena.autoplanner.data.dao
 
 import androidx.room.Dao
 
@@ -7,7 +7,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.elena.autoplanner.data.local.entities.SectionEntity
+import com.elena.autoplanner.data.entities.SectionEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao

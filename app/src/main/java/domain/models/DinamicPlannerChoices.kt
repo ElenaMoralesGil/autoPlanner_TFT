@@ -12,7 +12,13 @@ enum class PrioritizationStrategy {
     BY_DURATION
 }
 enum class DayOrganization { MAXIMIZE_PRODUCTIVITY, SMART_BUFFERS, BALANCED_SCHEDULE }
-enum class OverdueTaskHandling { ADD_TODAY_FREE_TIME, MANAGE_WHEN_FREE, POSTPONE_TO_TOMORROW }
+enum class OverdueTaskHandling {
+    NEXT_AVAILABLE,
+    USER_REVIEW_REQUIRED,
+    POSTPONE_TO_TOMORROW
+}
+
+
 enum class ResolutionOption { MOVE_TO_NEAREST_FREE, MOVE_TO_TOMORROW, MANUALLY_SCHEDULE, LEAVE_IT_LIKE_THAT, RESOLVED }
 
 data class ScheduledTaskItem(
@@ -108,7 +114,7 @@ data class PlannerInput(
     val scheduleScope: ScheduleScope,
     val prioritizationStrategy: PrioritizationStrategy,
     val dayOrganization: DayOrganization,
-    val flexiblePlacementHeuristic: PlacementHeuristic = PlacementHeuristic.EARLIEST_FIT,
+    val flexiblePlacementHeuristic: PlacementHeuristic = PlacementHeuristic.BEST_FIT,
     val allowSplitting: Boolean,
     val overdueTaskHandling: OverdueTaskHandling,
 )

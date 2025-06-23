@@ -42,7 +42,7 @@ class PlannerViewModel(
         selectedPriority = PrioritizationStrategy.BY_URGENCY,
         selectedDayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
         allowSplitting = true,
-        selectedPlacementHeuristic = PlacementHeuristic.EARLIEST_FIT
+        selectedPlacementHeuristic = PlacementHeuristic.BEST_FIT
     )
 
     init {

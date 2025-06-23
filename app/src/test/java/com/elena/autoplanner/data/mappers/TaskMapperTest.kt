@@ -1,6 +1,8 @@
 package com.elena.autoplanner.data.mappers
 
-import com.elena.autoplanner.data.local.entities.*
+import com.elena.autoplanner.data.entities.ReminderEntity
+import com.elena.autoplanner.data.entities.SubtaskEntity
+import com.elena.autoplanner.data.entities.TaskEntity
 import com.elena.autoplanner.domain.models.*
 import org.junit.Before
 import org.junit.Test
