@@ -74,7 +74,6 @@ fun TimeConfigSheet(
     var localReminder by remember { mutableStateOf(currentReminder) }
     var localRepeat by remember { mutableStateOf(currentRepeat) }
     var allowSplitting by remember { mutableStateOf(currentAllowSplitting) }
-    val durationMinutes = localDuration?.totalMinutes ?: 60
     val shouldShowSplitting = localDuration?.let { it.totalMinutes!! >= 30 } == true
 
     var openDialog by remember { mutableStateOf<TimeDialogType?>(null) }
@@ -172,12 +171,6 @@ fun TimeConfigSheet(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            CompactSplittingOption(
-                                text = "Auto",
-                                isSelected = allowSplitting == null,
-                                onClick = { allowSplitting = null },
-                                modifier = Modifier.weight(1f)
-                            )
                             CompactSplittingOption(
                                 text = "Allow",
                                 isSelected = allowSplitting == true,
