@@ -91,6 +91,7 @@ class TaskMapper {
             .internalFlags(internalFlags)
             .sectionName(sectionName)
             .listColor(listColor)
+            .allowSplitting(taskEntity.allowSplitting?.let { it == 1 })
             .build()
     }
 
@@ -114,7 +115,8 @@ class TaskMapper {
             listId = domain.listId,
             sectionId = domain.sectionId,
             displayOrder = domain.displayOrder,
-            isDeleted = isDeletedFlag
+            isDeleted = isDeletedFlag,
+            allowSplitting = domain.allowSplitting?.let { if (it) 1 else 0 }
 
         )
     }

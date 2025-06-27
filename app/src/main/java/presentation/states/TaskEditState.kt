@@ -27,4 +27,8 @@ data class TaskEditState(
     val isLoadingSelection: Boolean = false, 
     val availableLists: List<TaskList> = emptyList(),
     val availableSections: List<TaskSection> = emptyList(),
-)
+    val allowSplitting: Boolean? = null,
+) {
+    val shouldShowSplittingOption: Boolean
+        get() = (durationConf?.totalMinutes ?: 60) >= 30
+}

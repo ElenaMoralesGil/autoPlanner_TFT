@@ -41,7 +41,6 @@ class PlannerViewModel(
         isLoading = true,
         selectedPriority = PrioritizationStrategy.BY_URGENCY,
         selectedDayOrganization = DayOrganization.MAXIMIZE_PRODUCTIVITY,
-        allowSplitting = true,
         selectedPlacementHeuristic = PlacementHeuristic.BEST_FIT
     )
 
@@ -86,7 +85,6 @@ class PlannerViewModel(
             is PlannerIntent.SelectScheduleScope -> handleSelectScheduleScope(intent.scope)
             is PlannerIntent.SelectPriority -> setState { copy(selectedPriority = intent.priority) }
             is PlannerIntent.SelectDayOrganization -> setState { copy(selectedDayOrganization = intent.organization) }
-            is PlannerIntent.SelectAllowSplitting -> setState { copy(allowSplitting = intent.allow) }
             is PlannerIntent.SelectOverdueHandling -> setState { copy(selectedOverdueHandling = intent.handling) }
             is PlannerIntent.SelectPlacementHeuristic -> setState { copy(selectedPlacementHeuristic = intent.heuristic) }
             is PlannerIntent.GeneratePlan -> executePlanGeneration()
@@ -175,7 +173,7 @@ class PlannerViewModel(
             PlannerStep.ADDITIONAL_OPTIONS -> if (currentState.canGeneratePlan) {
                 sendIntent(PlannerIntent.GeneratePlan)
             } else {
-                setEffect(PlannerEffect.ShowSnackbar("Please select task splitting and overdue task options."))
+                setEffect(PlannerEffect.ShowSnackbar("Please select overdue task option."))
             }
 
             PlannerStep.REVIEW_PLAN -> {
@@ -270,7 +268,6 @@ class PlannerViewModel(
                     prioritizationStrategy = currentState.selectedPriority!!,
                     dayOrganization = currentState.selectedDayOrganization!!,
                     flexiblePlacementHeuristic = currentState.selectedPlacementHeuristic,
-                    allowSplitting = currentState.allowSplitting!!,
                     overdueTaskHandling = if (currentState.numOverdueTasks > 0) currentState.selectedOverdueHandling!! else OverdueTaskHandling.POSTPONE_TO_TOMORROW
                 )
                 Log.d("PlannerVM", "Calling GeneratePlanUseCase with input...")

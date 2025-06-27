@@ -1625,7 +1625,6 @@ class TaskPlacer(
             minSearchTime = minSearchTime,
             maxSearchTime = maxSearchTime,
             dayOrganization = input.dayOrganization,
-            allowSplitting = input.allowSplitting,
             heuristic = input.flexiblePlacementHeuristic,
             context = context,
             occupancyType = placementOccupancy 
@@ -1713,7 +1712,6 @@ class TaskPlacer(
                     minSearchTime = fallbackMinSearch,
                     maxSearchTime = fallbackMaxSearch,
                     dayOrganization = input.dayOrganization,
-                    allowSplitting = input.allowSplitting,
                     heuristic = input.flexiblePlacementHeuristic,
                     context = context,
                     occupancyType = Occupancy.FLEXIBLE_TASK 
@@ -1793,7 +1791,6 @@ class TaskPlacer(
         minSearchTime: LocalDateTime,
         maxSearchTime: LocalDateTime,
         dayOrganization: DayOrganization,
-        allowSplitting: Boolean,
         heuristic: PlacementHeuristic,
         context: PlanningContext,
         occupancyType: Occupancy, 
@@ -1801,11 +1798,13 @@ class TaskPlacer(
         var remainingDuration = totalDuration
         val placedBlocksResult = mutableListOf<TimeBlock>()
         var lastBlockEndTime: LocalDateTime? = null
+        val allowSplitting = task.effectiveAllowSplitting
         var attempts = 0
         val buffer = timelineManager.getBufferDuration(dayOrganization)
 
         while (remainingDuration > Duration.ZERO && attempts < FLEXIBLE_PLACEMENT_MAX_ATTEMPTS) {
             attempts++
+
             val durationNeeded = if (allowSplitting && remainingDuration < totalDuration) maxOf(
                 remainingDuration,
                 Duration.ofMinutes(MIN_SPLIT_DURATION_MINUTES)
@@ -1856,7 +1855,7 @@ class TaskPlacer(
                 if (!allowSplitting) {
                     Log.d(
                         "TaskPlacerFlex",
-                        "Task ${task.id}: Found slot spans midnight ($placementStartTime -> $placementEndTime), but splitting not allowed. Trying next slot."
+                        "Task ${task.id}: Found slot spans midnight ($placementStartTime -> $placementEndTime), but task splitting disabled. Trying next slot."
                     )
                     lastBlockEndTime = bestFit.end
                     continue
@@ -1949,9 +1948,6 @@ class TaskPlacer(
                             "TaskPlacerFlex",
                             "Task ${task.id}: Placed flex chunk ${placedBlock.start.toLocalTime()}-${placedBlock.end.toLocalTime()} on ${placedBlock.start.toLocalDate()}. Rem: ${remainingDuration.toMinutes()}m"
                         )
-                        if (!allowSplitting) {
-                            remainingDuration = Duration.ZERO; break
-                        }
                     }
 
                     is PlacementResultInternal.Conflict -> {

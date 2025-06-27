@@ -43,7 +43,8 @@ data class Task private constructor(
     val displayOrder: Int = 0,
     @Transient val listName: String? = null,
     @Transient val sectionName: String? = null,
-    @Transient val listColor: Color? = null, 
+    @Transient val listColor: Color? = null,
+    val allowSplitting: Boolean? = null,
 
     ) {
     fun validate() {
@@ -111,6 +112,17 @@ data class Task private constructor(
     val effectiveDurationMinutes: Int
         get() = (durationConf?.totalMinutes ?: 60).coerceAtLeast(0)
 
+    val effectiveAllowSplitting: Boolean
+        get() = when {
+            allowSplitting != null -> allowSplitting
+            effectiveDurationMinutes >= 30 -> true
+            else -> false
+        }
+
+    val shouldShowSplittingOption: Boolean
+        get() = effectiveDurationMinutes >= 30
+
+
     class Builder {
         private var id: Int = 0
         private var name: String = ""
@@ -125,7 +137,7 @@ data class Task private constructor(
         private var completionDateTime: LocalDateTime? = null
         private var scheduledStartDateTime: LocalDateTime? = null
         private var scheduledEndDateTime: LocalDateTime? = null
-
+        private var allowSplitting: Boolean? = null
         private var listId: Long? = null
         private var sectionId: Long? = null
         private var displayOrder: Int = 0
@@ -140,7 +152,8 @@ data class Task private constructor(
         fun priority(priority: Priority) = apply { this.priority = priority }
         fun startDateConf(startDateConf: TimePlanning?) =
             apply { this.startDateConf = startDateConf }
-
+        fun allowSplitting(allowSplitting: Boolean?) =
+            apply { this.allowSplitting = allowSplitting }
         fun endDateConf(endDateConf: TimePlanning?) = apply { this.endDateConf = endDateConf }
         fun durationConf(durationConf: DurationPlan?) = apply { this.durationConf = durationConf }
         fun reminderPlan(reminderPlan: ReminderPlan?) = apply { this.reminderPlan = reminderPlan }
@@ -189,6 +202,7 @@ data class Task private constructor(
                 listName = listName,
                 sectionName = sectionName,
                 listColor = listColor,
+                allowSplitting = allowSplitting
 
             )
             task.validate()

@@ -29,4 +29,5 @@ sealed class TaskEditIntent : Intent {
     data class LoadSectionsForSelection(val listId: Long?) : TaskEditIntent()
     data class CreateAndAssignList(val name: String, val colorHex: String) : TaskEditIntent()
     data class CreateAndAssignSection(val name: String, val listId: Long) : TaskEditIntent()
+    data class UpdateSplitting(val allowSplitting: Boolean?) : TaskEditIntent()
 }

@@ -52,6 +52,7 @@ fun Task.toFirebaseMap(
         "listFirestoreId" to resolvedListFirestoreId,
         "sectionFirestoreId" to resolvedSectionFirestoreId, 
         "displayOrder" to this.displayOrder,
+        "allowSplitting" to allowSplitting,
         "lastUpdated" to FieldValue.serverTimestamp()
     ).filterValues { it != null } 
 }
@@ -189,7 +190,7 @@ fun DocumentSnapshot.toTaskFirestoreDTO(localIdFallback: Int? = null): TaskFires
             .scheduledStartDateTime((data["scheduledStartDateTime"] as? Timestamp)?.toLocalDateTime())
             .scheduledEndDateTime((data["scheduledEndDateTime"] as? Timestamp)?.toLocalDateTime())
             .completionDateTime((data["completionDateTime"] as? Timestamp)?.toLocalDateTime())
-
+            .allowSplitting(getBoolean("allowSplitting"))
             .displayOrder(getLong("displayOrder")?.toInt() ?: 0)
             .build() 
 

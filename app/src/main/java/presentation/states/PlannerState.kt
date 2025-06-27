@@ -23,7 +23,6 @@ data class PlannerState(
     val scheduleScope: ScheduleScope? = null,
     val selectedPriority: PrioritizationStrategy? = PrioritizationStrategy.BY_URGENCY,
     val selectedDayOrganization: DayOrganization? = DayOrganization.MAXIMIZE_PRODUCTIVITY,
-    val allowSplitting: Boolean? = true,
     val selectedOverdueHandling: OverdueTaskHandling? = null,
     val selectedPlacementHeuristic: PlacementHeuristic = PlacementHeuristic.BEST_FIT,
 
@@ -52,8 +51,7 @@ data class PlannerState(
         get() = selectedPriority != null && selectedDayOrganization != null
 
     val canGeneratePlan: Boolean
-        get() = allowSplitting != null &&
-                (numOverdueTasks == 0 || selectedOverdueHandling != null) &&
+        get() = (numOverdueTasks == 0 || selectedOverdueHandling != null) &&
                 scheduleScope != null &&
                 selectedPriority != null &&
                 selectedDayOrganization != null 

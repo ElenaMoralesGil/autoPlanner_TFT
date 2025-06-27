@@ -115,7 +115,6 @@ data class PlannerInput(
     val prioritizationStrategy: PrioritizationStrategy,
     val dayOrganization: DayOrganization,
     val flexiblePlacementHeuristic: PlacementHeuristic = PlacementHeuristic.BEST_FIT,
-    val allowSplitting: Boolean,
     val overdueTaskHandling: OverdueTaskHandling,
 )
 

@@ -170,7 +170,6 @@ fun ModificationTaskSheet(
                 }
             }
 
-
             if (showListSelectionDialog) {
                 ListSelectionDialog(
                     isLoading = state?.isLoadingSelection ?: false,
@@ -307,12 +306,14 @@ fun ModificationTaskSheet(
                 currentDuration = currentState.durationConf,
                 currentReminder = currentState.reminderPlan,
                 currentRepeat = currentState.repeatPlan,
-                onSaveAll = { newStart, newEnd, newDur, newRem, newRep ->
+                currentAllowSplitting = currentState.allowSplitting,
+                onSaveAll = { newStart, newEnd, newDur, newRem, newRep, newSplitting ->
                     taskEditViewModel.sendIntent(TaskEditIntent.UpdateStartDateConf(newStart))
                     taskEditViewModel.sendIntent(TaskEditIntent.UpdateEndDateConf(newEnd))
                     taskEditViewModel.sendIntent(TaskEditIntent.UpdateDuration(newDur))
                     taskEditViewModel.sendIntent(TaskEditIntent.UpdateReminder(newRem))
                     taskEditViewModel.sendIntent(TaskEditIntent.UpdateRepeat(newRep))
+                    taskEditViewModel.sendIntent(TaskEditIntent.UpdateSplitting(newSplitting))
                     showTimeConfigSheet = false
                 }
             )
@@ -340,5 +341,6 @@ private fun hasAnyConfig(state: com.elena.autoplanner.presentation.states.TaskEd
             state.durationConf != null ||
             state.reminderPlan != null ||
             state.repeatPlan != null ||
-            state.priority != Priority.NONE
+            state.priority != Priority.NONE ||
+            (state.allowSplitting != null && (state.durationConf?.totalMinutes ?: 0) >= 30)
 }

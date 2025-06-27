@@ -25,9 +25,6 @@ sealed class PlannerIntent : Intent {
     data class SelectPriority(val priority: PrioritizationStrategy) : PlannerIntent()
     data class SelectDayOrganization(val organization: DayOrganization) : PlannerIntent()
     data class SelectPlacementHeuristic(val heuristic: PlacementHeuristic) : PlannerIntent()
-
-
-    data class SelectAllowSplitting(val allow: Boolean) : PlannerIntent()
     data class SelectOverdueHandling(val handling: OverdueTaskHandling) : PlannerIntent()
 
 

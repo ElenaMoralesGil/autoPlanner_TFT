@@ -64,6 +64,7 @@ class TaskEditViewModel(
                 intent.name,
                 intent.listId
             )
+            is TaskEditIntent.UpdateSplitting -> setState { copy(allowSplitting = intent.allowSplitting) }
         }
     }
 
@@ -86,7 +87,8 @@ class TaskEditViewModel(
                             durationConf = task.durationConf, reminderPlan = task.reminderPlan,
                             repeatPlan = task.repeatPlan, subtasks = task.subtasks,
                             listId = task.listId,
-                            sectionId = task.sectionId, 
+                            sectionId = task.sectionId,
+                            allowSplitting = task.allowSplitting,
                             error = null
                         )
                     }
@@ -157,7 +159,8 @@ class TaskEditViewModel(
                 .repeatPlan(state.repeatPlan)
                 .subtasks(state.subtasks)
                 .listId(state.listId)
-                .sectionId(state.sectionId) 
+                .sectionId(state.sectionId)
+                .allowSplitting(currentState.allowSplitting)
                 .build()
 
             executeTaskOperation(
