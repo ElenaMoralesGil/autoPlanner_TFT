@@ -180,7 +180,7 @@ val useCaseModule = module {
     single { RecurrenceExpander() }
     single { TimelineManager() }
     single { OverdueTaskHandler() }
-    single { TaskPlacer(taskPrioritizer = get()) }
+    single { TaskPlacer() }
     single {
         GeneratePlanUseCase(
             get(),
