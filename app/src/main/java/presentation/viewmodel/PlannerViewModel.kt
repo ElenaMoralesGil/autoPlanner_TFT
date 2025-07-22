@@ -328,6 +328,12 @@ class PlannerViewModel(
                 handleUnflagForManualEdit(it.id)
             }
         }
+
+        // Si se selecciona MOVE_TO_TOMORROW, regenerar el plan automáticamente
+        if (resolution == ResolutionOption.MOVE_TO_TOMORROW) {
+            Log.d("PlannerVM", "Auto-regenerating plan due to MOVE_TO_TOMORROW resolution")
+            executePlanGeneration()
+        }
     }
 
     private fun handleFlagForManualEdit(taskId: Int) {
@@ -403,7 +409,7 @@ class PlannerViewModel(
                 val task = tasksToUpdate[taskId] ?: originalTasks[taskId]
                 task?.let {
                     val targetDate = today.plusDays(1)
-                    val keepTime = it.startDateConf.dateTime?.toLocalTime() ?: state.workStartTime
+                    val keepTime = it.startDateConf?.dateTime?.toLocalTime() ?: state.workStartTime
                     val newDateTime = LocalDateTime.of(targetDate, keepTime)
                     val newEndDateConf = it.endDateConf?.takeIf { conf ->
                         conf.dateTime != null && conf.dateTime.isAfter(newDateTime)
@@ -440,7 +446,7 @@ class PlannerViewModel(
                     originalTask?.let {
                         val targetDate = today.plusDays(1)
                         val keepTime =
-                            it.startDateConf.dateTime?.toLocalTime() ?: state.workStartTime
+                            it.startDateConf?.dateTime?.toLocalTime() ?: state.workStartTime
                         val newDateTime = LocalDateTime.of(targetDate, keepTime)
                         val newEndDateConf = it.endDateConf?.takeIf { conf ->
                             conf.dateTime != null && conf.dateTime.isAfter(newDateTime)
@@ -471,7 +477,7 @@ class PlannerViewModel(
             originalTask?.let {
                 val targetDate =
                     calculatePostponeDate(state.scheduleScope ?: ScheduleScope.THIS_WEEK, today)
-                val keepTime = it.startDateConf.dateTime?.toLocalTime() ?: state.workStartTime
+                val keepTime = it.startDateConf?.dateTime?.toLocalTime() ?: state.workStartTime
                 val newDateTime = LocalDateTime.of(targetDate, keepTime)
                 val newEndDateConf = it.endDateConf?.takeIf { conf ->
                     conf.dateTime != null && conf.dateTime.isAfter(newDateTime)

@@ -37,9 +37,9 @@ fun GeneratedPlanReviewView(
     ) {
         when (viewType) {
             CalendarView.WEEK -> {
-                val weekStart = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                // Usar startDate directamente en lugar de forzar lunes
                 ReviewWeeklyViewContent(
-                    startDate = weekStart,
+                    startDate = startDate,
                     plan = plan,
                     conflicts = conflicts,
                     resolutions = resolutions,
@@ -54,7 +54,7 @@ fun GeneratedPlanReviewView(
                     date = startDate,
                     items = plan[startDate] ?: emptyList(),
                     conflicts = conflicts.filter {
-                        it.conflictTime?.toLocalDate() == startDate || it.conflictingTasks.any { t -> t.startDateConf.dateTime?.toLocalDate() == startDate }
+                        it.conflictTime?.toLocalDate() == startDate || it.conflictingTasks.any { t -> t.startDateConf?.dateTime?.toLocalDate() == startDate }
                     },
                     resolutions = resolutions,
                     onTaskClick = onTaskClick,

@@ -5,64 +5,79 @@ import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.results.TaskResult
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import java.time.LocalDateTime
+import kotlinx.coroutines.flow.catch
+import java.time.LocalDate
 
 class GetExpandedTasksUseCase(
-    private val repository: TaskRepository,
-    private val repeatableTaskGenerator: RepeatableTaskGenerator = RepeatableTaskGenerator(),
+    private val taskRepository: TaskRepository,
 ) {
 
-    operator fun invoke(
-        startDate: LocalDateTime = LocalDateTime.now(),
-        endDate: LocalDateTime = LocalDateTime.now().plusMonths(6),
-    ): Flow<List<Task>> = repository.getTasks()
-        .map { result ->
+    /**
+     * Obtiene todas las tareas expandidas, incluyendo instancias de tareas repetibles
+     * sin generar duplicados dinámicamente
+     */
+    operator fun invoke(): Flow<TaskResult<List<Task>>> {
+        return taskRepository.getTasks().map { result ->
             when (result) {
                 is TaskResult.Success -> {
-                    val baseTasks = result.data
-                    expandRepeatableTasks(baseTasks, startDate, endDate)
+                    val expandedTasks = filterAndOrganizeTasks(result.data)
+                    TaskResult.Success(expandedTasks)
                 }
-
                 is TaskResult.Error -> {
                     Log.e("GetExpandedTasksUseCase", "Error fetching tasks: ${result.message}")
-                    emptyList()
+                    result
                 }
             }
-        }
-        .catch { error ->
+        }.catch { error ->
             Log.e("GetExpandedTasksUseCase", "Exception in expanded tasks flow", error)
-            emit(emptyList())
+            emit(TaskResult.Error("Error getting expanded tasks: ${error.message}"))
         }
-
-    private fun expandRepeatableTasks(
-        baseTasks: List<Task>,
-        startDate: LocalDateTime,
-        endDate: LocalDateTime,
-    ): List<Task> {
-        val expandedTasks = mutableListOf<Task>()
-
-        baseTasks.forEach { task ->
-            if (task.repeatPlan != null && task.parentTaskId == null) {
-                val instances = repeatableTaskGenerator.generateInstances(task, startDate, endDate)
-                expandedTasks.addAll(instances)
-            } else {
-                if (isTaskInRange(task, startDate, endDate)) {
-                    expandedTasks.add(task)
-                }
-            }
-        }
-
-        return expandedTasks.sortedBy { it.startDateConf.dateTime }
     }
 
-    private fun isTaskInRange(
-        task: Task,
-        startDate: LocalDateTime,
-        endDate: LocalDateTime,
-    ): Boolean {
-        val taskDateTime = task.startDateConf.dateTime ?: task.endDateConf?.dateTime
-        return taskDateTime != null && taskDateTime >= startDate && taskDateTime <= endDate
+    /**
+     * Filtra y organiza las tareas para evitar duplicados y manejar correctamente
+     * las tareas repetibles
+     */
+    private fun filterAndOrganizeTasks(allTasks: List<Task>): List<Task> {
+        val parentTasks = mutableListOf<Task>()
+        val instanceTasks = mutableListOf<Task>()
+
+        // Separar tareas padre de instancias
+        allTasks.forEach { task ->
+            if (task.isRepeatedInstance) {
+                instanceTasks.add(task)
+            } else {
+                parentTasks.add(task)
+            }
+        }
+
+        val resultTasks = mutableListOf<Task>()
+
+        // Procesar tareas padre
+        parentTasks.forEach { parentTask ->
+            if (parentTask.repeatPlan?.isEnabled == true) {
+                // Para tareas repetibles, solo incluir la tarea padre si no tiene instancias
+                val hasInstances = instanceTasks.any { it.parentTaskId == parentTask.id }
+                if (!hasInstances) {
+                    // Si no hay instancias pre-generadas, incluir la tarea padre
+                    resultTasks.add(parentTask)
+                }
+                // Las instancias se agregarán después
+            } else {
+                // Para tareas no repetibles, incluir la tarea padre
+                resultTasks.add(parentTask)
+            }
+        }
+
+        // Agregar todas las instancias válidas (no completadas, no eliminadas)
+        val validInstances = instanceTasks.filter { instance ->
+            !instance.isCompleted &&
+                    !(instance.internalFlags?.isMarkedForDeletion ?: false)
+        }
+
+        resultTasks.addAll(validInstances)
+
+        return resultTasks.sortedBy { it.startDateConf?.dateTime }
     }
 }

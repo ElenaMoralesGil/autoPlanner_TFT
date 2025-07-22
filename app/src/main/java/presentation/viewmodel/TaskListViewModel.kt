@@ -8,6 +8,7 @@ import com.elena.autoplanner.domain.models.TaskList
 import com.elena.autoplanner.domain.models.TaskSection
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.lists.GetAllSectionsUseCase
+import com.elena.autoplanner.domain.usecases.lists.GetAllListsUseCase
 import com.elena.autoplanner.domain.usecases.lists.GetTasksByListUseCase
 import com.elena.autoplanner.domain.usecases.lists.SaveListUseCase
 import com.elena.autoplanner.domain.usecases.lists.SaveSectionUseCase
@@ -18,6 +19,8 @@ import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetExpandedTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.CompleteRepeatableTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteRepeatableTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption
+import com.elena.autoplanner.domain.usecases.tasks.RepeatableTaskGenerator
 import com.elena.autoplanner.presentation.effects.TaskListEffect
 import com.elena.autoplanner.presentation.effects.TaskListEffect.*
 import com.elena.autoplanner.presentation.intents.TaskListIntent
@@ -37,9 +40,11 @@ class TaskListViewModel(
     private val saveListUseCase: SaveListUseCase,
     private val saveSectionUseCase: SaveSectionUseCase,
     private val getAllSectionsUseCase: GetAllSectionsUseCase,
+    private val getAllListsUseCase: GetAllListsUseCase,
     private val getExpandedTasksUseCase: GetExpandedTasksUseCase,
     private val completeRepeatableTaskUseCase: CompleteRepeatableTaskUseCase,
     private val deleteRepeatableTaskUseCase: DeleteRepeatableTaskUseCase,
+    private val repeatableTaskGenerator: RepeatableTaskGenerator,
     private val savedStateHandle: SavedStateHandle,
 ) : BaseViewModel<TaskListIntent, TaskListState, TaskListEffect>() {
 
@@ -183,73 +188,112 @@ class TaskListViewModel(
                         )
                     }
                     setEffect(ShowSnackbar("Error loading tasks: ${error.localizedMessage}"))
-                }
-                .collect { expandedTasks ->
-                    Log.d(
-                        "TaskListVM",
-                        "Collected expanded tasks: Count=${expandedTasks.size} for requested listId=$listId, sectionId=$sectionId"
-                    )
 
-                    val tasksToShow = when {
-                        listId != null && sectionId != null -> {
-                            expandedTasks.filter { it.listId == listId && it.sectionId == sectionId }
+                    // CORREGIR: Auto-limpiar el error después de 3 segundos para recuperación automática
+                    launch {
+                        kotlinx.coroutines.delay(3000)
+                        if (currentState.error != null) {
+                            Log.d("TaskListVM", "Auto-clearing error after timeout")
+                            setState { copy(error = null) }
                         }
-
-                        listId != null -> {
-                            expandedTasks.filter { it.listId == listId }
-                        }
-
-                        else -> expandedTasks
                     }
+                }
+                .collect { result ->
+                    when (result) {
+                        is TaskResult.Success -> {
+                            val expandedTasks = result.data
+                            Log.d(
+                                "TaskListVM",
+                                "Collected expanded tasks: Count=${expandedTasks.size} for requested listId=$listId, sectionId=$sectionId"
+                            )
 
-                    var listData: com.elena.autoplanner.domain.models.TaskList? = null
-                    var fetchedSectionName: String? = null
-
-                    if (listId != null) {
-                        when (val listResult = getTasksByListUseCase(listId).first()) {
-                            is Pair<*, *> -> {
-                                @Suppress("UNCHECKED_CAST")
-                                listData =
-                                    (listResult as Pair<com.elena.autoplanner.domain.models.TaskList?, List<com.elena.autoplanner.domain.models.Task>>).first
-                            }
-                        }
-
-                        if (sectionId != null) {
-                            when (val sectionsResult = getAllSectionsUseCase(listId)) {
-                                is com.elena.autoplanner.domain.results.TaskResult.Success -> {
-                                    fetchedSectionName =
-                                        sectionsResult.data.find { it.id == sectionId }?.name
+                            val tasksToShow = when {
+                                listId != null -> {
+                                    expandedTasks.filter { task -> task.listId == listId }
                                 }
 
-                                is com.elena.autoplanner.domain.results.TaskResult.Error -> {
-                                    Log.w(
-                                        "TaskListVM",
-                                        "Could not fetch section name for $sectionId: ${sectionsResult.message}"
+                                else -> expandedTasks
+                            }
+
+                            // Aplicar filtros inmediatamente después de cargar las tareas
+                            val filteredTasks = filterTasksUseCase(
+                                tasksToShow,
+                                currentState.statusFilter,
+                                currentState.timeFrameFilter
+                            )
+
+                            // Obtener información de la lista si se está viendo una lista específica
+                            if (listId != null) {
+                                when (val listsResult = getAllListsUseCase()) {
+                                    is TaskResult.Success -> {
+                                        val currentList = listsResult.data.find { it.id == listId }
+                                        setState {
+                                            copy(
+                                                tasks = tasksToShow,
+                                                filteredTasks = filteredTasks,
+                                                isLoading = false,
+                                                currentListId = listId,
+                                                currentListName = currentList?.name,
+                                                currentListColor = currentList?.colorHex,
+                                                currentSectionId = sectionId,
+                                                requestedListId = listId,
+                                                requestedSectionId = sectionId
+                                            )
+                                        }
+                                    }
+
+                                    is TaskResult.Error -> {
+                                        Log.e(
+                                            "TaskListVM",
+                                            "Error loading list info: ${listsResult.message}"
+                                        )
+                                        setState {
+                                            copy(
+                                                tasks = tasksToShow,
+                                                filteredTasks = filteredTasks,
+                                                isLoading = false,
+                                                currentListId = listId,
+                                                currentListName = null,
+                                                currentListColor = null,
+                                                currentSectionId = sectionId,
+                                                requestedListId = listId,
+                                                requestedSectionId = sectionId
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Si no hay lista específica (All Tasks), limpiar info de lista
+                                setState {
+                                    copy(
+                                        tasks = tasksToShow,
+                                        filteredTasks = filteredTasks,
+                                        isLoading = false,
+                                        currentListId = null,
+                                        currentListName = null,
+                                        currentListColor = null,
+                                        currentSectionId = sectionId,
+                                        requestedListId = listId,
+                                        requestedSectionId = sectionId
                                     )
                                 }
                             }
                         }
-                    }
 
-                    Log.d(
-                        "TaskListVM",
-                        "Updating state post-load: listId=${listData?.id}, sectionId=$sectionId, listName=${listData?.name}, sectionName=$fetchedSectionName, taskCount=${tasksToShow.size}, expandedTaskCount=${expandedTasks.size}"
-                    )
-                    setState {
-                        copy(
-                            currentListId = listData?.id,
-                            currentSectionId = sectionId, 
-                            currentListName = listData?.name,
-                            currentListColor = listData?.colorHex,
-                            currentSectionName = fetchedSectionName,
-                            tasks = tasksToShow,
-                            filteredTasks = filterTasksUseCase(tasksToShow, statusFilter, timeFrameFilter),
-                            isLoading = false,
-                            error = null,
-
-                            requestedListId = listData?.id,
-                            requestedSectionId = sectionId
-                        )
+                        is TaskResult.Error -> {
+                            Log.e("TaskListVM", "Error loading expanded tasks: ${result.message}")
+                            setState {
+                                copy(
+                                    tasks = emptyList(),
+                                    isLoading = false,
+                                    error = result.message,
+                                    currentListId = listId,
+                                    currentSectionId = sectionId,
+                                    requestedListId = listId,
+                                    requestedSectionId = sectionId
+                                )
+                            }
+                        }
                     }
                 }
         }
@@ -269,15 +313,62 @@ class TaskListViewModel(
 
     private fun toggleTaskCompletion(taskId: Int, completed: Boolean) {
         viewModelScope.launch {
-            updateTaskCompletionInState(taskId, completed) 
+            Log.d("TaskListVM", "toggleTaskCompletion called: taskId=$taskId, completed=$completed")
+
+            // Buscar la tarea en el estado actual para verificar si tiene repetición
+            val task = currentState.tasks.find { it.id == taskId }
+            if (task == null) {
+                Log.e(
+                    "TaskListVM",
+                    "toggleTaskCompletion ERROR: Task $taskId not found in current state"
+                )
+                setEffect(ShowSnackbar("Error: Task not found"))
+                setState { copy(error = "Task not found") }
+                return@launch
+            }
+
+            // Si la tarea tiene repetición o es una instancia repetida y se está marcando como completada, usar CompleteRepeatableTaskUseCase
+            if (completed && (task.repeatPlan != null || task.isRepeatedInstance)) {
+                Log.d(
+                    "TaskListVM",
+                    "Task $taskId has repetition or is repeated instance, using CompleteRepeatableTaskUseCase"
+                )
+                when (val result = completeRepeatableTaskUseCase.execute(task)) {
+                    is TaskResult.Success<*> -> {
+                        // Para tareas repetibles, actualizamos el estado DESPUÉS del éxito
+                        // Esto evita conflictos entre la tarea completada y la nueva instancia
+                        updateTaskCompletionInState(taskId, completed)
+                        setEffect(ShowSnackbar("Repeatable task completed and next occurrence created"))
+                        Log.d("TaskListVM", "CompleteRepeatableTaskUseCase SUCCESS: taskId=$taskId")
+                    }
+
+                    is TaskResult.Error -> {
+                        Log.e(
+                            "TaskListVM",
+                            "CompleteRepeatableTaskUseCase ERROR: taskId=$taskId, error=${result.message}"
+                        )
+                        setState { copy(error = result.message) }
+                        setEffect(ShowSnackbar("Error completing repeatable task: ${result.message}"))
+                    }
+                }
+                return@launch
+            }
+
+            // Para tareas normales o desmarcar como completada, usar el método normal
+            updateTaskCompletionInState(taskId, completed)
             when (val result = toggleTaskCompletionUseCase(taskId, completed)) {
-                is TaskResult.Success -> {
+                is TaskResult.Success<*> -> {
                     val message = if (completed) "Task completed" else "Task marked incomplete"
                     setEffect(ShowSnackbar(message))
+                    Log.d("TaskListVM", "toggleTaskCompletion SUCCESS: taskId=$taskId")
                 }
 
                 is TaskResult.Error -> {
-                    updateTaskCompletionInState(taskId, !completed) 
+                    Log.e(
+                        "TaskListVM",
+                        "toggleTaskCompletion ERROR: taskId=$taskId, error=${result.message}"
+                    )
+                    updateTaskCompletionInState(taskId, !completed)
                     setState { copy(error = result.message) }
                     setEffect(ShowSnackbar("Error: ${result.message}"))
                 }
@@ -333,15 +424,15 @@ class TaskListViewModel(
 
     private fun handleConfirmRepeatableTaskDeletion(
         task: Task,
-        option: com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption,
+        option: RepeatTaskDeleteOption,
     ) {
         viewModelScope.launch {
             when (val result = deleteRepeatableTaskUseCase.execute(task, option)) {
                 is TaskResult.Success -> {
                     val message = when (option) {
-                        com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption.THIS_INSTANCE_ONLY -> "This instance deleted"
-                        com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption.THIS_AND_FUTURE -> "This and future instances deleted"
-                        com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption.ALL_INSTANCES -> "All instances deleted"
+                        RepeatTaskDeleteOption.THIS_INSTANCE_ONLY -> "This instance deleted"
+                        RepeatTaskDeleteOption.THIS_AND_FUTURE -> "This and future instances deleted"
+                        RepeatTaskDeleteOption.ALL_INSTANCES -> "All instances deleted"
                     }
                     setEffect(ShowSnackbar(message))
 

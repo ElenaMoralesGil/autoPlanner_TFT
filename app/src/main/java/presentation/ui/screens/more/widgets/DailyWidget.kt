@@ -170,7 +170,7 @@ fun DailyTaskWidgetItem(task: Task) {
                 ),
                 maxLines = 2
             )
-            task.startDateConf.dateTime?.let {
+            task.startDateConf?.dateTime?.let {
                 Text(
                     text = it.format(timeFormatter),
                     style = TextStyle(

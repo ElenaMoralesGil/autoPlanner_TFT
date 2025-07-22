@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,9 +25,13 @@ fun TasksSectionContent(
     onEdit: (Task) -> Unit,
 ) {
     val tasks = state.filteredTasks
-    val notDoneTasks = tasks.filter { !it.isCompleted && !it.isExpired() }
+    // CORREGIR: Separar correctamente las tareas sin solapamiento
     val expiredNotCompletedTasks = tasks.filter { it.isExpired() && !it.isCompleted }
+    val notDoneTasks = tasks.filter { !it.isCompleted && !it.isExpired() }
     val completedTasks = tasks.filter { it.isCompleted }
+
+    // Debug: Verificar si hay tareas expiradas
+    println("DEBUG: Total tasks: ${tasks.size}, Expired: ${expiredNotCompletedTasks.size}, NotDone: ${notDoneTasks.size}, Completed: ${completedTasks.size}")
 
     val showNotDone = when (state.statusFilter) {
         TaskStatus.ALL, TaskStatus.UNCOMPLETED -> true
@@ -39,19 +43,27 @@ fun TasksSectionContent(
         else -> false
     }
 
+    // NUEVO: Las tareas expiradas siempre se muestran (excepto cuando el filtro es solo "Completed")
+    val showExpired = when (state.statusFilter) {
+        TaskStatus.COMPLETED -> false
+        else -> true
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(8.dp)
     ) {
-        if (showNotDone && expiredNotCompletedTasks.isNotEmpty()) {
-            stickyHeader {
+        if (showExpired && expiredNotCompletedTasks.isNotEmpty()) {
+            stickyHeader(key = "expired_header") {
                 SectionHeader(
                     title = "Expired",
                     count = expiredNotCompletedTasks.size,
                     color = MaterialTheme.colorScheme.error
                 )
             }
-            items(expiredNotCompletedTasks, key = { it.id }) { task ->
+            itemsIndexed(
+                expiredNotCompletedTasks,
+                key = { index, task -> "expired_${index}_${task.id}_${task.instanceIdentifier ?: ""}" }) { index, task ->
                 TaskCard(
                     task = task,
                     onCheckedChange = { checked -> onTaskChecked(task, checked) },
@@ -67,14 +79,16 @@ fun TasksSectionContent(
         }
 
         if (showNotDone && notDoneTasks.isNotEmpty()) {
-            stickyHeader {
+            stickyHeader(key = "notdone_header") {
                 SectionHeader(
                     title = "Not Done",
                     count = notDoneTasks.size,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-            items(notDoneTasks, key = { it.id }) { task ->
+            itemsIndexed(
+                notDoneTasks,
+                key = { index, task -> "notdone_${index}_${task.id}_${task.instanceIdentifier ?: ""}" }) { index, task ->
                 TaskCard(
                     task = task,
                     onCheckedChange = { checked -> onTaskChecked(task, checked) },
@@ -90,14 +104,16 @@ fun TasksSectionContent(
         }
 
         if (showCompleted && completedTasks.isNotEmpty()) {
-            stickyHeader {
+            stickyHeader(key = "completed_header") {
                 SectionHeader(
                     title = "Completed",
                     count = completedTasks.size,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            items(completedTasks, key = { it.id }) { task ->
+            itemsIndexed(
+                completedTasks,
+                key = { index, task -> "completed_${index}_${task.id}_${task.instanceIdentifier ?: ""}" }) { index, task ->
                 TaskCard(
                     task = task,
                     onCheckedChange = { checked -> onTaskChecked(task, checked) },

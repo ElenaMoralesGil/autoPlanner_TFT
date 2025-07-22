@@ -51,9 +51,8 @@ fun ReviewWeeklyViewContent(
     modifier: Modifier = Modifier,
 ) {
     val weekDays = remember(startDate) {
-
-        val monday = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        (0..6).map { monday.plusDays(it.toLong()) }
+        // Usar startDate directamente para mostrar 7 días consecutivos desde la fecha dada
+        (0..6).map { startDate.plusDays(it.toLong()) }
     }
     val hourHeight: Dp = 60.dp
     val density = LocalDensity.current
@@ -76,7 +75,7 @@ fun ReviewWeeklyViewContent(
                         val showTask = taskResolution == null ||
                                 taskResolution == ResolutionOption.LEAVE_IT_LIKE_THAT ||
                                 taskResolution == ResolutionOption.MANUALLY_SCHEDULE
-                        showTask && (conflict.conflictTime?.toLocalDate() == date || task.startDateConf.dateTime?.toLocalDate() == date)
+                        showTask && (conflict.conflictTime?.toLocalDate() == date || task.startDateConf?.dateTime?.toLocalDate() == date)
                     }
                 }
             }.distinctBy { it.id }
@@ -228,7 +227,7 @@ fun ReviewWeeklyViewContent(
                                             task,
                                             startTime,
                                             endTime,
-                                            task.startDateConf.dateTime?.toLocalDate() ?: date
+                                            task.startDateConf?.dateTime?.toLocalDate() ?: date
                                         )
                                     }
 

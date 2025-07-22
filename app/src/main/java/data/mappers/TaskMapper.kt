@@ -90,7 +90,7 @@ class TaskMapper {
             .internalFlags(internalFlags)
             .sectionName(sectionName)
             .listColor(listColor)
-            .allowSplitting(taskEntity.allowSplitting?.let { it == 1 })
+            .allowSplitting(taskEntity.allowSplitting)
             .build()
     }
 
@@ -110,11 +110,11 @@ class TaskMapper {
             scheduledEndDateTime = domain.scheduledEndDateTime,
             completionDateTime = domain.completionDateTime,
             lastUpdated = System.currentTimeMillis(),
+            allowSplitting = domain.allowSplitting,
             listId = domain.listId,
             sectionId = domain.sectionId,
             displayOrder = domain.displayOrder,
             isDeleted = isDeletedFlag,
-            allowSplitting = domain.allowSplitting?.let { if (it) 1 else 0 }
 
         )
     }

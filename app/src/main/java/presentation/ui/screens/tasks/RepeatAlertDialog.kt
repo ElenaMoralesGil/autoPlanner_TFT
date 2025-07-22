@@ -76,12 +76,37 @@ fun RepeatAlertDialog(
                     DaysOfWeekSelector(
                         selectedDays = localRepeat.selectedDays.map { it.ordinal }.toSet(),
                         onDaySelected = { index ->
-                            val day = DayOfWeek.entries[index]
+                            // Convertir el índice a DayOfWeek del dominio
+                            val domainDayOfWeek = when (index) {
+                                0 -> com.elena.autoplanner.domain.models.DayOfWeek.MON
+                                1 -> com.elena.autoplanner.domain.models.DayOfWeek.TUE
+                                2 -> com.elena.autoplanner.domain.models.DayOfWeek.WED
+                                3 -> com.elena.autoplanner.domain.models.DayOfWeek.THU
+                                4 -> com.elena.autoplanner.domain.models.DayOfWeek.FRI
+                                5 -> com.elena.autoplanner.domain.models.DayOfWeek.SAT
+                                6 -> com.elena.autoplanner.domain.models.DayOfWeek.SUN
+                                else -> com.elena.autoplanner.domain.models.DayOfWeek.MON
+                            }
+
+                            // Convertir a java.time.DayOfWeek para selectedDays
+                            val javaTimeDayOfWeek = when (domainDayOfWeek) {
+                                com.elena.autoplanner.domain.models.DayOfWeek.MON -> java.time.DayOfWeek.MONDAY
+                                com.elena.autoplanner.domain.models.DayOfWeek.TUE -> java.time.DayOfWeek.TUESDAY
+                                com.elena.autoplanner.domain.models.DayOfWeek.WED -> java.time.DayOfWeek.WEDNESDAY
+                                com.elena.autoplanner.domain.models.DayOfWeek.THU -> java.time.DayOfWeek.THURSDAY
+                                com.elena.autoplanner.domain.models.DayOfWeek.FRI -> java.time.DayOfWeek.FRIDAY
+                                com.elena.autoplanner.domain.models.DayOfWeek.SAT -> java.time.DayOfWeek.SATURDAY
+                                com.elena.autoplanner.domain.models.DayOfWeek.SUN -> java.time.DayOfWeek.SUNDAY
+                            }
+
                             localRepeat = localRepeat.copy(
-                                selectedDays = if (localRepeat.selectedDays.contains(day)) {
-                                    localRepeat.selectedDays - day
+                                selectedDays = if (localRepeat.selectedDays.contains(
+                                        javaTimeDayOfWeek
+                                    )
+                                ) {
+                                    localRepeat.selectedDays - javaTimeDayOfWeek
                                 } else {
-                                    localRepeat.selectedDays + day
+                                    localRepeat.selectedDays + javaTimeDayOfWeek
                                 }
                             )
                         }

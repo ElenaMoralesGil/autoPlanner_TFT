@@ -15,8 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.effects.TaskDetailEffect
 import com.elena.autoplanner.presentation.effects.TaskEditEffect
@@ -26,6 +24,7 @@ import com.elena.autoplanner.presentation.intents.TaskEditIntent
 import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.ModificationTaskSheet
+import com.elena.autoplanner.presentation.ui.screens.more.CreateEditListDialog
 import com.elena.autoplanner.presentation.ui.utils.ErrorMessage
 import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
 import com.elena.autoplanner.presentation.ui.utils.RepeatTaskDeleteDialog
@@ -51,6 +50,8 @@ fun TasksScreen(
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
     var showRepeatDeleteDialog by remember { mutableStateOf(false) }
     var taskToDelete by remember { mutableStateOf<Task?>(null) }
+    var showEditListDialog by remember { mutableStateOf(false) }
+    var showEditSectionsDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(listViewModel) {
@@ -70,8 +71,13 @@ fun TasksScreen(
                     showRepeatDeleteDialog = true
                 }
 
-                is TaskListEffect.ShowEditListDialog -> TODO()
-                is TaskListEffect.ShowEditSectionsDialog -> TODO()
+                is TaskListEffect.ShowEditListDialog -> {
+                    showEditListDialog = true
+                }
+
+                is TaskListEffect.ShowEditSectionsDialog -> {
+                    showEditSectionsDialog = true
+                }
             }
         }
     }
@@ -252,5 +258,15 @@ fun TasksScreen(
                 taskToDelete = null
             }
         )
+    }
+
+    if (showEditListDialog) {
+        // Aquí debes implementar el diálogo para editar la lista
+        // Puedes crear un nuevo Composable para el diálogo y llamarlo aquí
+    }
+
+    if (showEditSectionsDialog) {
+        // Aquí debes implementar el diálogo para editar las secciones
+        // Puedes crear un nuevo Composable para el diálogo y llamarlo aquí
     }
 }

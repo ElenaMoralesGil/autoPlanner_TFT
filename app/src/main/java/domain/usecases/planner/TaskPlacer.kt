@@ -229,7 +229,7 @@ class TaskPlacer(
                 ConflictItem(
                     listOf(task),
                     "Zero duration",
-                    task.startDateConf.dateTime,
+                    task.startDateConf?.dateTime,
                     ConflictType.ZERO_DURATION
                 ), task.id
             )
@@ -242,9 +242,9 @@ class TaskPlacer(
         var isFlexible = true
         var primaryFailed = false
 
-        val taskStartDateTime = task.startDateConf.dateTime
+        val taskStartDateTime = task.startDateConf?.dateTime
         val taskStartDate = taskStartDateTime?.toLocalDate()
-        val taskStartPeriod = task.startDateConf.dayPeriod
+        val taskStartPeriod = task.startDateConf?.dayPeriod ?: DayPeriod.NONE
         val taskEndDate = task.endDateConf?.dateTime?.toLocalDate()
             ?: scopeEndDate
 
@@ -291,7 +291,7 @@ class TaskPlacer(
                     minSearchTime = targetDate.atTime(periodStart)
                     maxSearchTime = targetDate.atTime(periodEnd)
                     placementOccupancy = Occupancy.PERIOD_TASK
-                    isFlexible = taskEndDate > targetDate
+                    isFlexible = taskEndDate?.let { it > targetDate } ?: false
                 } else {
 
                     Log.v(
@@ -427,7 +427,7 @@ class TaskPlacer(
             )
 
             val fallbackMinSearch = maxOf(
-                task.startDateConf.dateTime ?: scopeStartDate.atStartOfDay(),
+                task.startDateConf?.dateTime ?: scopeStartDate.atStartOfDay(),
                 scopeStartDate.atStartOfDay()
             )
             val fallbackMaxSearch = minOf(

@@ -2,12 +2,16 @@ package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.DeleteSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.subtasks.ToggleSubtaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.DeleteRepeatableTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
+import com.elena.autoplanner.domain.usecases.tasks.CompleteRepeatableTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.RepeatableTaskGenerator
 import com.elena.autoplanner.presentation.effects.TaskDetailEffect
 import com.elena.autoplanner.presentation.intents.TaskDetailIntent
 import com.elena.autoplanner.presentation.states.TaskDetailState
@@ -16,10 +20,13 @@ import kotlinx.coroutines.launch
 class TaskDetailViewModel(
     private val getTaskUseCase: GetTaskUseCase,
     private val toggleTaskCompletionUseCase: ToggleTaskCompletionUseCase,
+    private val completeRepeatableTaskUseCase: CompleteRepeatableTaskUseCase,
     private val deleteTaskUseCase: DeleteTaskUseCase,
+    private val deleteRepeatableTaskUseCase: DeleteRepeatableTaskUseCase,
     private val addSubtaskUseCase: AddSubtaskUseCase,
     private val toggleSubtaskUseCase: ToggleSubtaskUseCase,
     private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
+    private val repeatableTaskGenerator: RepeatableTaskGenerator,
     private val taskId: Int,
     private val instanceIdentifier: String? = null,
 ) : BaseTaskViewModel<TaskDetailIntent, TaskDetailState, TaskDetailEffect>() {
@@ -50,7 +57,13 @@ class TaskDetailViewModel(
 
             executeTaskOperation(
                 setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
-                operation = { getTaskUseCase.getTaskSmart(taskId, instanceIdentifier) },
+                operation = {
+                    if (instanceIdentifier != null) {
+                        getTaskUseCase.getTaskByInstanceIdentifier(instanceIdentifier)
+                    } else {
+                        getTaskUseCase(taskId)
+                    }
+                },
                 onSuccess = { task ->
                     setState { copy(task = task, error = null) }
                 },
@@ -66,14 +79,28 @@ class TaskDetailViewModel(
         viewModelScope.launch {
             val currentTask = currentState.task ?: return@launch
 
+            // Si la tarea tiene repetición o es una instancia repetida y se está marcando como completada, usar CompleteRepeatableTaskUseCase
+            if (completed && (currentTask.repeatPlan != null || currentTask.isRepeatedInstance)) {
+                when (val result = completeRepeatableTaskUseCase.execute(currentTask)) {
+                    is TaskResult.Success<*> -> {
+                        setEffect(TaskDetailEffect.ShowSnackbar("Repeatable task completed and next occurrence created"))
+                        setEffect(TaskDetailEffect.NavigateBack) // Navegar de vuelta ya que la tarea fue completada
+                    }
+
+                    is TaskResult.Error -> {
+                        setState { copy(error = result.message) }
+                        setEffect(TaskDetailEffect.ShowSnackbar("Error completing repeatable task: ${result.message}"))
+                    }
+                }
+                return@launch
+            }
+
+            // Para tareas normales o desmarcar como completada, usar el método normal
             val updatedTask = Task.from(currentTask)
                 .isCompleted(completed)
                 .build()
 
-            setState {
-                copy(task = updatedTask)
-
-            }
+            setState { copy(task = updatedTask) }
 
             executeTaskOperation(
                 setLoadingState = { },
@@ -83,8 +110,7 @@ class TaskDetailViewModel(
                     setEffect(TaskDetailEffect.ShowSnackbar(message))
                 },
                 onError = { errorMessage ->
-
-                setState { copy(task = currentTask, error = errorMessage) }
+                    setState { copy(task = currentTask, error = errorMessage) }
                     setEffect(TaskDetailEffect.ShowSnackbar("Error updating task: $errorMessage"))
                 }
             )

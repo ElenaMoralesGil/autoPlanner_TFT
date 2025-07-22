@@ -9,6 +9,7 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.data.MIGRATION_10_11
 import com.elena.autoplanner.data.MIGRATION_11_12
+import com.elena.autoplanner.data.MIGRATION_12_13
 import com.elena.autoplanner.data.MIGRATION_6_7
 import com.elena.autoplanner.data.MIGRATION_7_8
 import com.elena.autoplanner.data.MIGRATION_8_9
@@ -110,7 +111,7 @@ val appModule = module {
         )
             .addMigrations(
                 MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-                MIGRATION_11_12
+                MIGRATION_11_12, MIGRATION_12_13
             )
             .addCallback(roomCallback)
             .build()
@@ -165,7 +166,7 @@ val appModule = module {
 
 val useCaseModule = module {
     single { GetTasksUseCase(get()) }
-    single { GetTaskUseCase(get()) }
+    single { GetTaskUseCase(get()) } // Agregar el segundo parámetro RepeatableTaskGenerator
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
     single { AddSubtaskUseCase(get(), get()) }
@@ -177,10 +178,10 @@ val useCaseModule = module {
     single { DeleteAllTasksUseCase(get()) }
     single { FilterTasksUseCase() }
 
-    single { RepeatableTaskGenerator() }
-    single { GetExpandedTasksUseCase(get(), get()) }
+    single { RepeatableTaskGenerator(get()) }
+    single { GetExpandedTasksUseCase(get()) }
     single { CompleteRepeatableTaskUseCase(get(), get()) }
-    single { DeleteRepeatableTaskUseCase(get()) }
+    single { DeleteRepeatableTaskUseCase(get(), get()) }
 
     single { TaskPrioritizer() }
     single { TaskCategorizer() }
@@ -229,7 +230,7 @@ val viewModelModule = module {
         )
     }
     viewModel { MoreViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { (handle: SavedStateHandle) -> 
+    viewModel { (handle: SavedStateHandle) ->
         TaskListViewModel(
             getTasksByListUseCase = get(),
             filterTasksUseCase = get(),
@@ -239,9 +240,11 @@ val viewModelModule = module {
             saveListUseCase = get(),
             saveSectionUseCase = get(),
             getAllSectionsUseCase = get(),
+            getAllListsUseCase = get(),
             getExpandedTasksUseCase = get(),
             completeRepeatableTaskUseCase = get(),
             deleteRepeatableTaskUseCase = get(),
+            repeatableTaskGenerator = get<RepeatableTaskGenerator>(),
             savedStateHandle = handle
         )
     }
@@ -252,10 +255,13 @@ val viewModelModule = module {
         TaskDetailViewModel(
             getTaskUseCase = get(),
             toggleTaskCompletionUseCase = get(),
+            completeRepeatableTaskUseCase = get(),
             deleteTaskUseCase = get(),
+            deleteRepeatableTaskUseCase = get(),
             addSubtaskUseCase = get(),
             toggleSubtaskUseCase = get(),
             deleteSubtaskUseCase = get(),
+            repeatableTaskGenerator = get<RepeatableTaskGenerator>(),
             taskId = taskId,
             instanceIdentifier = instanceIdentifier
         )

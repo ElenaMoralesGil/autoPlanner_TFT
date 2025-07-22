@@ -19,7 +19,6 @@ import com.elena.autoplanner.domain.models.TimePlanning
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.QuerySnapshot
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -51,7 +50,7 @@ fun Task.toFirebaseMap(
         "displayOrder" to this.displayOrder,
         "allowSplitting" to allowSplitting,
         "lastUpdated" to FieldValue.serverTimestamp()
-    ).filterValues { it != null } 
+    )
 }
 
 fun TaskList.toFirebaseMap(userId: String): Map<String, Any?> {
@@ -61,7 +60,7 @@ fun TaskList.toFirebaseMap(userId: String): Map<String, Any?> {
         "colorHex" to colorHex,
         "isDeleted" to false, 
         "lastUpdated" to FieldValue.serverTimestamp()
-    ).filterValues { it != null }
+    )
 }
 
 fun TaskSection.toFirebaseMap(
@@ -195,8 +194,8 @@ fun DocumentSnapshot.toTaskFirestoreDTO(localIdFallback: Int? = null): TaskFires
 
 fun DocumentSnapshot.toListFirestoreDTO(localIdFallback: Long? = null): ListFirestoreDTO? {
     return try {
-        val data = data ?: return null
-        val domainId = localIdFallback ?: 0L 
+        data ?: return null
+        val domainId = localIdFallback ?: 0L
         val list = TaskList(
             id = domainId,
             name = getString("name") ?: "",
@@ -220,8 +219,7 @@ fun DocumentSnapshot.toSectionFirestoreDTO(
         return null 
     }
     return try {
-        val data = data ?: return null
-        val domainId = localIdFallback ?: 0L 
+        val domainId = localIdFallback ?: 0L
         val section = TaskSection(
             id = domainId,
             listId = parentListLocalId, 
@@ -277,7 +275,7 @@ fun Map<String, Any>.toReminderPlan(): ReminderPlan? {
             customHour = (this["customHour"] as? Long)?.toInt(),
             customMinute = (this["customMinute"] as? Long)?.toInt()
         )
-    } catch (e: IllegalArgumentException) { 
+    } catch (_: IllegalArgumentException) {
         Log.w("FirebaseMapper", "Invalid ReminderMode value found in ReminderPlan map: ${this["mode"]}")
         null 
     } catch (e: Exception) {
@@ -293,7 +291,18 @@ fun Map<String, Any>.toRepeatPlan(): RepeatPlan? {
             interval = (this["interval"] as? Long)?.toInt(),
             intervalUnit = (this["intervalUnit"] as? String)?.let { runCatching { IntervalUnit.valueOf(it) }.getOrNull() },
             selectedDays = (this["selectedDays"] as? List<String>)?.mapNotNull {
-                runCatching { DayOfWeek.valueOf(it) }.getOrNull()
+                // Convertir de domain DayOfWeek a java.time.DayOfWeek para selectedDays
+                val domainDayOfWeek = runCatching { DayOfWeek.valueOf(it) }.getOrNull()
+                when (domainDayOfWeek) {
+                    DayOfWeek.MON -> java.time.DayOfWeek.MONDAY
+                    DayOfWeek.TUE -> java.time.DayOfWeek.TUESDAY
+                    DayOfWeek.WED -> java.time.DayOfWeek.WEDNESDAY
+                    DayOfWeek.THU -> java.time.DayOfWeek.THURSDAY
+                    DayOfWeek.FRI -> java.time.DayOfWeek.FRIDAY
+                    DayOfWeek.SAT -> java.time.DayOfWeek.SATURDAY
+                    DayOfWeek.SUN -> java.time.DayOfWeek.SUNDAY
+                    null -> null
+                }
             }?.toSet() ?: emptySet(),
             repeatEndDate = (this["repeatEndDate"] as? String)?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
             repeatOccurrences = (this["repeatOccurrences"] as? Long)?.toInt(),
@@ -303,14 +312,28 @@ fun Map<String, Any>.toRepeatPlan(): RepeatPlan? {
                 val ordinal = (ordMap["ordinal"] as? Long)?.toInt()
                 val dayStr = ordMap["dayOfWeek"] as? String
                 if (ordinal != null && dayStr != null) {
-                    runCatching { OrdinalWeekday(ordinal, DayOfWeek.valueOf(dayStr)) }.getOrNull()
+                    // Convertir de domain DayOfWeek a java.time.DayOfWeek para OrdinalWeekday
+                    val domainDayOfWeek = runCatching { DayOfWeek.valueOf(dayStr) }.getOrNull()
+                    val javaTimeDayOfWeek = when (domainDayOfWeek) {
+                        DayOfWeek.MON -> java.time.DayOfWeek.MONDAY
+                        DayOfWeek.TUE -> java.time.DayOfWeek.TUESDAY
+                        DayOfWeek.WED -> java.time.DayOfWeek.WEDNESDAY
+                        DayOfWeek.THU -> java.time.DayOfWeek.THURSDAY
+                        DayOfWeek.FRI -> java.time.DayOfWeek.FRIDAY
+                        DayOfWeek.SAT -> java.time.DayOfWeek.SATURDAY
+                        DayOfWeek.SUN -> java.time.DayOfWeek.SUNDAY
+                        null -> null
+                    }
+                    if (javaTimeDayOfWeek != null) {
+                        runCatching { OrdinalWeekday(ordinal, javaTimeDayOfWeek) }.getOrNull()
+                    } else null
                 } else null
             } ?: emptyList(),
             setPos = (this["setPos"] as? List<Long>)?.mapNotNull { it.toInt() } ?: emptyList()
         )
-    } catch (e: IllegalArgumentException) { 
-        Log.w("FirebaseMapper", "Invalid Enum value found in RepeatPlan map: $e")
-        null 
+    } catch (_: IllegalArgumentException) {
+        Log.w("FirebaseMapper", "Invalid Enum value found in RepeatPlan map")
+        null
     } catch (e: Exception) {
         Log.e("FirebaseMapper", "Error mapping map to RepeatPlan", e)
         null

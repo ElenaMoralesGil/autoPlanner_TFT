@@ -8,7 +8,18 @@ import java.time.temporal.TemporalAdjusters
 fun Task.isDueToday(): Boolean {
     val today = LocalDate.now()
     return startDateConf?.dateTime?.toLocalDate() == today ||
-            endDateConf?.dateTime?.toLocalDate() == today
+            endDateConf?.dateTime?.toLocalDate() == today ||
+            isFlexibleTask() // Nueva función para tareas sin fecha específica
+}
+
+// Nueva función para identificar tareas flexibles sin fecha
+fun Task.isFlexibleTask(): Boolean {
+    return startDateConf?.dateTime == null && endDateConf?.dateTime == null
+}
+
+// Función para mostrar tareas flexibles en "hoy" por defecto
+fun Task.shouldShowToday(): Boolean {
+    return isDueToday() || isFlexibleTask()
 }
 
 fun Task.isExpired(): Boolean {

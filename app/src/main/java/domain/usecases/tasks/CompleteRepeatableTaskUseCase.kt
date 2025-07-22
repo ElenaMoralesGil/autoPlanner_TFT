@@ -1,71 +1,139 @@
 package com.elena.autoplanner.domain.usecases.tasks
 
+import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.domain.models.TimePlanning
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.results.TaskResult
 import java.time.LocalDateTime
 
 class CompleteRepeatableTaskUseCase(
-    private val repository: TaskRepository,
-    private val repeatableTaskGenerator: RepeatableTaskGenerator = RepeatableTaskGenerator(),
+    private val taskRepository: TaskRepository,
+    private val repeatableTaskGenerator: RepeatableTaskGenerator,
 ) {
 
     suspend fun execute(task: Task): TaskResult<Task> {
         return try {
             if (task.isRepeatedInstance) {
-                val completedTask = Task.from(task)
-                    .isCompleted(true)
-                    .completionDateTime(LocalDateTime.now())
-                    .build()
-
-                TaskResult.Success(completedTask)
-            } else if (task.repeatPlan != null) {
-                val completedTask = Task.from(task)
-                    .isCompleted(true)
-                    .completionDateTime(LocalDateTime.now())
-                    .build()
-
-                repository.saveTask(completedTask)
-
-                generateNextInstance(task)
-
-                TaskResult.Success(completedTask)
+                // Para instancias repetidas, solo marcar como completada, NO crear nueva instancia
+                handleInstanceCompletion(task)
+            } else if (task.repeatPlan != null && task.repeatPlan.isEnabled) {
+                // Para tareas padre con repetición, marcar como completada Y generar siguiente instancia
+                handleParentTaskCompletion(task)
             } else {
-                val completedTask = Task.from(task)
-                    .isCompleted(true)
-                    .completionDateTime(LocalDateTime.now())
-                    .build()
-
-                repository.saveTask(completedTask)
-                TaskResult.Success(completedTask)
+                // Para tareas normales sin repetición
+                handleNormalTaskCompletion(task)
             }
         } catch (e: Exception) {
             TaskResult.Error("Error completing repeatable task: ${e.message}")
         }
     }
 
-    private suspend fun generateNextInstance(baseTask: Task) {
-        val repeatPlan = baseTask.repeatPlan ?: return
-        val baseDateTime = baseTask.startDateConf.dateTime ?: return
+    private suspend fun handleInstanceCompletion(task: Task): TaskResult<Task> {
+        val completedTask = Task.Builder()
+            .id(task.id)
+            .name(task.name)
+            .isCompleted(true)
+            .priority(task.priority)
+            .startDateConf(task.startDateConf)
+            .endDateConf(task.endDateConf)
+            .durationConf(task.durationConf)
+            .reminderPlan(task.reminderPlan)
+            .repeatPlan(task.repeatPlan)
+            .subtasks(task.subtasks)
+            .scheduledStartDateTime(task.scheduledStartDateTime)
+            .scheduledEndDateTime(task.scheduledEndDateTime)
+            .completionDateTime(LocalDateTime.now())
+            .listId(task.listId)
+            .sectionId(task.sectionId)
+            .displayOrder(task.displayOrder)
+            .allowSplitting(task.allowSplitting)
+            .isRepeatedInstance(task.isRepeatedInstance)
+            .parentTaskId(task.parentTaskId)
+            .instanceIdentifier(task.instanceIdentifier)
+            .build()
 
-        val nextDateTime = repeatableTaskGenerator.getNextOccurrence(baseDateTime, repeatPlan)
-        if (nextDateTime != null) {
-            val duration = baseTask.durationConf?.totalMinutes ?: 0
-            val nextEndDateTime =
-                if (duration > 0) nextDateTime.plusMinutes(duration.toLong()) else nextDateTime
+        return when (val result = taskRepository.saveTask(completedTask)) {
+            is TaskResult.Success -> TaskResult.Success(completedTask)
+            is TaskResult.Error -> TaskResult.Error("Failed to save completed instance: ${result.message}")
+        }
+    }
 
-            val newStartConf = baseTask.startDateConf.copy(dateTime = nextDateTime)
-            val newEndConf = baseTask.endDateConf?.copy(dateTime = nextEndDateTime)
+    private suspend fun handleParentTaskCompletion(task: Task): TaskResult<Task> {
+        // Marcar la tarea padre como completada
+        val completedTask = Task.Builder()
+            .id(task.id)
+            .name(task.name)
+            .isCompleted(true)
+            .priority(task.priority)
+            .startDateConf(task.startDateConf)
+            .endDateConf(task.endDateConf)
+            .durationConf(task.durationConf)
+            .reminderPlan(task.reminderPlan)
+            .repeatPlan(task.repeatPlan)
+            .subtasks(task.subtasks)
+            .scheduledStartDateTime(task.scheduledStartDateTime)
+            .scheduledEndDateTime(task.scheduledEndDateTime)
+            .completionDateTime(LocalDateTime.now())
+            .listId(task.listId)
+            .sectionId(task.sectionId)
+            .displayOrder(task.displayOrder)
+            .allowSplitting(task.allowSplitting)
+            .isRepeatedInstance(task.isRepeatedInstance)
+            .parentTaskId(task.parentTaskId)
+            .instanceIdentifier(task.instanceIdentifier)
+            .build()
 
-            val nextTask = Task.from(baseTask)
-                .id(0)
-                .startDateConf(newStartConf)
-                .endDateConf(newEndConf)
-                .isCompleted(false)
-                .completionDateTime(null)
-                .build()
+        // Guardar la tarea completada
+        when (val saveResult = taskRepository.saveTask(completedTask)) {
+            is TaskResult.Success -> {
+                // Intentar generar la siguiente instancia
+                when (val nextInstanceResult =
+                    repeatableTaskGenerator.generateNextInstanceAfterCompletion(task)) {
+                    is TaskResult.Success -> {
+                        // Éxito independientemente de si se generó una nueva instancia o no
+                        return TaskResult.Success(completedTask)
+                    }
 
-            repository.saveTask(nextTask)
+                    is TaskResult.Error -> {
+                        // Log el error pero no fallar la operación completa
+                        // La tarea se completó exitosamente aunque no se pudo generar la siguiente instancia
+                        return TaskResult.Success(completedTask)
+                    }
+                }
+            }
+
+            is TaskResult.Error -> return TaskResult.Error("Failed to save completed parent task: ${saveResult.message}")
+        }
+    }
+
+    private suspend fun handleNormalTaskCompletion(task: Task): TaskResult<Task> {
+        val completedTask = Task.Builder()
+            .id(task.id)
+            .name(task.name)
+            .isCompleted(true)
+            .priority(task.priority)
+            .startDateConf(task.startDateConf)
+            .endDateConf(task.endDateConf)
+            .durationConf(task.durationConf)
+            .reminderPlan(task.reminderPlan)
+            .repeatPlan(task.repeatPlan)
+            .subtasks(task.subtasks)
+            .scheduledStartDateTime(task.scheduledStartDateTime)
+            .scheduledEndDateTime(task.scheduledEndDateTime)
+            .completionDateTime(LocalDateTime.now())
+            .listId(task.listId)
+            .sectionId(task.sectionId)
+            .displayOrder(task.displayOrder)
+            .allowSplitting(task.allowSplitting)
+            .isRepeatedInstance(task.isRepeatedInstance)
+            .parentTaskId(task.parentTaskId)
+            .instanceIdentifier(task.instanceIdentifier)
+            .build()
+
+        return when (val result = taskRepository.saveTask(completedTask)) {
+            is TaskResult.Success -> TaskResult.Success(completedTask)
+            is TaskResult.Error -> TaskResult.Error("Failed to save completed task: ${result.message}")
         }
     }
 }

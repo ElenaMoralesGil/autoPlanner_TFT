@@ -66,7 +66,7 @@ fun ReviewDailyViewContent(
                             taskResolution == ResolutionOption.LEAVE_IT_LIKE_THAT ||
                             taskResolution == ResolutionOption.MANUALLY_SCHEDULE
 
-                    showTask && (conflict.conflictTime?.toLocalDate() == date || task.startDateConf.dateTime?.toLocalDate() == date)
+                    showTask && (conflict.conflictTime?.toLocalDate() == date || task.startDateConf?.dateTime?.toLocalDate() == date)
                 }
             }
         }.distinctBy { it.id }
@@ -86,7 +86,7 @@ fun ReviewDailyViewContent(
                     task,
                     startTime,
                     endTime,
-                    task.startDateConf.dateTime?.toLocalDate() ?: date
+                    task.startDateConf?.dateTime?.toLocalDate() ?: date
                 )
             }
     }

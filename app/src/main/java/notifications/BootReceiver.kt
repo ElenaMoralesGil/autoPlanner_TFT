@@ -50,7 +50,7 @@ class BootReceiver : BroadcastReceiver() {
                             var rescheduledCount = 0
                             tasksList.forEach { task ->
                                 val reminderPlan = task.reminderPlan
-                                val startTime = task.startDateConf.dateTime
+                                val startTime = task.startDateConf?.dateTime
                                 if (reminderPlan != null && reminderPlan.mode != ReminderMode.NONE && startTime != null && !task.isCompleted) {
                                     val triggerTime =
                                         notificationScheduler.calculateReminderTime(task)

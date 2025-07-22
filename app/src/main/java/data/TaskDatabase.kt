@@ -27,14 +27,24 @@ import com.elena.autoplanner.data.entities.TaskEntity
         ListEntity::class,
         SectionEntity::class
     ],
-    version = 10,
+    version = 13,
     exportSchema = true
 )
 @TypeConverters(
-    Converters::class,
-    ListOfIntConverter::class,
+    // Convertidores para fechas y tipos básicos
+    LocalDateTimeConverter::class,
+    LocalDateConverter::class,
+    IntListConverter::class,
+
+    // Convertidores para enums de repetición
     DayOfWeekSetConverter::class,
-    IntervalUnitConverter::class
+    JavaDayOfWeekSetConverter::class, // Nuevo convertidor para java.time.DayOfWeek
+    RepeatFrequencyConverter::class,
+    FrequencyTypeConverter::class,
+    IntervalUnitConverter::class,
+    MonthlyRepeatTypeConverter::class,
+    WeekdayOrdinalConverter::class,
+    OrdinalWeekdayListConverter::class
 )
 abstract class TaskDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
@@ -129,5 +139,25 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
 val MIGRATION_11_12 = object : Migration(11, 12) {
     override fun migrate(database: SupportSQLiteDatabase) {
         database.execSQL("ALTER TABLE tasks ADD COLUMN allow_splitting INTEGER")
+    }
+}
+
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Agregar nuevas columnas a repeat_configs para el sistema de tareas repetibles mejorado
+        database.execSQL("ALTER TABLE repeat_configs ADD COLUMN isEnabled INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE repeat_configs ADD COLUMN dayOfMonth INTEGER")
+        database.execSQL("ALTER TABLE repeat_configs ADD COLUMN monthOfYear INTEGER")
+        database.execSQL("ALTER TABLE repeat_configs ADD COLUMN skipWeekends INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE repeat_configs ADD COLUMN skipHolidays INTEGER NOT NULL DEFAULT 0")
+
+        // Agregar nuevas columnas a tasks para instancias de tareas repetibles
+        database.execSQL("ALTER TABLE tasks ADD COLUMN isRepeatedInstance INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE tasks ADD COLUMN parentTaskId INTEGER")
+        database.execSQL("ALTER TABLE tasks ADD COLUMN instanceIdentifier TEXT")
+
+        // Crear índices para mejor rendimiento
+        database.execSQL("CREATE INDEX IF NOT EXISTS index_tasks_parentTaskId ON tasks(parentTaskId)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS index_tasks_isRepeatedInstance ON tasks(isRepeatedInstance)")
     }
 }

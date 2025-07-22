@@ -138,7 +138,7 @@ class TaskEditViewModel(
             }
 
             if (state.endDateConf != null && state.startDateConf?.dateTime != null &&
-                state.endDateConf.dateTime?.isBefore(state.startDateConf.dateTime) == true
+                state.endDateConf.dateTime?.isBefore(state.startDateConf?.dateTime) == true
             ) {
                 setEffect(TaskEditEffect.ShowSnackbar("End date cannot be before start date"))
                 return@launch

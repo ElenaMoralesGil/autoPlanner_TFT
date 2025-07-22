@@ -80,8 +80,8 @@ fun WeeklyWidgetContent(context: Context, tasks: List<Task>, weekStartDate: Loca
 
     val tasksByDay: Map<LocalDate, List<Task>> by produceState(emptyMap(), tasks) {
         value = tasks
-            .filter { it.startDateConf.dateTime != null }
-            .groupBy { it.startDateConf.dateTime!!.toLocalDate() }
+            .filter { it.startDateConf?.dateTime != null }
+            .groupBy { it.startDateConf?.dateTime!!.toLocalDate() }
             .toSortedMap()
     }
     val daysInWeek = (0..6).map { weekStartDate.plusDays(it.toLong()) }
@@ -298,7 +298,7 @@ fun WeeklyTaskWidgetItem(task: Task, isToday: Boolean) {
                 ),
                 maxLines = 2
             )
-            task.startDateConf.dateTime?.let {
+            task.startDateConf?.dateTime?.let {
                 Text(
                     text = it.format(timeFormatter),
                     style = TextStyle(

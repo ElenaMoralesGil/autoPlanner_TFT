@@ -49,6 +49,15 @@ data class TaskEntity(
     val listId: Long? = null,
     val sectionId: Long? = null,
     val displayOrder: Int = 0,
+
+    // Campo para permitir división de tareas en el planificador automático
+    val allowSplitting: Boolean? = null,
+
+    // Campos para tareas repetibles
+    val isRepeatedInstance: Boolean = false,
+    val parentTaskId: Int? = null,
+    val instanceIdentifier: String? = null,
+
+    // Campo para borrado lógico
     val isDeleted: Boolean = false,
-    val allowSplitting: Int? = null,
 )

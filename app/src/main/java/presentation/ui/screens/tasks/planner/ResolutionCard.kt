@@ -78,7 +78,7 @@ fun ResolutionCard(
                 )
                 Spacer(Modifier.height(2.dp))
                 val expirationText = task.endDateConf?.dateTime?.format(dateFormatter)
-                    ?: task.startDateConf.dateTime?.format(dateFormatter) ?: "Unknown Date"
+                    ?: task.startDateConf?.dateTime?.format(dateFormatter) ?: "Unknown Date"
                 Text(
                     "Expired: $expirationText",
                     style = MaterialTheme.typography.bodySmall,

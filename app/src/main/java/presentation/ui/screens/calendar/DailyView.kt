@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.ui.screens.calendar
 
-import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
@@ -241,7 +240,6 @@ private fun EnhancedTimeSchedule(
     }
 }
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun TimeBlockSection(
     currentTime: LocalTime,
@@ -286,7 +284,7 @@ private fun TimeBlockSection(
 
                     val modifiedTasks = tasksInBlock.map { task ->
                         draggedTasks[task.id]?.tempStartTime?.let { newTime ->
-                            task.startDateConf.copy(
+                            task.startDateConf?.copy(
                                 dateTime = LocalDateTime.of(
                                     task.startDateConf.dateTime?.toLocalDate(),
                                     newTime
@@ -782,7 +780,7 @@ private fun CompletedIcon() {
 private fun positionTasks(tasks: List<Task>): Map<Task, TaskPosition> {
     val columns = mutableListOf<MutableList<Task>>()
 
-    tasks.sortedBy { it.scheduledStartDateTime ?: it.startDateConf.dateTime }.forEach { task ->
+    tasks.sortedBy { it.scheduledStartDateTime ?: it.startDateConf?.dateTime }.forEach { task ->
         val targetColumn = columns.firstOrNull { column ->
             column.lastOrNull()?.let { lastTask ->
                 !taskOverlaps(lastTask, task)
@@ -806,10 +804,10 @@ private fun positionTasks(tasks: List<Task>): Map<Task, TaskPosition> {
 }
 
 private fun taskOverlaps(prevTask: Task, newTask: Task): Boolean {
-    val prevStartTime = prevTask.scheduledStartDateTime ?: prevTask.startDateConf.dateTime
-    ?: return false 
+    val prevStartTime = prevTask.scheduledStartDateTime ?: prevTask.startDateConf?.dateTime
+    ?: return false
     val newStartTime =
-        newTask.scheduledStartDateTime ?: newTask.startDateConf.dateTime ?: return false
+        newTask.scheduledStartDateTime ?: newTask.startDateConf?.dateTime ?: return false
 
     val prevEndTime = prevStartTime.plusMinutes(prevTask.effectiveDurationMinutes.toLong())
     return newStartTime.isBefore(prevEndTime)

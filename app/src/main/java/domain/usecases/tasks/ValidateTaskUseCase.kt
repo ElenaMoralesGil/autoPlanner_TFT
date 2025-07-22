@@ -9,7 +9,7 @@ class ValidateTaskUseCase {
             task.name.isBlank() ->
                 TaskResult.Error("Task name cannot be empty")
 
-            task.endDateConf != null && task.startDateConf.dateTime?.isAfter(task.endDateConf.dateTime) == true ->
+            task.endDateConf != null && task.startDateConf?.dateTime?.isAfter(task.endDateConf.dateTime) == true ->
                 TaskResult.Error("Start date must be before end date")
 
             task.startDateConf == null && task.endDateConf != null ->

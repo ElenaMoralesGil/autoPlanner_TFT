@@ -14,13 +14,24 @@ class OverdueTaskHandler {
         scopeEndDate: LocalDate,
     ) {
         val overdueTaskIds = context.planningTaskMap.values
-            .filter { it.task.isExpired() && !context.placedTaskIds.contains(it.id) }
+            .filter { planningTask ->
+                val task = planningTask.task
+                val isExpired = task.isExpired() && !context.placedTaskIds.contains(planningTask.id)
+
+                // NUEVO: Excluir tareas fijas (mismo día de inicio y fin) - estas no se deben mover
+                val isFixedAppointment = task.startDateConf?.dateTime != null &&
+                        task.endDateConf?.dateTime != null &&
+                        task.startDateConf.dateTime.toLocalDate() == task.endDateConf?.dateTime?.toLocalDate() &&
+                        task.durationConf?.totalMinutes != null && task.durationConf.totalMinutes > 0
+
+                isExpired && !isFixedAppointment
+            }
             .map { it.id }
 
         if (overdueTaskIds.isEmpty()) return
         Log.d(
             "OverdueTaskHandler",
-            "Handling ${overdueTaskIds.size} overdue tasks with strategy: $strategy"
+            "Handling ${overdueTaskIds.size} overdue tasks with strategy: $strategy (excluding fixed appointments)"
         )
 
         overdueTaskIds.forEach { taskId ->
@@ -88,10 +99,17 @@ class OverdueTaskHandler {
             val taskId = planningTask.id
             val targetDate = availableDays[dayIndex % availableDays.size]
 
+            // Marcar como expirada con fecha objetivo
             planningTask.flags.isOverdue = true
             planningTask.flags.constraintDate = targetDate
 
-            Log.d("OverdueTaskHandler", "Task $taskId marked for placement on $targetDate")
+            // NUEVO: Forzar que se coloque automáticamente sin requerir resolución manual
+            planningTask.flags.needsManualResolution = false
+
+            Log.d(
+                "OverdueTaskHandler",
+                "Task $taskId marked for automatic placement on $targetDate (NEXT_AVAILABLE strategy)"
+            )
 
             dayIndex++
         }

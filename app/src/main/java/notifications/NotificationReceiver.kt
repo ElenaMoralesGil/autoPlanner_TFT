@@ -89,7 +89,7 @@ class NotificationReceiver : BroadcastReceiver() {
         val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
         val dateFormatter = DateTimeFormatter.ofPattern("MMM d")
 
-        val startTime = task.startDateConf.dateTime
+        val startTime = task.startDateConf?.dateTime
         val timeText = startTime?.format(timeFormatter) ?: ""
         val dateText = startTime?.format(dateFormatter) ?: ""
 

@@ -29,7 +29,7 @@ data class Task private constructor(
     val name: String,
     val isCompleted: Boolean,
     val priority: Priority,
-    val startDateConf: TimePlanning,
+    val startDateConf: TimePlanning?, // CAMBIO: Permitir null para tareas sin fecha de inicio
     val endDateConf: TimePlanning?,
     val durationConf: DurationPlan?,
     val reminderPlan: ReminderPlan?,
@@ -55,7 +55,7 @@ data class Task private constructor(
             throw TaskValidationException(ErrorCode.TASK_NAME_EMPTY)
         }
 
-        if (endDateConf != null && startDateConf.dateTime?.isAfter(endDateConf.dateTime) == true) {
+        if (endDateConf != null && startDateConf?.dateTime?.isAfter(endDateConf.dateTime) == true) {
             throw TaskValidationException(ErrorCode.START_AFTER_END)
         }
 
@@ -68,35 +68,34 @@ data class Task private constructor(
 
     fun isExpired(): Boolean {
         val now = LocalDateTime.now()
-        return if (endDateConf?.dateTime != null) {
-            endDateConf.dateTime.isBefore(now)
-        } else if (startDateConf.dateTime != null && durationConf?.totalMinutes == null) {
-            startDateConf.dateTime.toLocalDate().isBefore(now.toLocalDate())
-        } else {
 
-            false
+        return when {
+            // Solo está expirada si tiene fecha límite (endDate) y ya pasó
+            endDateConf?.dateTime != null && endDateConf.dateTime.isBefore(now) -> true
+
+            else -> false
         }
     }
     fun isDueOn(date: LocalDate): Boolean =
-        startDateConf.dateTime?.toLocalDate() == date
+        startDateConf?.dateTime?.toLocalDate() == date
 
     fun isAllDay(): Boolean =
-        startDateConf.dayPeriod == DayPeriod.ALLDAY
+        startDateConf?.dayPeriod == DayPeriod.ALLDAY
 
     fun isDueToday(): Boolean =
-        startDateConf.dateTime?.toLocalDate() == LocalDate.now()
+        startDateConf?.dateTime?.toLocalDate() == LocalDate.now()
 
     fun isDueThisWeek(): Boolean {
         val today = LocalDate.now()
         val startOfWeek = today.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
         val endOfWeek = startOfWeek.plusDays(6)
-        return startDateConf.dateTime?.toLocalDate()?.let {
+        return startDateConf?.dateTime?.toLocalDate()?.let {
             !it.isBefore(startOfWeek) && !it.isAfter(endOfWeek)
         } == true
     }
 
     fun isDueThisMonth(): Boolean =
-        startDateConf.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } == true
+        startDateConf?.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } == true
 
     fun copyForPlanning(flags: TaskInternalFlags? = this.internalFlags): Task {
         val newTask = this.copy() 
@@ -104,10 +103,10 @@ data class Task private constructor(
         return newTask
     }
 
-    val hasPeriod: Boolean = startDateConf.dayPeriod != DayPeriod.NONE
+    val hasPeriod: Boolean = startDateConf?.dayPeriod != DayPeriod.NONE
 
     val startTime: LocalTime
-        get() = startDateConf.dateTime?.toLocalTime() ?: LocalTime.MIDNIGHT
+        get() = startDateConf?.dateTime?.toLocalTime() ?: LocalTime.MIDNIGHT
 
     val effectiveDurationMinutes: Int
         get() = (durationConf?.totalMinutes ?: 60).coerceAtLeast(0)
@@ -184,10 +183,9 @@ data class Task private constructor(
             apply { this.instanceIdentifier = instanceIdentifier }
         fun build(): Task {
             val finalSectionId = if (listId == null) null else sectionId
-            val effectiveStartDate = startDateConf ?: TimePlanning(
-                dateTime = LocalDateTime.now(),
-                dayPeriod = DayPeriod.NONE
-            )
+            // CAMBIO: No forzar fecha de inicio automáticamente
+            // Solo usar la que el usuario especificó explícitamente
+            val effectiveStartDate = startDateConf  // Permitir null
 
             val task = Task(
                 id = id,

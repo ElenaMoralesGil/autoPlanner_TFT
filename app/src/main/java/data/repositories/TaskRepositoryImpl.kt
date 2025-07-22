@@ -17,6 +17,7 @@ import com.elena.autoplanner.domain.repositories.ListRepository
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.repositories.UserRepository
+import com.elena.autoplanner.domain.usecases.tasks.DeleteRepeatableTaskUseCase
 import com.elena.autoplanner.notifications.NotificationScheduler
 import com.google.firebase.firestore.* 
 import kotlinx.coroutines.*
@@ -267,6 +268,25 @@ class TaskRepositoryImpl(
                                 }
                             } else {
 
+                                // Preserve local completion status if it's more recent
+                                val localCompletionTimestamp = localEntity.completionDateTime?.let {
+                                    // Convert LocalDateTime to timestamp for comparison
+                                    java.time.ZoneOffset.UTC.let { offset ->
+                                        it.toEpochSecond(offset) * 1000
+                                    }
+                                } ?: 0L
+
+                                val firestoreCompletionTimestamp =
+                                    firestoreTask.completionDateTime?.let {
+                                        java.time.ZoneOffset.UTC.let { offset ->
+                                            it.toEpochSecond(offset) * 1000
+                                        }
+                                    } ?: 0L
+
+                                // Use local completion status if it's more recent than Firestore
+                                val shouldPreserveLocalCompletion = localEntity.isCompleted &&
+                                        localCompletionTimestamp > firestoreCompletionTimestamp
+
                                 val updatedEntity = taskMapper.mapToEntity(firestoreTask).copy(
                                     id = localEntity.id, 
                                     userId = userId,
@@ -274,12 +294,29 @@ class TaskRepositoryImpl(
                                     lastUpdated = firestoreTimestamp,
                                     listId = resolvedListLocalId,
                                     sectionId = resolvedSectionLocalId,
-                                    isDeleted = false 
+                                    isDeleted = false,
+                                    // Preserve local completion status if it's more recent
+                                    isCompleted = if (shouldPreserveLocalCompletion) localEntity.isCompleted else taskMapper.mapToEntity(
+                                        firestoreTask
+                                    ).isCompleted,
+                                    completionDateTime = if (shouldPreserveLocalCompletion) localEntity.completionDateTime else taskMapper.mapToEntity(
+                                        firestoreTask
+                                    ).completionDateTime
                                 )
                                 operations.add {
                                     taskDao.updateTask(updatedEntity)
                                     updateRelatedEntitiesLocal(localEntity.id, firestoreTask.copy(id = localEntity.id))
-                                    Log.v(TAG, "Sync Task: Updated local task '${updatedEntity.name}' from Firestore (FS ID: $firestoreId)")
+                                    if (shouldPreserveLocalCompletion) {
+                                        Log.v(
+                                            TAG,
+                                            "Sync Task: Updated local task '${updatedEntity.name}' from Firestore but preserved local completion status (FS ID: $firestoreId)"
+                                        )
+                                    } else {
+                                        Log.v(
+                                            TAG,
+                                            "Sync Task: Updated local task '${updatedEntity.name}' from Firestore (FS ID: $firestoreId)"
+                                        )
+                                    }
                                 }
                             }
                         } else if (localTimestamp > firestoreTimestamp) {
@@ -559,21 +596,29 @@ class TaskRepositoryImpl(
     override suspend fun deleteTask(localId: Int): TaskResult<Unit> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
         try {
-
             val localEntity = taskDao.getAnyTaskByLocalId(localId)
                 ?: return@withContext TaskResult.Error("Task with ID $localId not found locally.")
+
+            // Verificar si es una tarea repetible
+            val taskWithRelations = taskDao.getTaskWithRelationsByLocalId(localId)
+            val isRepeatableTask = taskWithRelations?.repeatConfigs?.any { it.isEnabled } == true
+
+            if (isRepeatableTask) {
+                // Para tareas repetibles, solo marcar esta instancia como eliminada, no afectar la configuración de repetición
+                Log.d(
+                    TAG,
+                    "deleteTask: Deleting single occurrence of repeatable task (Local ID: $localId)"
+                )
+            }
 
             val firestoreId = localEntity.firestoreId
             val taskUserId = localEntity.userId
             val timestamp = System.currentTimeMillis()
 
             if (taskUserId == null) {
-
                 taskDao.deleteLocalOnlyTask(localId)
-
                 Log.d(TAG, "deleteTask: Physically deleted local-only task (Local ID: $localId)")
             } else if (user != null && taskUserId == user.uid) {
-
                 taskDao.updateTaskDeletedFlag(localId, true, timestamp)
                 Log.d(TAG, "deleteTask: Marked local task as deleted (Local ID: $localId)")
 
@@ -583,12 +628,9 @@ class TaskRepositoryImpl(
                     Log.w(TAG, "deleteTask: Synced task $localId missing Firestore ID for deletion update.")
                 }
             } else if (user == null) {
-
                 taskDao.updateTaskDeletedFlag(localId, true, timestamp)
                 Log.d(TAG, "deleteTask: Marked local task as deleted while offline (Local ID: $localId)")
-
             } else {
-
                 Log.w(TAG, "deleteTask: Attempted to delete task $localId belonging to another user ($taskUserId) by user ${user.uid}.")
                 return@withContext TaskResult.Error("Permission denied to delete task.")
             }
@@ -601,6 +643,96 @@ class TaskRepositoryImpl(
         }
     }
 
+    override suspend fun deleteRepeatableTaskCompletely(taskId: Int): TaskResult<Unit> =
+        withContext(dispatcher) {
+            val user = userRepository.getCurrentUser().firstOrNull()
+            try {
+                val localEntity = taskDao.getAnyTaskByLocalId(taskId)
+                    ?: return@withContext TaskResult.Error("Task with ID $taskId not found locally.")
+
+                val taskWithRelations = taskDao.getTaskWithRelationsByLocalId(taskId)
+                val isRepeatableTask =
+                    taskWithRelations?.repeatConfigs?.any { it.isEnabled } == true
+
+                if (!isRepeatableTask) {
+                    // Si no es repetible, usar el método normal de eliminación
+                    return@withContext deleteTask(taskId)
+                }
+
+                Log.d(
+                    TAG,
+                    "deleteRepeatableTaskCompletely: Completely deleting repeatable task (Local ID: $taskId)"
+                )
+
+                val firestoreId = localEntity.firestoreId
+                val taskUserId = localEntity.userId
+                val timestamp = System.currentTimeMillis()
+
+                // Deshabilitar la configuración de repetición para evitar que se generen nuevas instancias
+                taskWithRelations.repeatConfigs.forEach { repeatConfig ->
+                    if (repeatConfig.isEnabled) {
+                        repeatConfigDao.updateRepeatConfigEnabled(repeatConfig.id, false)
+                        Log.d(
+                            TAG,
+                            "deleteRepeatableTaskCompletely: Disabled repeat config for task $taskId"
+                        )
+                    }
+                }
+
+                // Ahora eliminar la tarea actual
+                if (taskUserId == null) {
+                    taskDao.deleteLocalOnlyTask(taskId)
+                    Log.d(
+                        TAG,
+                        "deleteRepeatableTaskCompletely: Physically deleted local-only repeatable task (Local ID: $taskId)"
+                    )
+                } else if (user != null && taskUserId == user.uid) {
+                    taskDao.updateTaskDeletedFlag(taskId, true, timestamp)
+                    Log.d(
+                        TAG,
+                        "deleteRepeatableTaskCompletely: Marked local repeatable task as deleted (Local ID: $taskId)"
+                    )
+
+                    if (firestoreId != null) {
+                        // Actualizar Firestore para deshabilitar la repetición y marcar como eliminada
+                        val updateData = mapOf(
+                            "isDeleted" to true,
+                            "repeatConfig.isEnabled" to false,
+                            "lastUpdated" to FieldValue.serverTimestamp()
+                        )
+                        getUserTasksCollection(user.uid).document(firestoreId)
+                            .update(updateData).await()
+                        Log.d(
+                            TAG,
+                            "deleteRepeatableTaskCompletely: Updated Firestore to disable repeat and mark as deleted"
+                        )
+                    } else {
+                        Log.w(
+                            TAG,
+                            "deleteRepeatableTaskCompletely: Synced task $taskId missing Firestore ID for deletion update."
+                        )
+                    }
+                } else if (user == null) {
+                    taskDao.updateTaskDeletedFlag(taskId, true, timestamp)
+                    Log.d(
+                        TAG,
+                        "deleteRepeatableTaskCompletely: Marked local repeatable task as deleted while offline (Local ID: $taskId)"
+                    )
+                } else {
+                    Log.w(
+                        TAG,
+                        "deleteRepeatableTaskCompletely: Attempted to delete task $taskId belonging to another user ($taskUserId) by user ${user.uid}."
+                    )
+                    return@withContext TaskResult.Error("Permission denied to delete task.")
+                }
+
+                notificationScheduler.cancelNotification(taskId)
+                TaskResult.Success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteRepeatableTaskCompletely($taskId) error", e)
+                TaskResult.Error(mapExceptionMessage(e), e)
+            }
+        }
     override suspend fun deleteAll(): TaskResult<Unit> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
         val timestamp = System.currentTimeMillis()
@@ -764,6 +896,8 @@ class TaskRepositoryImpl(
             TaskResult.Error(mapExceptionMessage(e), e)
         }
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun getTasks(): Flow<TaskResult<List<Task>>> {
         return userRepository.getCurrentUser().flatMapLatest { user ->
             val source = if (user != null) "Room (Synced)" else "Room (Local-Only)"
@@ -793,7 +927,7 @@ class TaskRepositoryImpl(
             }
             tasksWithRelations?.mapNotNull {
                 val domainTask = it.toDomainTask()
-                val taskDate = domainTask.startDateConf.dateTime?.toLocalDate()
+                val taskDate = domainTask.startDateConf?.dateTime?.toLocalDate()
                 if (taskDate == date && !domainTask.isCompleted && !domainTask.internalFlags?.isMarkedForDeletion!!) domainTask else null
             } ?: emptyList()
         } catch (e: Exception) {
@@ -812,17 +946,70 @@ class TaskRepositoryImpl(
             }
             tasksWithRelations?.mapNotNull {
                 val domainTask = it.toDomainTask()
-                val taskDate = domainTask.startDateConf.dateTime?.toLocalDate()
+                val taskDate = domainTask.startDateConf?.dateTime?.toLocalDate()
                 if (taskDate != null && !taskDate.isBefore(weekStartDate) && !taskDate.isAfter(weekEndDate) && !domainTask.isCompleted && !domainTask.internalFlags?.isMarkedForDeletion!!) {
                     domainTask
                 } else {
                     null
                 }
-            }?.sortedBy { it.startDateConf.dateTime } ?: emptyList()
+            }?.sortedBy { it.startDateConf?.dateTime } ?: emptyList()
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching tasks for week starting $weekStartDate, user $userId", e)
             emptyList()
         }
     }
 
+    override suspend fun getTaskInstancesByParentId(parentTaskId: Int): TaskResult<List<Task>> =
+        withContext(dispatcher) {
+            try {
+                val user = userRepository.getCurrentUser().firstOrNull()
+                val tasksWithRelations = if (user != null) {
+                    taskDao.getTasksWithRelationsForUserFlow(user.uid).firstOrNull() ?: emptyList()
+                } else {
+                    taskDao.getLocalOnlyTasksWithRelationsFlow().firstOrNull() ?: emptyList()
+                }
+
+                val instances = tasksWithRelations
+                    .filter { it.task.userId == user?.uid && it.task.parentTaskId == parentTaskId }
+                    .map { it.toDomainTask() }
+
+                TaskResult.Success(instances)
+            } catch (e: Exception) {
+                Log.e(TAG, "getTaskInstancesByParentId($parentTaskId) error", e)
+                TaskResult.Error(mapExceptionMessage(e), e)
+            }
+        }
+
+    override suspend fun deleteFutureInstancesByParentId(parentTaskId: Int): TaskResult<Unit> =
+        withContext(dispatcher) {
+            try {
+                val currentDate = LocalDateTime.now()
+
+                // Obtener todas las instancias del padre
+                when (val instancesResult = getTaskInstancesByParentId(parentTaskId)) {
+                    is TaskResult.Success -> {
+                        val futureInstances = instancesResult.data.filter { instance ->
+                            val instanceDate = instance.startDateConf?.dateTime
+                            instanceDate != null && instanceDate.isAfter(currentDate) && !instance.isCompleted
+                        }
+
+                        // Eliminar cada instancia futura
+                        futureInstances.forEach { instance ->
+                            deleteTask(instance.id)
+                        }
+
+                        Log.d(
+                            TAG,
+                            "deleteFutureInstancesByParentId: Deleted ${futureInstances.size} future instances for parent $parentTaskId"
+                        )
+                        TaskResult.Success(Unit)
+                    }
+
+                    is TaskResult.Error -> instancesResult
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteFutureInstancesByParentId($parentTaskId) error", e)
+                TaskResult.Error(mapExceptionMessage(e), e)
+            }
+        }
 }

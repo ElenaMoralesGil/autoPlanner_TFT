@@ -163,7 +163,7 @@ class GeneratePlanUseCase(
                                 ConflictItem(
                                     listOf(taskRef),
                                     "Cannot fit Period constraint ($period) on $date",
-                                    taskRef.startDateConf.dateTime ?: date.atStartOfDay(),
+                                    taskRef.startDateConf?.dateTime ?: date.atStartOfDay(),
                                     ConflictType.CANNOT_FIT_PERIOD
                                 ),
                                 taskRef.id 
@@ -192,7 +192,7 @@ class GeneratePlanUseCase(
                             ConflictItem(
                                 listOf(task),
                                 "Remains unplaced due to prior hard conflict",
-                                task.startDateConf.dateTime,
+                                task.startDateConf?.dateTime,
                                 ConflictType.PLACEMENT_ERROR
                             ),
                             taskId 

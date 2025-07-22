@@ -73,6 +73,10 @@ fun TaskCard(
                     modifier = Modifier
                         .weight(0.2f)
                         .fillMaxHeight()
+                        .clickable {
+                            onEdit()
+                            offsetX = 0f
+                        }
                 )
             }
             if (animatedOffset < 0) {
@@ -80,6 +84,10 @@ fun TaskCard(
                     modifier = Modifier
                         .weight(0.2f)
                         .fillMaxHeight()
+                        .clickable {
+                            onDelete()
+                            offsetX = 0f
+                        }
                 )
             }
         }
@@ -154,7 +162,9 @@ fun TaskCard(
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.Medium
                         ),
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = if (task.isCompleted)
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        else MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )

@@ -68,9 +68,9 @@ fun PlanReviewScreen(
             when (scope) {
                 ScheduleScope.TODAY -> today
                 ScheduleScope.TOMORROW -> today.plusDays(1)
-                ScheduleScope.THIS_WEEK -> today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                ScheduleScope.THIS_WEEK -> today // Cambiar para mostrar desde hoy hasta +6 días
             }
-        } ?: LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        } ?: LocalDate.now()
     }
 
     Column(

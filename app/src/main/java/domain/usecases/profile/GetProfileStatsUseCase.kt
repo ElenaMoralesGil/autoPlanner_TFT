@@ -78,7 +78,7 @@ class GetProfileStatsUseCase {
     ): List<Task> {
         return tasks.filter { task ->
             val dueDate = task.endDateConf?.dateTime?.toLocalDate()
-                ?: task.startDateConf.dateTime?.toLocalDate()
+                ?: task.startDateConf?.dateTime?.toLocalDate()
             dueDate != null && !dueDate.isBefore(start) && !dueDate.isAfter(end)
         }
     }
@@ -127,7 +127,7 @@ class GetProfileStatsUseCase {
         end: LocalDate,
     ): Map<LocalDate, Float> {
         val tasksByDueDate = tasksDueInPeriod.groupBy { task ->
-            task.endDateConf?.dateTime?.toLocalDate() ?: task.startDateConf.dateTime?.toLocalDate()
+            task.endDateConf?.dateTime?.toLocalDate() ?: task.startDateConf?.dateTime?.toLocalDate()
         }
         val rateMap = mutableMapOf<LocalDate, Float>()
         var currentDate = start
@@ -166,7 +166,7 @@ class GetProfileStatsUseCase {
         val weekFields = WeekFields.of(Locale.getDefault())
         val tasksByDueDateWeek = tasksDueInPeriod.groupBy { task ->
             val dueDate = task.endDateConf?.dateTime?.toLocalDate()
-                ?: task.startDateConf.dateTime?.toLocalDate()
+                ?: task.startDateConf?.dateTime?.toLocalDate()
             dueDate?.with(weekFields.dayOfWeek(), 1)
         }
         val weeklySuccessMap = mutableMapOf<LocalDate, Float>()
@@ -205,7 +205,7 @@ class GetProfileStatsUseCase {
     ): Map<YearMonth, Float> {
         val tasksByDueDateMonth = tasksDueInPeriod.groupBy { task ->
             val dueDate = task.endDateConf?.dateTime?.toLocalDate()
-                ?: task.startDateConf.dateTime?.toLocalDate()
+                ?: task.startDateConf?.dateTime?.toLocalDate()
             dueDate?.let { YearMonth.from(it) }
         }
         val monthlySuccessMap = mutableMapOf<YearMonth, Float>()

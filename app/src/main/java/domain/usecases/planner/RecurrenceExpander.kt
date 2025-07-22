@@ -43,7 +43,7 @@ class RecurrenceExpander {
         val occurrences = mutableListOf<LocalDateTime>()
         val repeatPlan = task.repeatPlan ?: return emptyList()
 
-        val startDateTime = task.startDateConf.dateTime ?: run {
+        val startDateTime = task.startDateConf?.dateTime ?: run {
             if (repeatPlan.frequencyType != FrequencyType.NONE) {
                 context.addConflict(
                     ConflictItem(
@@ -233,9 +233,27 @@ class RecurrenceExpander {
         FrequencyType.NONE -> null
     }
 
-    private fun DayOfWeek.toRRuleWeekDayString(): String = when (this) {
-        DayOfWeek.MON -> "MO"; DayOfWeek.TUE -> "TU"; DayOfWeek.WED -> "WE"
-        DayOfWeek.THU -> "TH"; DayOfWeek.FRI -> "FR"; DayOfWeek.SAT -> "SA"; DayOfWeek.SUN -> "SU"
+    // Función de extensión para el enum personalizado del dominio
+    private fun com.elena.autoplanner.domain.models.DayOfWeek.toRRuleWeekDayString(): String =
+        when (this) {
+            com.elena.autoplanner.domain.models.DayOfWeek.MON -> "MO"
+            com.elena.autoplanner.domain.models.DayOfWeek.TUE -> "TU"
+            com.elena.autoplanner.domain.models.DayOfWeek.WED -> "WE"
+            com.elena.autoplanner.domain.models.DayOfWeek.THU -> "TH"
+            com.elena.autoplanner.domain.models.DayOfWeek.FRI -> "FR"
+            com.elena.autoplanner.domain.models.DayOfWeek.SAT -> "SA"
+            com.elena.autoplanner.domain.models.DayOfWeek.SUN -> "SU"
+        }
+
+    // Función de extensión para java.time.DayOfWeek
+    private fun java.time.DayOfWeek.toRRuleWeekDayString(): String = when (this) {
+        java.time.DayOfWeek.MONDAY -> "MO"
+        java.time.DayOfWeek.TUESDAY -> "TU"
+        java.time.DayOfWeek.WEDNESDAY -> "WE"
+        java.time.DayOfWeek.THURSDAY -> "TH"
+        java.time.DayOfWeek.FRIDAY -> "FR"
+        java.time.DayOfWeek.SATURDAY -> "SA"
+        java.time.DayOfWeek.SUNDAY -> "SU"
     }
 
     private fun LocalDateTime.toDmfsDateTime(): DateTime {

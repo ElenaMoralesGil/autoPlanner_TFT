@@ -10,6 +10,9 @@ interface TaskRepository {
     suspend fun getTask(taskId: Int): TaskResult<Task>
     suspend fun saveTask(task: Task): TaskResult<Int>
     suspend fun deleteTask(taskId: Int): TaskResult<Unit>
+    suspend fun deleteRepeatableTaskCompletely(taskId: Int): TaskResult<Unit>
+    suspend fun getTaskInstancesByParentId(parentTaskId: Int): TaskResult<List<Task>>
+    suspend fun deleteFutureInstancesByParentId(parentTaskId: Int): TaskResult<Unit>
     suspend fun deleteAll(): TaskResult<Unit>
     suspend fun deleteAllLocalOnly(): TaskResult<Unit>
     suspend fun updateTaskCompletion(taskId: Int, isCompleted: Boolean): TaskResult<Unit>

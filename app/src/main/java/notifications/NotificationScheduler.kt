@@ -126,7 +126,7 @@ class NotificationScheduler(
 
     internal fun calculateReminderTime(task: Task): LocalDateTime? {
         val reminderPlan = task.reminderPlan ?: return null
-        val startTime = task.startDateConf.dateTime ?: return null
+        val startTime = task.startDateConf?.dateTime ?: return null
 
         return when (reminderPlan.mode) {
             ReminderMode.NONE -> null
