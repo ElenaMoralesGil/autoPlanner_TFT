@@ -122,7 +122,6 @@ fun ReviewWeeklyViewContent(
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
 
-
         Box(
             modifier = Modifier
                 .heightIn(max = 500.dp)
@@ -174,7 +173,6 @@ fun ReviewWeeklyViewContent(
                         val gridColor = color
                         val gridColorHalf = color1
 
-
                         for (hour in 0..23) {
                             val y = hour * hourHeightPx
                             drawLine(
@@ -194,7 +192,6 @@ fun ReviewWeeklyViewContent(
                             )
                         }
 
-
                         for (i in 1 until weekDays.size) {
                             val x = i * dayWidthPx
                             drawLine(
@@ -205,7 +202,6 @@ fun ReviewWeeklyViewContent(
                             )
                         }
                     }
-
 
                     Row(
                         modifier = Modifier.fillMaxSize()
@@ -235,7 +231,6 @@ fun ReviewWeeklyViewContent(
                                             task.startDateConf.dateTime?.toLocalDate() ?: date
                                         )
                                     }
-
 
                                 allItemsToRender.sortedBy { it.scheduledStartTime }
                                     .forEach { item ->

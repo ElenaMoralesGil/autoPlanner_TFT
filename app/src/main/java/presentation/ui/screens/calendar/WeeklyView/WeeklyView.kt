@@ -39,7 +39,6 @@ fun WeeklyView(
     val scrollState = rememberScrollState()
     val currentTime = LocalTime.now()
 
-
     val weekStartDate = remember(weekStartDateInput) {
         weekStartDateInput.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     }
@@ -57,7 +56,6 @@ fun WeeklyView(
             } == true
         }
     }
-
 
     val allDayTasks = remember(weekTasks) { weekTasks.filter { it.isAllDay() } }
     val scheduledTasks = remember(weekTasks) {
@@ -125,7 +123,6 @@ fun WeeklyView(
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-
         WeekNavigationHeader(
             weekStartDate = weekDays.first(),
             weekEndDate = weekDays.last(),   
@@ -143,7 +140,6 @@ fun WeeklyView(
             }
         )
 
-
         DaysOfWeekHeader(
             weekDays = weekDays,
             currentDate = LocalDate.now(), 
@@ -153,15 +149,11 @@ fun WeeklyView(
             }
         )
 
-
-
-
         AllDayTasksSection(
             allDayTasks = allDayTasks,
             weekDays = weekDays,
             onTaskSelected = onTaskSelected
         )
-
 
         Box(
             modifier = Modifier
@@ -183,4 +175,3 @@ fun WeeklyView(
         }
     }
 }
-

@@ -273,5 +273,4 @@ class GeneratePlanUseCaseTest {
         assertNotNull(result)
     }
 
-
 }

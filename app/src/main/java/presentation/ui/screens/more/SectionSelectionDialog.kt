@@ -1,5 +1,3 @@
-
-
 package com.elena.autoplanner.presentation.ui.screens.more
 
 import androidx.compose.foundation.clickable
@@ -58,7 +56,6 @@ fun SectionSelectionDialog(
                             HorizontalDivider()
                         }
 
-
                         items(sections, key = { it.id }) { section ->
                             SectionSelectItem(
                                 name = section.name,
@@ -67,7 +64,6 @@ fun SectionSelectionDialog(
                             )
                             HorizontalDivider()
                         }
-
 
                         item {
                             SectionSelectItem(
@@ -89,7 +85,6 @@ fun SectionSelectionDialog(
 
     )
 }
-
 
 @Composable
 private fun SectionSelectItem(

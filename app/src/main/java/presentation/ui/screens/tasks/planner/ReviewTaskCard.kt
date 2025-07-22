@@ -70,7 +70,6 @@ fun ReviewTaskCard(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-
     if (isConflicted) {
         cardColor =
             MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)

@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.combine
 import android.util.Log
 import androidx.compose.ui.graphics.Color
 
-
 import com.elena.autoplanner.domain.models.TaskList
 import androidx.core.graphics.toColorInt
 
@@ -69,7 +68,6 @@ class GetTasksByListUseCase(
                             }
                         }
 
-
                         if (taskListName != task.listName || taskListColor != task.listColor) {
                             task.copy(
                                 listName = taskListName,
@@ -83,12 +81,10 @@ class GetTasksByListUseCase(
 
                     .sortedWith(compareBy({ it.displayOrder }, { it.name }))
 
-
                 Log.d(
                     "GetTasksByListUseCase",
                     "Filtered/Enriched Tasks Count=${filteredAndEnrichedTasks.size} for List ID=$listId"
                 )
-
 
                 Pair(targetList, filteredAndEnrichedTasks)
             }

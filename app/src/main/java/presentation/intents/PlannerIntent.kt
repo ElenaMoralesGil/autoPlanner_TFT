@@ -21,12 +21,10 @@ sealed class PlannerIntent : Intent {
     data class UpdateWorkEndTime(val time: LocalTime) : PlannerIntent()
     data class SelectScheduleScope(val scope: ScheduleScope) : PlannerIntent()
 
-
     data class SelectPriority(val priority: PrioritizationStrategy) : PlannerIntent()
     data class SelectDayOrganization(val organization: DayOrganization) : PlannerIntent()
     data class SelectPlacementHeuristic(val heuristic: PlacementHeuristic) : PlannerIntent()
     data class SelectOverdueHandling(val handling: OverdueTaskHandling) : PlannerIntent()
-
 
     data object GeneratePlan : PlannerIntent()
     data class ResolveExpiredTask(val task: Task, val resolution: ResolutionOption) :

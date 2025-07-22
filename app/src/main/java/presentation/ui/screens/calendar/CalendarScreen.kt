@@ -66,16 +66,19 @@ fun CalendarScreen(
     taskListViewModel: TaskListViewModel = koinViewModel(),
 ) {
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
+    var selectedInstanceIdentifier by remember { mutableStateOf<String?>(null) }
     var showAddEditSheet by remember { mutableStateOf(false) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
     var showViewSelector by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val onTaskSelected: (Task) -> Unit = { task -> selectedTaskId = task.id }
+    val onTaskSelected: (Task) -> Unit = { task ->
+        selectedTaskId = task.id
+        selectedInstanceIdentifier = task.instanceIdentifier
+    }
 
     val calendarState by calendarViewModel.state.collectAsState()
     val tasksState by taskListViewModel.state.collectAsState()
-
 
     LaunchedEffect(calendarViewModel) {
         calendarViewModel.effect.collectLatest { effect ->
@@ -163,7 +166,6 @@ fun CalendarScreen(
             }
         }
 
-
         calendarState?.let { state ->
             if (state.showDatePicker) {
                 Dialog(
@@ -200,12 +202,10 @@ fun CalendarScreen(
             }
         }
 
-
         selectedTaskId?.let { taskId ->
 
             val detailViewModel: TaskDetailViewModel =
-                koinViewModel(parameters = { parametersOf(taskId) })
-
+                koinViewModel(parameters = { parametersOf(taskId, selectedInstanceIdentifier) })
 
             LaunchedEffect(detailViewModel) {
                 detailViewModel.effect.collectLatest { effect ->
@@ -227,14 +227,12 @@ fun CalendarScreen(
                 }
             }
 
-
             TaskDetailSheet(
                 taskId = taskId,
                 onDismiss = { selectedTaskId = null },
                 viewModel = detailViewModel
             )
         }
-
 
         if (showViewSelector) {
             ViewSelector(
@@ -249,12 +247,10 @@ fun CalendarScreen(
             )
         }
 
-
         if (showAddEditSheet) {
 
             val editViewModel: TaskEditViewModel =
                 koinViewModel(parameters = { parametersOf(taskToEdit?.id ?: 0) })
-
 
             LaunchedEffect(editViewModel) {
                 editViewModel.effect.collectLatest { effect ->
@@ -274,11 +270,9 @@ fun CalendarScreen(
                 }
             }
 
-
             LaunchedEffect(taskToEdit?.id) {
                 editViewModel.sendIntent(TaskEditIntent.LoadTask(taskToEdit?.id ?: 0))
             }
-
 
             ModificationTaskSheet(
                 taskEditViewModel = editViewModel,

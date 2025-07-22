@@ -66,7 +66,6 @@ fun ReviewDailyViewContent(
                             taskResolution == ResolutionOption.LEAVE_IT_LIKE_THAT ||
                             taskResolution == ResolutionOption.MANUALLY_SCHEDULE
 
-
                     showTask && (conflict.conflictTime?.toLocalDate() == date || task.startDateConf.dateTime?.toLocalDate() == date)
                 }
             }
@@ -78,7 +77,6 @@ fun ReviewDailyViewContent(
         items + conflictedTasksToShow
             .filterNot { scheduledTaskIds.contains(it.id) }
             .map { task ->
-
 
                 val startTime =
                     conflicts.find { c -> c.conflictingTasks.any { t -> t.id == task.id } }?.conflictTime?.toLocalTime()
@@ -104,7 +102,6 @@ fun ReviewDailyViewContent(
             val labelWidthPx = with(density) { timeLabelWidth.toPx() }
             val gridColor = color
             val gridColorHalf = color1
-
 
             for (hour in 0..23) {
                 val y = hour * hourHeightPx
@@ -133,7 +130,6 @@ fun ReviewDailyViewContent(
             )
         }
 
-
         Column(
             modifier = Modifier
                 .fillMaxHeight()
@@ -158,7 +154,6 @@ fun ReviewDailyViewContent(
             }
         }
 
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -172,7 +167,6 @@ fun ReviewDailyViewContent(
                 val durationMinutes = (endMinutes - startMinutes).coerceAtLeast(15)
                 val topOffset = (startMinutes / 60f) * hourHeight
                 val itemHeight = (durationMinutes / 60f) * hourHeight
-
 
                 val isConflicted = conflictedTasksToShow.any { it.id == item.task.id }
 

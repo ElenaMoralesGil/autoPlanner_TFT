@@ -52,7 +52,6 @@ fun MoreDrawerContent(
     var listToEdit by remember { mutableStateOf<TaskListInfo?>(null) }
     var sectionToEdit by remember { mutableStateOf<TaskSection?>(null) }
 
-
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(viewModel) {
@@ -305,9 +304,6 @@ fun MoreDrawerContent(
         }
     }
 
-
-
-
     if (showCreateListDialog) {
         CreateEditListDialog(
             onDismiss = { showCreateListDialog = false },
@@ -328,7 +324,6 @@ fun MoreDrawerContent(
             }
         )
     }
-
 
     showCreateSectionDialogForListId?.let { listIdForDialog ->
         val listName = state?.lists?.find { it.list.id == listIdForDialog }?.list?.name ?: "List"
@@ -354,7 +349,6 @@ fun MoreDrawerContent(
             }
         )
     }
-
 
     state?.listIdPendingDeletion?.let { listId ->
         val listName = state?.lists?.find { it.list.id == listId }?.list?.name ?: "this list"
@@ -444,7 +438,6 @@ fun ListItemRow(
         } else {
             Spacer(Modifier.width(4.dp)) 
         }
-
 
         if (onEditClick != null && onDeleteClick != null) {
             Box {

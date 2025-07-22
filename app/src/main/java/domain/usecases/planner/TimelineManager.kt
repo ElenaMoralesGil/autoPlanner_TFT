@@ -253,7 +253,7 @@ class TimelineManager {
     }
 
     fun getBufferDuration(strategy: DayOrganization): Duration = when (strategy) {
-        DayOrganization.SMART_BUFFERS, DayOrganization.BALANCED_SCHEDULE -> Duration.ofMinutes(10) // Temporal
+        DayOrganization.SMART_BUFFERS, DayOrganization.BALANCED_SCHEDULE -> Duration.ofMinutes(10) 
         else -> Duration.ZERO
     }
 

@@ -29,7 +29,6 @@ import com.elena.autoplanner.presentation.states.TaskListState
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksTopBar(
@@ -93,7 +92,6 @@ fun TasksTopBar(
                 )
             }
 
-
             if (isSpecificListSelected) {
                 Box {
                     IconButton(onClick = { showMenu = true }) {
@@ -111,7 +109,6 @@ fun TasksTopBar(
                             text = { Text("Edit Sections") },
                             onClick = { onEditSections(); showMenu = false }
                         )
-
 
                     }
                 }

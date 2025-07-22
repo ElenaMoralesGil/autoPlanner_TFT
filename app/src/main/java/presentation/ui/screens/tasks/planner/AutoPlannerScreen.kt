@@ -64,7 +64,6 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import java.time.LocalTime
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlannerTopAppBar(onBackClick: () -> Unit) {
@@ -172,7 +171,6 @@ fun AutoPlannerScreen(
         }
     }
 
-
     if (showStartTimePicker && state != null) {
         HourMinutePickerDialog(
             initialTime = state!!.workStartTime,
@@ -183,7 +181,6 @@ fun AutoPlannerScreen(
             }
         )
     }
-
 
     if (showEndTimePicker && state != null) {
         HourMinutePickerDialog(
@@ -262,7 +259,6 @@ fun AutoPlannerScreen(
             }
                 ?: CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-
             if (state?.isLoading == true) {
                 Surface(
                     color = Color.Black.copy(alpha = 0.3f),
@@ -275,7 +271,6 @@ fun AutoPlannerScreen(
             }
         }
 
-
         selectedTaskIdForDetail?.let { taskId ->
             val detailViewModel: TaskDetailViewModel =
                 koinViewModel(parameters = { parametersOf(taskId) })
@@ -286,7 +281,6 @@ fun AutoPlannerScreen(
                 viewModel = detailViewModel
             )
         }
-
 
         taskIdForEditSheet?.let { taskIdToEdit ->
             val editViewModel: TaskEditViewModel =

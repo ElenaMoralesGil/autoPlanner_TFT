@@ -14,7 +14,6 @@ import java.time.LocalDateTime
 @Dao
 interface TaskDao {
 
-
     @Transaction
     @Query("SELECT * FROM tasks WHERE userId = :userId AND isDeleted = 0") 
     fun getTasksWithRelationsForUserFlow(userId: String): Flow<List<TaskWithRelations>>
@@ -49,7 +48,6 @@ interface TaskDao {
     @Query("UPDATE tasks SET isCompleted = :isCompleted, lastUpdated = :timestamp WHERE id = :localId")
     suspend fun updateTaskCompletion(localId: Int, isCompleted: Boolean, timestamp: Long)
 
-
     @Query("UPDATE tasks SET isDeleted = :isDeleted, lastUpdated = :timestamp WHERE id = :localId")
     suspend fun updateTaskDeletedFlag(localId: Int, isDeleted: Boolean, timestamp: Long)
 
@@ -70,7 +68,6 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks")
     suspend fun deleteAllTasksInternal()
-
 
     @Query("SELECT * FROM tasks WHERE isDeleted = 0")
     fun getAllTasks(): Flow<List<TaskEntity>>
@@ -118,6 +115,5 @@ interface TaskDao {
 
     @Query("UPDATE tasks SET sectionId = NULL WHERE sectionId = :sectionId")
     suspend fun clearSectionIdForTasks(sectionId: Long) 
-
 
 }

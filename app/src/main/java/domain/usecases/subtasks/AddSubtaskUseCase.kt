@@ -15,18 +15,15 @@ class AddSubtaskUseCase(
             return TaskResult.Error("Subtask name cannot be empty")
         }
 
-
         val taskResult = getTaskUseCase(taskId)
         if (taskResult !is TaskResult.Success) {
             return taskResult 
         }
         val task = taskResult.data
 
-
         val nextTempId = (task.subtasks.maxOfOrNull { it.id } ?: 0) + 1
         val newSubtask =
             Subtask(id = nextTempId, name = name, isCompleted = false)
-
 
         val updatedTaskObject = Task.from(task).subtasks(task.subtasks + newSubtask).build()
 

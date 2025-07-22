@@ -47,7 +47,6 @@ fun SubtasksSection(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-
         errorMessage?.let {
             Text(
                 text = it,

@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.utils
 
-
 import com.elena.autoplanner.domain.models.Task
 import java.time.DayOfWeek
 import java.time.LocalDate

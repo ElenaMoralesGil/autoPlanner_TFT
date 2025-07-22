@@ -21,13 +21,14 @@ class TaskDetailViewModel(
     private val toggleSubtaskUseCase: ToggleSubtaskUseCase,
     private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
     private val taskId: Int,
+    private val instanceIdentifier: String? = null,
 ) : BaseTaskViewModel<TaskDetailIntent, TaskDetailState, TaskDetailEffect>() {
 
     override fun createInitialState(): TaskDetailState = TaskDetailState()
 
     override suspend fun handleIntent(intent: TaskDetailIntent) {
         when (intent) {
-            is TaskDetailIntent.LoadTask -> loadTask(intent.taskId)
+            is TaskDetailIntent.LoadTask -> loadTask(intent.taskId, instanceIdentifier)
             is TaskDetailIntent.ToggleCompletion -> toggleTaskCompletion(intent.completed)
             is TaskDetailIntent.DeleteTask -> deleteTask()
             is TaskDetailIntent.AddSubtask -> addSubtask(intent.name)
@@ -39,17 +40,17 @@ class TaskDetailViewModel(
 
     init {
         viewModelScope.launch {
-            loadTask(taskId)
+            loadTask(taskId, instanceIdentifier)
         }
     }
 
-    private fun loadTask(taskId: Int) {
+    private fun loadTask(taskId: Int, instanceIdentifier: String? = null) {
         viewModelScope.launch {
             setState { copy(isLoading = true, error = null) }
 
             executeTaskOperation(
                 setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
-                operation = { getTaskUseCase(taskId) },
+                operation = { getTaskUseCase.getTaskSmart(taskId, instanceIdentifier) },
                 onSuccess = { task ->
                     setState { copy(task = task, error = null) }
                 },
@@ -134,7 +135,6 @@ class TaskDetailViewModel(
         }
     }
 
-
     private fun toggleSubtask(subtaskId: Int, completed: Boolean) {
         viewModelScope.launch {
             val taskId = currentState.task?.id ?: return@launch
@@ -171,7 +171,6 @@ class TaskDetailViewModel(
             )
         }
     }
-
 
     private fun navigateToEdit() {
         currentState.task?.let {

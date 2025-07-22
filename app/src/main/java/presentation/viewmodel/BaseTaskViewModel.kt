@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.viewmodel
 
-
 import androidx.lifecycle.viewModelScope
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.results.TaskResult
@@ -41,7 +40,6 @@ abstract class BaseTaskViewModel<I : Intent, S, E : UiEffect> : BaseViewModel<I,
             is TaskResult.Error -> onError(result.message)
         }
     }
-
 
     protected suspend fun <T> executeTaskOperation(
         setLoadingState: (Boolean) -> Unit,

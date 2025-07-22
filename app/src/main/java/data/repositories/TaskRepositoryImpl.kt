@@ -26,7 +26,6 @@ import java.io.IOException
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-
 class TaskRepositoryImpl(
     private val context: Context,
     private val taskDao: TaskDao,
@@ -58,7 +57,6 @@ class TaskRepositoryImpl(
         private const val TASKS_SUBCOLLECTION = "tasks"
     }
 
-
     private fun getUserTasksCollection(userId: String): CollectionReference {
         return firestore.collection(USERS_COLLECTION).document(userId)
             .collection(TASKS_SUBCOLLECTION)
@@ -67,7 +65,6 @@ class TaskRepositoryImpl(
     init {
         observeUserLoginState()
     }
-
 
     private suspend fun updateFirestoreDeletedFlag(userId: String, firestoreId: String, isDeleted: Boolean) {
         try {
@@ -136,7 +133,6 @@ class TaskRepositoryImpl(
                     firestoreBatch.commit().await()
                     Log.i(TAG, "Successfully uploaded ${tasksToUpload.size} tasks to Firestore.")
 
-
                     localIdsToDelete.forEach { localId ->
                         taskDao.deleteLocalOnlyTask(localId)
                     }
@@ -187,7 +183,6 @@ class TaskRepositoryImpl(
             }
     }
 
-
     private suspend fun syncFirestoreToRoom(
         userId: String,
         firestoreTaskDTOs: List<Pair<String, TaskFirestoreDTO>>,
@@ -195,7 +190,6 @@ class TaskRepositoryImpl(
         withContext(dispatcher) {
             try {
                 Log.d(TAG, "Starting syncFirestoreToRoom for user $userId with ${firestoreTaskDTOs.size} Firestore items.")
-
 
                 val allLocalTasks = taskDao.getAllTasks().firstOrNull() ?: emptyList() 
                 val localTaskMapByFirestoreId = allLocalTasks
@@ -207,13 +201,11 @@ class TaskRepositoryImpl(
                 val operations = mutableListOf<suspend () -> Unit>()
                 val uploadsToTrigger = mutableListOf<TaskEntity>()
 
-
                 firestoreTaskDTOs.forEach { (firestoreId, dto) ->
                     val firestoreTask = dto.task
                     val firestoreIsDeleted = dto.isDeleted
                     val firestoreTimestamp = dto.lastUpdated ?: System.currentTimeMillis() 
                     val localEntity = localTaskMapByFirestoreId[firestoreId]
-
 
                     var resolvedListLocalId: Long? = null
                     var resolvedSectionLocalId: Long? = null
@@ -228,7 +220,6 @@ class TaskRepositoryImpl(
                             Log.w(TAG, "Sync Task (FS ID: $firestoreId): Parent list (FS ID: ${dto.listFirestoreId}) not found locally during FK resolution.")
                         }
                     }
-
 
                     if (localEntity == null) {
 
@@ -255,7 +246,6 @@ class TaskRepositoryImpl(
 
                         val localIsDeleted = localEntity.isDeleted
                         val localTimestamp = localEntity.lastUpdated
-
 
                         if (firestoreTimestamp > localTimestamp) {
                             if (localIsDeleted) {
@@ -299,7 +289,6 @@ class TaskRepositoryImpl(
                                 Log.i(TAG, "Sync Task: Local task '${localEntity.name}' (FS ID: $firestoreId) is newer than Firestore. Scheduling upload.")
                             } else {
 
-
                                 operations.add { updateFirestoreDeletedFlag(userId, firestoreId, true) }
                                 Log.i(TAG, "Sync Task: Local task '${localEntity.name}' (FS ID: $firestoreId) was deleted offline. Updating Firestore.")
                             }
@@ -325,10 +314,8 @@ class TaskRepositoryImpl(
                     }
                 }
 
-
                 localTaskMapByFirestoreId.values.forEach { localEntity ->
                     if (!firestoreTaskMap.containsKey(localEntity.firestoreId)) {
-
 
                         if (!localEntity.isDeleted) { 
                             operations.add {
@@ -343,17 +330,14 @@ class TaskRepositoryImpl(
                     }
                 }
 
-
                 if (operations.isNotEmpty()) {
                     Log.d(TAG, "Executing ${operations.size} local Task sync operations...")
-
 
                     operations.forEach { it.invoke() } 
                     Log.d(TAG, "Finished executing Task sync operations.")
                 } else {
                     Log.d(TAG, "No local Task sync operations needed.")
                 }
-
 
                 if (uploadsToTrigger.isNotEmpty()) {
                     Log.i(TAG, "Triggering upload for ${uploadsToTrigger.size} tasks updated offline...")
@@ -379,7 +363,6 @@ class TaskRepositoryImpl(
         }
     }
 
-
     override suspend fun saveTask(task: Task): TaskResult<Int> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
         val isNewTask = task.id == 0
@@ -391,7 +374,6 @@ class TaskRepositoryImpl(
                 val userId = user.uid
                 var resolvedListFirestoreId: String? = null
                 var resolvedSectionFirestoreId: String? = null
-
 
                 task.listId?.let { listLocalId ->
                     resolvedListFirestoreId = listDao.getListByLocalId(listLocalId)?.firestoreId
@@ -458,7 +440,6 @@ class TaskRepositoryImpl(
                         .set(firestoreMap, SetOptions.merge()).await()
                     Log.d(TAG, "saveTask (Update): Updated Firestore task $taskFirestoreId")
 
-
                     localEntity = taskMapper.mapToEntity(task).copy(
                         id = finalLocalId,
                         userId = userId,
@@ -524,7 +505,6 @@ class TaskRepositoryImpl(
         }
     }
 
-
     override suspend fun getTask(localId: Int): TaskResult<Task> = withContext(dispatcher) {
         try {
 
@@ -553,7 +533,6 @@ class TaskRepositoryImpl(
                         }
                     }
 
-
                     val domainTask = taskMapper.mapToDomain(
                         taskEntity = taskWithRelations.task,
                         reminders = taskWithRelations.reminders,
@@ -577,7 +556,6 @@ class TaskRepositoryImpl(
         }
     }
 
-
     override suspend fun deleteTask(localId: Int): TaskResult<Unit> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
         try {
@@ -591,15 +569,13 @@ class TaskRepositoryImpl(
 
             if (taskUserId == null) {
 
-                taskDao.deleteLocalOnlyTask(localId) 
-                
+                taskDao.deleteLocalOnlyTask(localId)
+
                 Log.d(TAG, "deleteTask: Physically deleted local-only task (Local ID: $localId)")
             } else if (user != null && taskUserId == user.uid) {
 
-
                 taskDao.updateTaskDeletedFlag(localId, true, timestamp)
                 Log.d(TAG, "deleteTask: Marked local task as deleted (Local ID: $localId)")
-
 
                 if (firestoreId != null) {
                     updateFirestoreDeletedFlag(user.uid, firestoreId, true) 
@@ -625,7 +601,6 @@ class TaskRepositoryImpl(
         }
     }
 
-
     override suspend fun deleteAll(): TaskResult<Unit> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
         val timestamp = System.currentTimeMillis()
@@ -634,7 +609,6 @@ class TaskRepositoryImpl(
 
             val localIdsToCancel = mutableListOf<Int>()
             if (user != null) {
-
 
                 Log.w(TAG, "deleteAll: Marking ALL synced tasks for user ${user.uid} as deleted.")
 
@@ -649,7 +623,6 @@ class TaskRepositoryImpl(
                     batch.commit().await()
 
                 }
-
 
                 taskDao.getAllTasks().firstOrNull()
                     ?.filter { it.userId == user.uid && !it.isDeleted }
@@ -669,7 +642,6 @@ class TaskRepositoryImpl(
         }
     }
 
-
     override suspend fun updateTaskCompletion(localId: Int, isCompleted: Boolean): TaskResult<Unit> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
         val timestamp = System.currentTimeMillis()
@@ -679,14 +651,12 @@ class TaskRepositoryImpl(
             val localEntity = taskDao.getAnyTaskByLocalId(localId) 
                 ?: return@withContext TaskResult.Error("Task $localId not found")
 
-
             taskDao.updateTaskCompletion(localId, isCompleted, completionDateTime, timestamp)
             if (localEntity.isDeleted) { 
                 taskDao.updateTaskDeletedFlag(localId, false, timestamp)
                 Log.d(TAG, "updateTaskCompletion: Undeleted local task $localId")
             }
             Log.d(TAG, "updateTaskCompletion: Updated local task $localId completion to $isCompleted")
-
 
             if (user != null && localEntity.userId == user.uid && localEntity.firestoreId != null) {
                 Log.d(TAG, "updateTaskCompletion: Updating Firestore task ${localEntity.firestoreId}")
@@ -725,7 +695,6 @@ class TaskRepositoryImpl(
         }
     }
 
-
     private suspend fun updateRelatedEntitiesLocal(localTaskId: Int, task: Task) {
         withContext(dispatcher) {
             try {
@@ -758,7 +727,6 @@ class TaskRepositoryImpl(
         )
         return domainTask.copy(id = this.task.id)
     }
-
 
     private fun TaskWithRelations.toDomainTask(listDetails: Map<Long, Pair<String, String?>>): Task {
         val listInfo = this.task.listId?.let { listDetails[it] }
@@ -856,6 +824,5 @@ class TaskRepositoryImpl(
             emptyList()
         }
     }
-
 
 }

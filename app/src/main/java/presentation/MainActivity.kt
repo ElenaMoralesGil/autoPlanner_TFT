@@ -60,7 +60,6 @@ class MainActivity : ComponentActivity() {
     private val dataSeeder: DataSeeder by inject()
     private val taskRepository: TaskRepository by inject()
 
-
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -139,7 +138,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
     private fun handleNotificationNavigation(intent: Intent?, navController: NavHostController) {
         intent?.let {
             val taskId = it.getIntExtra("navigate_to_task_id", -1)
@@ -154,7 +152,6 @@ class MainActivity : ComponentActivity() {
                         val taskResult = taskRepository.getTask(taskId)
                         if (taskResult is TaskResult.Success) {
                             val task = taskResult.data
-
 
                             val route = when {
                                 task.listId != null && task.sectionId != null -> {
@@ -183,7 +180,6 @@ class MainActivity : ComponentActivity() {
                                 restoreState = true
                             }
 
-
                         } else {
                             Log.e("MainActivity", "Failed to fetch task details for navigation")
 
@@ -194,13 +190,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-
                 it.removeExtra("navigate_to_task_id")
             }
         }
     }
 }
-
 
 @Composable
 fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
@@ -213,7 +207,6 @@ fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
         val context = LocalContext.current
         val appWidgetManager = AppWidgetManager.getInstance(context)
         val snackbarHostState = remember { SnackbarHostState() }
-
 
         LaunchedEffect(navController) {
             onNavControllerReady(navController)
@@ -241,7 +234,6 @@ fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
             }
         }
 
-
         ModalNavigationDrawer(
             drawerState = drawerState,
             gesturesEnabled = drawerState.isOpen,
@@ -262,7 +254,6 @@ fun MainApp(onNavControllerReady: (NavHostController) -> Unit = {}) {
 
                             Log.d("MainActivity", "[ACTION] Closing drawer")
                             drawerState.close()
-
 
                             val routeBase = Screen.Tasks.routeBase
                             val route = if (listId == null && sectionId == null) {

@@ -62,7 +62,6 @@ fun PlanReviewScreen(
         }
     }
 
-
     val planStartDate = remember(state.generatedPlan, state.scheduleScope) {
         state.generatedPlan.keys.minOrNull() ?: state.scheduleScope?.let { scope ->
             val today = LocalDate.now()
@@ -194,7 +193,6 @@ fun PlanReviewScreen(
                     )
                 }
             }
-
 
             Box(
                 modifier = Modifier

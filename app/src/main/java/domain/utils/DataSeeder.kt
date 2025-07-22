@@ -2,7 +2,7 @@ package com.elena.autoplanner.domain.utils
 
 interface DataSeeder {
 
-    suspend fun seedTasks(count: Int = 25)
+    suspend fun seedTasks(count: Int = 15)
 
     suspend fun clearAll()
     fun isEnabled(): Boolean

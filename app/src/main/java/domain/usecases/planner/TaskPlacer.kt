@@ -27,13 +27,11 @@ class TaskPlacer(
     private val minMinutesToSplitTask = 30L
     private val maxAttemptsAtPlacing = 200
 
-
     fun placeFixedTasks(
         timelineManager: TimelineManager,
         fixedOccurrences: List<Pair<PlanningTask, LocalDateTime>>,
         context: PlanningContext,
     ) {
-
 
         fixedOccurrences
             .filterNot { context.placedTaskIds.contains(it.first.id) }
@@ -59,7 +57,6 @@ class TaskPlacer(
                 val endTime = occurrenceTime.plus(duration)
                 val startDate = occurrenceTime.toLocalDate()
                 val endDate = endTime.toLocalDate()
-
 
                 if (startDate != endDate) {
                     val startDaySchedule = timelineManager.getDaySchedule(startDate)
@@ -213,7 +210,6 @@ class TaskPlacer(
         }
     }
 
-
     fun placePrioritizedTask(
         planningTask: PlanningTask,
         timelineManager: TimelineManager,
@@ -240,7 +236,6 @@ class TaskPlacer(
             return
         }
 
-
         var minSearchTime: LocalDateTime
         var maxSearchTime: LocalDateTime
         var placementOccupancy = Occupancy.FLEXIBLE_TASK
@@ -253,13 +248,11 @@ class TaskPlacer(
         val taskEndDate = task.endDateConf?.dateTime?.toLocalDate()
             ?: scopeEndDate
 
-
         when {
 
             planningTask.flags.isOverdue && planningTask.flags.constraintDate == today -> {
                 Log.v("TaskPlacer", "Task ${task.id} - Type: Overdue Today")
                 val daySchedule = timelineManager.getDaySchedule(today)
-
 
                 minSearchTime = LocalDateTime.now()
                 maxSearchTime = today.plusDays(1).atStartOfDay()
@@ -364,7 +357,6 @@ class TaskPlacer(
             }
         }
 
-
         Log.d(
             "TaskPlacer",
             "Task ${task.id}: Primary search window: $minSearchTime -> $maxSearchTime"
@@ -380,7 +372,6 @@ class TaskPlacer(
             context = context,
             occupancyType = placementOccupancy
         )
-
 
         when (placementResult) {
             is PlacementResult.Success -> {
@@ -429,7 +420,6 @@ class TaskPlacer(
             }
         }
 
-
         if (primaryFailed && isFlexible) {
             Log.i(
                 "TaskPlacer",
@@ -444,7 +434,6 @@ class TaskPlacer(
                 task.endDateConf?.dateTime ?: scopeEndDate.plusDays(1).atStartOfDay(),
                 scopeEndDate.plusDays(1).atStartOfDay()
             )
-
 
             if (fallbackMinSearch >= minSearchTime && fallbackMaxSearch <= maxSearchTime) {
                 Log.d(
@@ -470,10 +459,8 @@ class TaskPlacer(
             }
         }
 
-
         when (placementResult) {
             is PlacementResult.Success -> {
-
 
                 Log.d("TaskPlacer", "Successfully placed task ${task.id} in fallback window.")
                 context.placedTaskIds.add(task.id)
@@ -514,7 +501,6 @@ class TaskPlacer(
 
             is PlacementResult.Conflict -> {
 
-
                 Log.e(
                     "TaskPlacer",
                     "Task ${task.id}: Fallback placement conflict: ${placementResult.reason}"
@@ -533,7 +519,6 @@ class TaskPlacer(
             }
         }
     }
-
 
     private fun findAndPlaceFlexibleTask(
         timelineManager: TimelineManager,
@@ -752,7 +737,6 @@ class TaskPlacer(
             )
         }
     }
-
 
     private fun handlePlacementFailure(
         result: PlacementResultInternal,

@@ -63,7 +63,6 @@ class NotificationReceiver : BroadcastReceiver() {
             return
         }
 
-
         scope.launch {
             try {
                 val taskRepository: TaskRepository by inject(TaskRepository::class.java)
@@ -87,7 +86,6 @@ class NotificationReceiver : BroadcastReceiver() {
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         ensureNotificationChannel(context, notificationManager)
 
-
         val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
         val dateFormatter = DateTimeFormatter.ofPattern("MMM d")
 
@@ -106,7 +104,6 @@ class NotificationReceiver : BroadcastReceiver() {
             }
         }
 
-
         val (icon, accentColor) = when (task.priority) {
             Priority.HIGH -> R.drawable.priority to android.graphics.Color.parseColor("#DC2626")
             Priority.MEDIUM -> R.drawable.priority to android.graphics.Color.parseColor("#F59E0B")
@@ -114,11 +111,9 @@ class NotificationReceiver : BroadcastReceiver() {
             else -> R.drawable.autoplanner to android.graphics.Color.parseColor("#6366F1") 
         }
 
-
         val openIntent = createOpenTaskIntent(context, task.id)
         val completeIntent = createActionIntent(context, ACTION_COMPLETE_TASK, task.id)
         val snoozeIntent = createActionIntent(context, ACTION_SNOOZE_TASK, task.id)
-
 
         val builder =
             NotificationCompat.Builder(context, AutoPlannerApplication.REMINDER_CHANNEL_ID)
@@ -144,8 +139,6 @@ class NotificationReceiver : BroadcastReceiver() {
                 .setShowWhen(true)
                 .setWhen(System.currentTimeMillis())
 
-
-
         builder.addAction(
             R.drawable.ic_completed,
             "Complete",
@@ -157,7 +150,6 @@ class NotificationReceiver : BroadcastReceiver() {
             "Snooze 10m",
             snoozeIntent
         )
-
 
         if (task.subtasks.isNotEmpty()) {
             val subtaskInfo =
@@ -249,7 +241,6 @@ class NotificationReceiver : BroadcastReceiver() {
                         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     notificationManager.cancel(taskId)
 
-
                     showFeedbackNotification(context, "Task completed! ✅", "Great job!")
                 } else {
                     Log.e(TAG, "Failed to complete task $taskId")
@@ -273,15 +264,12 @@ class NotificationReceiver : BroadcastReceiver() {
                 if (taskResult is TaskResult.Success) {
                     val task = taskResult.data
 
-
                     val notificationManager =
                         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     notificationManager.cancel(taskId)
 
-
                     val snoozeTime = LocalDateTime.now().plusMinutes(10)
                     notificationScheduler.scheduleNotificationAt(task, snoozeTime)
-
 
                     showFeedbackNotification(
                         context,

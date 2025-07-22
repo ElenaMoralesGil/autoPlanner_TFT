@@ -15,6 +15,9 @@ import com.elena.autoplanner.domain.usecases.tasks.DeleteTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.FilterTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
+import com.elena.autoplanner.domain.usecases.tasks.GetExpandedTasksUseCase
+import com.elena.autoplanner.domain.usecases.tasks.CompleteRepeatableTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.DeleteRepeatableTaskUseCase
 import com.elena.autoplanner.presentation.effects.TaskListEffect
 import com.elena.autoplanner.presentation.effects.TaskListEffect.*
 import com.elena.autoplanner.presentation.intents.TaskListIntent
@@ -34,6 +37,9 @@ class TaskListViewModel(
     private val saveListUseCase: SaveListUseCase,
     private val saveSectionUseCase: SaveSectionUseCase,
     private val getAllSectionsUseCase: GetAllSectionsUseCase,
+    private val getExpandedTasksUseCase: GetExpandedTasksUseCase,
+    private val completeRepeatableTaskUseCase: CompleteRepeatableTaskUseCase,
+    private val deleteRepeatableTaskUseCase: DeleteRepeatableTaskUseCase,
     private val savedStateHandle: SavedStateHandle,
 ) : BaseViewModel<TaskListIntent, TaskListState, TaskListEffect>() {
 
@@ -41,7 +47,6 @@ class TaskListViewModel(
     private val initialListId: Long? = savedStateHandle.get<String>("listId")?.toLongOrNull()
     private val initialSectionId: Long? = savedStateHandle.get<String>("sectionId")?.toLongOrNull()
     override fun createInitialState(): TaskListState = TaskListState(isLoading = false)
-
 
     init {
         Log.d("TaskListVM", "ViewModel Init Start - Instance: $this")
@@ -72,7 +77,6 @@ class TaskListViewModel(
                     } else {
                         Log.d("TaskListVM", "Data load skipped for listId=$listId, sectionId=$sectionId.")
 
-
                         if (currentState.isLoading || currentState.isNavigating) {
                             setState { copy(isLoading = false, isNavigating = false) }
                         }
@@ -81,7 +85,6 @@ class TaskListViewModel(
         }
         Log.d("TaskListVM", "ViewModel Init End - Instance: $this")
     }
-
 
     override suspend fun handleIntent(intent: TaskListIntent) {
         when (intent) {
@@ -92,9 +95,19 @@ class TaskListViewModel(
                 intent.completed
             )
 
-            is TaskListIntent.SelectTask -> setEffect(NavigateToTaskDetail(intent.taskId))
+            is TaskListIntent.SelectTask -> setEffect(
+                NavigateToTaskDetail(
+                    intent.taskId,
+                    intent.instanceIdentifier
+                )
+            )
             is TaskListIntent.UpdateTask -> handleUpdateTask(intent.task)
             is TaskListIntent.DeleteTask -> handleDeleteTask(intent.taskId)
+            is TaskListIntent.DeleteRepeatableTask -> handleDeleteRepeatableTask(intent.task)
+            is TaskListIntent.ConfirmRepeatableTaskDeletion -> handleConfirmRepeatableTaskDeletion(
+                intent.task,
+                intent.option
+            )
 
             is TaskListIntent.ViewList -> {
                 Log.d("TaskListVM", "ViewList intent received for listId=${intent.listId}")
@@ -115,7 +128,6 @@ class TaskListViewModel(
                 savedStateHandle["listId"] = intent.listId.toString()
                 savedStateHandle["sectionId"] = intent.sectionId.toString()
             }
-
 
             is TaskListIntent.RequestEditList -> currentState.currentListId?.let {
                 setEffect(
@@ -149,26 +161,21 @@ class TaskListViewModel(
         }
     }
 
-
-
     private fun loadTasks(listId: Long?, sectionId: Long?) {
         taskLoadingJob?.cancel()
         taskLoadingJob = viewModelScope.launch {
             Log.d("TaskListVM", "loadTasks ENTERED for listId: $listId, sectionId: $sectionId.")
 
-
-
             setState { copy(isLoading = true, isNavigating = false, error = null) }
             Log.d("TaskListVM", "loadTasks: Set isLoading=true, isNavigating=false. State: $currentState")
 
-            getTasksByListUseCase(listId)
+            getExpandedTasksUseCase()
                 .catch { error ->
-                    Log.e("TaskListVM", "Error in getTasksByListUseCase for list $listId", error)
+                    Log.e("TaskListVM", "Error in getExpandedTasksUseCase", error)
                     setState {
                         copy(
                             isLoading = false,
                             error = error.localizedMessage ?: "Unknown error loading tasks",
-
                             currentListId = listId,
                             currentSectionId = sectionId,
                             requestedListId = listId,
@@ -177,24 +184,57 @@ class TaskListViewModel(
                     }
                     setEffect(ShowSnackbar("Error loading tasks: ${error.localizedMessage}"))
                 }
-                .collect { (listData, tasksForList) ->
-                    Log.d("TaskListVM", "Collected from use case: List Name='${listData?.name ?: "All"}', Task Count=${tasksForList.size} for requested listId=$listId, sectionId=$sectionId")
+                .collect { expandedTasks ->
+                    Log.d(
+                        "TaskListVM",
+                        "Collected expanded tasks: Count=${expandedTasks.size} for requested listId=$listId, sectionId=$sectionId"
+                    )
 
-                    val tasksToShow = if (sectionId != null && listId != null) {
-                        tasksForList.filter { it.sectionId == sectionId }
-                    } else {
-                        tasksForList
+                    val tasksToShow = when {
+                        listId != null && sectionId != null -> {
+                            expandedTasks.filter { it.listId == listId && it.sectionId == sectionId }
+                        }
+
+                        listId != null -> {
+                            expandedTasks.filter { it.listId == listId }
+                        }
+
+                        else -> expandedTasks
                     }
 
+                    var listData: com.elena.autoplanner.domain.models.TaskList? = null
                     var fetchedSectionName: String? = null
-                    if (sectionId != null && listId != null) {
-                        when (val sectionsResult = getAllSectionsUseCase(listId)) {
-                            is TaskResult.Success -> fetchedSectionName = sectionsResult.data.find { it.id == sectionId }?.name
-                            is TaskResult.Error -> Log.w("TaskListVM", "Could not fetch section name for $sectionId: ${sectionsResult.message}")
+
+                    if (listId != null) {
+                        when (val listResult = getTasksByListUseCase(listId).first()) {
+                            is Pair<*, *> -> {
+                                @Suppress("UNCHECKED_CAST")
+                                listData =
+                                    (listResult as Pair<com.elena.autoplanner.domain.models.TaskList?, List<com.elena.autoplanner.domain.models.Task>>).first
+                            }
+                        }
+
+                        if (sectionId != null) {
+                            when (val sectionsResult = getAllSectionsUseCase(listId)) {
+                                is com.elena.autoplanner.domain.results.TaskResult.Success -> {
+                                    fetchedSectionName =
+                                        sectionsResult.data.find { it.id == sectionId }?.name
+                                }
+
+                                is com.elena.autoplanner.domain.results.TaskResult.Error -> {
+                                    Log.w(
+                                        "TaskListVM",
+                                        "Could not fetch section name for $sectionId: ${sectionsResult.message}"
+                                    )
+                                }
+                            }
                         }
                     }
 
-                    Log.d("TaskListVM", "Updating state post-load: listId=${listData?.id}, sectionId=$sectionId, listName=${listData?.name}, sectionName=$fetchedSectionName, taskCount=${tasksToShow.size}")
+                    Log.d(
+                        "TaskListVM",
+                        "Updating state post-load: listId=${listData?.id}, sectionId=$sectionId, listName=${listData?.name}, sectionName=$fetchedSectionName, taskCount=${tasksToShow.size}, expandedTaskCount=${expandedTasks.size}"
+                    )
                     setState {
                         copy(
                             currentListId = listData?.id,
@@ -214,7 +254,6 @@ class TaskListViewModel(
                 }
         }
     }
-
 
     private fun updateStatusFilter(status: TaskStatus) {
         val filteredTasks =
@@ -248,7 +287,11 @@ class TaskListViewModel(
 
     private fun updateTaskCompletionInState(taskId: Int, completed: Boolean) {
         val updatedTasks = currentState.tasks.map {
-            if (it.id == taskId) it.copy(isCompleted = completed) else it
+            if (it.id == taskId) {
+                Task.from(it).isCompleted(completed).build()
+            } else {
+                it
+            }
         }
         val filtered = filterTasksUseCase(
             updatedTasks,
@@ -270,6 +313,49 @@ class TaskListViewModel(
         }
     }
 
+    private fun handleDeleteRepeatableTask(task: Task) {
+        if (deleteRepeatableTaskUseCase.needsDeleteOptions(task)) {
+
+            setEffect(ShowRepeatTaskDeleteDialog(task))
+        } else {
+
+            viewModelScope.launch {
+                when (val result = deleteTaskUseCase(task.id)) {
+                    is TaskResult.Success -> setEffect(ShowSnackbar("Task deleted"))
+                    is TaskResult.Error -> {
+                        setState { copy(error = result.message) }
+                        setEffect(ShowSnackbar("Error deleting: ${result.message}"))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleConfirmRepeatableTaskDeletion(
+        task: Task,
+        option: com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption,
+    ) {
+        viewModelScope.launch {
+            when (val result = deleteRepeatableTaskUseCase.execute(task, option)) {
+                is TaskResult.Success -> {
+                    val message = when (option) {
+                        com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption.THIS_INSTANCE_ONLY -> "This instance deleted"
+                        com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption.THIS_AND_FUTURE -> "This and future instances deleted"
+                        com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption.ALL_INSTANCES -> "All instances deleted"
+                    }
+                    setEffect(ShowSnackbar(message))
+
+                    loadTasks(currentState.currentListId, currentState.currentSectionId)
+                }
+
+                is TaskResult.Error -> {
+                    setState { copy(error = result.message) }
+                    setEffect(ShowSnackbar("Error deleting task: ${result.message}"))
+                }
+            }
+        }
+    }
+
     private fun handleUpdateTask(task: Task) {
         viewModelScope.launch {
             when (val result = saveTaskUseCase(task)) {
@@ -281,7 +367,6 @@ class TaskListViewModel(
             }
         }
     }
-
 
     private suspend fun saveList(list: TaskList) {
         setState { copy(isLoading = true) }

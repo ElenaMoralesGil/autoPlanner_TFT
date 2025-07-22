@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.viewmodel
 
-
 import com.elena.autoplanner.presentation.effects.CalendarEffect
 import com.elena.autoplanner.presentation.intents.CalendarIntent
 import com.elena.autoplanner.presentation.states.CalendarState

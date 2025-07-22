@@ -113,7 +113,6 @@ class ProfileViewModel(
 
                 setState { copy(user = latestUser) }
 
-
                 val tasks = getTasksUseCase().firstOrNull()
                 if (tasks != null) {
 
@@ -134,7 +133,6 @@ class ProfileViewModel(
             }
         }
     }
-
 
     override suspend fun handleIntent(intent: ProfileIntent) {
         when (intent) {

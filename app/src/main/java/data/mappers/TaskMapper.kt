@@ -36,7 +36,6 @@ class TaskMapper {
         val repeatConfigMapper = RepeatConfigMapper()
         val subtaskMapper = SubtaskMapper()
 
-
         fun getDayPeriod(periodString: String?): DayPeriod {
             return try {
                 periodString?.let { DayPeriod.valueOf(it) } ?: DayPeriod.NONE
@@ -95,7 +94,6 @@ class TaskMapper {
             .build()
     }
 
-
     fun mapToEntity(domain: Task): TaskEntity {
         val isDeletedFlag = domain.internalFlags?.isMarkedForDeletion ?: false
         return TaskEntity(
@@ -128,4 +126,3 @@ class TaskMapper {
         )
     }
 }
-

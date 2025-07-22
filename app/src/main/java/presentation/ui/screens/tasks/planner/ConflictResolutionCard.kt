@@ -113,7 +113,6 @@ fun ConflictResolutionCard(
                 }
             }
 
-
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Box {
                     OutlinedButton(

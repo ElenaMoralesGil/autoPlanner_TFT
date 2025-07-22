@@ -1,4 +1,3 @@
-
 package com.elena.autoplanner.notifications
 import com.elena.autoplanner.notifications.NotificationScheduler
 import org.koin.java.KoinJavaComponent.inject

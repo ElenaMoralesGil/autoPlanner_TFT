@@ -39,7 +39,6 @@ fun ReviewViewToggle(
         availableViews.forEachIndexed { index, view ->
             val isSelected = view == selectedView
 
-
             val shape = when {
                 availableViews.size == 1 -> RoundedCornerShape(50)
                 index == 0 -> RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp)
@@ -50,7 +49,6 @@ fun ReviewViewToggle(
 
                 else -> RoundedCornerShape(0.dp)
             }
-
 
             IconToggleButton(
                 checked = isSelected,

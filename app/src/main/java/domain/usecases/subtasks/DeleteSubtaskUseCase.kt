@@ -18,12 +18,9 @@ class DeleteSubtaskUseCase(
         }
         val task = taskResult.data
 
-
         val updatedSubtasks = task.subtasks.filter { it.id != subtaskIdToDelete }
 
-
         if (updatedSubtasks.size == task.subtasks.size) {
-
 
             Log.w(
                 "DeleteSubtaskUseCase",
@@ -33,9 +30,7 @@ class DeleteSubtaskUseCase(
             return TaskResult.Success(task) 
         }
 
-
         val updatedTaskObject = Task.from(task).subtasks(updatedSubtasks).build()
-
 
         return when (val saveResult = saveTaskUseCase(updatedTaskObject)) {
             is TaskResult.Success -> {

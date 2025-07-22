@@ -2,7 +2,6 @@ package com.elena.autoplanner.domain.models
 
 import java.time.LocalDate
 
-
 enum class FrequencyType {
     NONE,
     DAILY,

@@ -21,7 +21,6 @@ class ToggleSubtaskUseCase(
         }
         val task = taskResult.data
 
-
         var subtaskFound = false
         val updatedSubtasks = task.subtasks.map {
             if (it.id == subtaskId) {
@@ -32,7 +31,6 @@ class ToggleSubtaskUseCase(
             }
         }
 
-
         if (!subtaskFound) {
             Log.w(
                 "ToggleSubtaskUseCase",
@@ -42,9 +40,7 @@ class ToggleSubtaskUseCase(
             return TaskResult.Success(task) 
         }
 
-
         val updatedTaskObject = Task.from(task).subtasks(updatedSubtasks).build()
-
 
         return when (val saveResult = saveTaskUseCase(updatedTaskObject)) {
             is TaskResult.Success -> {

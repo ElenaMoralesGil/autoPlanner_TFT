@@ -61,7 +61,6 @@ fun PlannerConfigurationStep(
         }
     }
 
-
     QuestionnaireSectionCard(title = "Scheduling Scope", icon = Icons.Outlined.DateRange) {
         SingleChoiceChipGroup(
             options = ScheduleScope.entries,
@@ -70,7 +69,6 @@ fun PlannerConfigurationStep(
             labelSelector = { it.toDisplayString() },
         )
     }
-
 
     QuestionnaireSectionCard(
         title = "Prioritization Strategy",
@@ -86,7 +84,6 @@ fun PlannerConfigurationStep(
         )
     }
 
-
     QuestionnaireSectionCard(
         title = "Day Organization Style",
         icon = Icons.AutoMirrored.Outlined.List
@@ -101,7 +98,6 @@ fun PlannerConfigurationStep(
 
         )
     }
-
 
     AnimatedVisibility(visible = state.numOverdueTasks > 0) {
         QuestionnaireSectionCard(
@@ -124,7 +120,6 @@ fun PlannerConfigurationStep(
             )
         }
     }
-
 
     AnimatedVisibility(visible = state.numOverdueTasks <= 0) {
         Row(

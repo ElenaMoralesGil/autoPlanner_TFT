@@ -1,4 +1,3 @@
-
 package com.elena.autoplanner.presentation.ui.screens.tasks.TasksScreen
 
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +14,7 @@ import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.utils.DateTimeFormatters
+import com.elena.autoplanner.presentation.utils.getFormattedRepeat
 import java.time.LocalTime
 import java.util.Locale
 
@@ -149,6 +149,14 @@ fun TaskMetadata(task: Task, modifier: Modifier = Modifier) {
                 icon = painterResource(R.drawable.expired),
                 iconTint = MaterialTheme.colorScheme.error,
                 text = "Expired"
+            )
+        }
+
+        task.getFormattedRepeat()?.let { repeatText ->
+            TaskChip(
+                icon = painterResource(R.drawable.ic_repeat),
+                iconTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                text = repeatText
             )
         }
     }

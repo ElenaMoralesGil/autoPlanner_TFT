@@ -284,7 +284,6 @@ private fun TimeBlockSection(
                         effectiveTaskStart < blockEndTime && taskEnd > blockStartTime
                     }
 
-
                     val modifiedTasks = tasksInBlock.map { task ->
                         draggedTasks[task.id]?.tempStartTime?.let { newTime ->
                             task.startDateConf.copy(
@@ -374,26 +373,21 @@ fun TaskBox(
     val taskDuration = task.effectiveDurationMinutes.toLong() 
     val isShortTask = taskDuration < 50
 
-
     val calculationStartTime =
         draggedTasks[task.id]?.tempStartTime
             ?: task.scheduledStartDateTime?.toLocalTime()
             ?: task.startTime
 
-
     val calculationEndTime = calculationStartTime.plusMinutes(taskDuration)
-
 
     val xOffset = with(LocalDensity.current) { (parentWidth * position.xFraction).toPx() }
     val blockStartTime = LocalTime.of(block.startHour, 0)
     val blockEndTime = if (block.endHour == 24) LocalTime.MAX else LocalTime.of(block.endHour, 0)
 
-
     val displayStartTime =
         if (calculationStartTime.isBefore(blockStartTime)) blockStartTime else calculationStartTime
     val displayEndTime =
         if (calculationEndTime.isAfter(blockEndTime)) blockEndTime else calculationEndTime
-
 
     val offsetMinutes =
         java.time.Duration.between(blockStartTime, displayStartTime).toMinutes().toFloat()
@@ -405,7 +399,6 @@ fun TaskBox(
     val rectHeightDpValue = (heightMinutes / 60f) * hourHeightDp.value
     val minVisibleHeight = if (isShortTask) 30.dp else 40.dp
     val adjustedHeight = maxOf(rectHeightDpValue.dp, minVisibleHeight)
-
 
     Box(
         modifier = Modifier
@@ -428,7 +421,6 @@ fun TaskBox(
                         val snappedMinutesDragged =
                             (totalMinutesDragged / 5) * 5L
 
-
                         val newTempStartTime = initialTaskStartTime
                             .plusMinutes(snappedMinutesDragged)
                             .coerceIn(
@@ -444,7 +436,6 @@ fun TaskBox(
                         val finalNewTime = initialTaskStartTime
                             .plusMinutes(snappedMinutesDragged)
                             .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration))
-
 
                         val originalTime =
                             task.scheduledStartDateTime?.toLocalTime() ?: task.startTime
@@ -533,7 +524,6 @@ fun TaskBox(
                 }
             }
 
-
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -570,7 +560,6 @@ fun TaskBox(
 
     }
 }
-
 
 data class TaskDragState(
     val task: Task,
@@ -793,7 +782,6 @@ private fun CompletedIcon() {
 private fun positionTasks(tasks: List<Task>): Map<Task, TaskPosition> {
     val columns = mutableListOf<MutableList<Task>>()
 
-
     tasks.sortedBy { it.scheduledStartDateTime ?: it.startDateConf.dateTime }.forEach { task ->
         val targetColumn = columns.firstOrNull { column ->
             column.lastOrNull()?.let { lastTask ->
@@ -826,7 +814,6 @@ private fun taskOverlaps(prevTask: Task, newTask: Task): Boolean {
     val prevEndTime = prevStartTime.plusMinutes(prevTask.effectiveDurationMinutes.toLong())
     return newStartTime.isBefore(prevEndTime)
 }
-
 
 fun getPriorityColor(priority: Priority): Color = when (priority) {
     Priority.HIGH -> Color.Red

@@ -30,7 +30,6 @@ class RealDataSeeder(
             )
         }
 
-
         delay(100)
 
         repeat(count) { index ->
@@ -121,7 +120,6 @@ class RealDataSeeder(
     }
 
     override fun isEnabled(): Boolean = FeatureFlags.ENABLE_TASK_SEEDING
-
 
     private fun generateConfigBasedTaskName(
         index: Int,

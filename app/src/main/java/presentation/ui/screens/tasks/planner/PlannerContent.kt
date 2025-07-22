@@ -47,7 +47,6 @@ fun PlannerContent(
             textAlign = TextAlign.Center
         )
 
-
         Column(
             modifier = Modifier.padding(horizontal = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -75,7 +74,6 @@ fun PlannerContent(
 
             }
         }
-
 
         if (state.error != null) {
             Text(

@@ -23,7 +23,6 @@ object DateTimeFormatters {
         return dateTime.format(formatter)
     }
 
-
     fun formatDateShort(dateTime: TimePlanning): String {
         return dateTime.dateTime?.format(dateFormatter) ?: ""
     }
@@ -37,7 +36,6 @@ object DateTimeFormatters {
             }
         } ?: ""
     }
-
 
     fun formatDateTimeWithPeriod(timePlanning: TimePlanning?): String {
         return timePlanning?.let {

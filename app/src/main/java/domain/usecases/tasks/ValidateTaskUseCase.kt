@@ -3,7 +3,6 @@ package com.elena.autoplanner.domain.usecases.tasks
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.results.TaskResult
 
-
 class ValidateTaskUseCase {
     operator fun invoke(task: Task): TaskResult<Task> {
         return when {

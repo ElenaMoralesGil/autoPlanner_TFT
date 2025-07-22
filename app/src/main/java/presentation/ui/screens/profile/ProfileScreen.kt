@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.ui.screens.profile
 
-
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -54,8 +53,6 @@ import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
 import com.patrykandpatrick.vico.compose.*
 
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -66,7 +63,6 @@ fun ProfileScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-
 
     LaunchedEffect(state?.user?.uid) { 
         if (state?.user != null) {
@@ -137,7 +133,6 @@ fun ProfileScreen(
                     )
                 }
             }
-
 
             if (state?.showDeleteConfirmDialog == true) {
                 AlertDialog(
@@ -268,7 +263,6 @@ fun TimeFrameSelector(
 @Composable
 fun DisplayedStatsSection(stats: ProfileStats?, selectedTimeFrame: StatsTimeFrame) {
 
-
     val dataList: List<Any?> = remember(stats, selectedTimeFrame) {
         when (selectedTimeFrame) {
             StatsTimeFrame.WEEKLY -> listOf( 
@@ -293,7 +287,6 @@ fun DisplayedStatsSection(stats: ProfileStats?, selectedTimeFrame: StatsTimeFram
             )
         }
     }
-
 
     val completedTasksData = when (selectedTimeFrame) {
         StatsTimeFrame.WEEKLY -> dataList[0] as? TimeSeriesStat<LocalDate>
@@ -362,7 +355,6 @@ fun <K : Comparable<K>> StatCard(
 
     )
 
-
     LaunchedEffect(timeSeriesData) {
         val entries =
             timeSeriesData?.entries?.entries?.sortedBy { it.key }?.mapIndexed { index, entry ->
@@ -370,7 +362,6 @@ fun <K : Comparable<K>> StatCard(
             } ?: emptyList()
         chartEntryModelProducer.setEntries(entries)
     }
-
 
     val bottomAxisValueFormatter =
         AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, chartValues ->
@@ -419,7 +410,6 @@ fun <K : Comparable<K>> StatCard(
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(12.dp))
-
 
             if (timeSeriesData != null && timeSeriesData.entries.isNotEmpty()) {
                 ProvideChartStyle(chartStyle = chartStyle) { 

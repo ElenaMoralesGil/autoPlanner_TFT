@@ -146,7 +146,6 @@ fun ModificationTaskSheet(
                 onSubtasksClick = { showSubtasksSection = !showSubtasksSection }
             )
 
-
             if (hasAnyConfig(state) || state?.listId != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 state?.let {
@@ -319,7 +318,6 @@ fun ModificationTaskSheet(
             )
         }
     }
-
 
     if (showPriorityDialog) {
         PriorityDialog(

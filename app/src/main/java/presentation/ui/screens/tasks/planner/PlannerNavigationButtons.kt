@@ -47,7 +47,6 @@ fun PlannerNavigationButtons(
             )
         }
 
-
         Button(
             onClick = {
                 if (isReviewStep) {

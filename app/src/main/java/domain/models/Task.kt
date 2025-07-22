@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
+import kotlin.jvm.Transient
 
 enum class ErrorCode {
     TASK_NAME_EMPTY,
@@ -45,8 +46,10 @@ data class Task private constructor(
     @Transient val sectionName: String? = null,
     @Transient val listColor: Color? = null,
     val allowSplitting: Boolean? = null,
-
-    ) {
+    val isRepeatedInstance: Boolean = false,
+    val parentTaskId: Int? = null,
+    val instanceIdentifier: String? = null,
+) {
     fun validate() {
         if (name.isBlank()) {
             throw TaskValidationException(ErrorCode.TASK_NAME_EMPTY)
@@ -66,11 +69,8 @@ data class Task private constructor(
     fun isExpired(): Boolean {
         val now = LocalDateTime.now()
         return if (endDateConf?.dateTime != null) {
-
             endDateConf.dateTime.isBefore(now)
         } else if (startDateConf.dateTime != null && durationConf?.totalMinutes == null) {
-
-
             startDateConf.dateTime.toLocalDate().isBefore(now.toLocalDate())
         } else {
 
@@ -122,7 +122,6 @@ data class Task private constructor(
     val shouldShowSplittingOption: Boolean
         get() = effectiveDurationMinutes >= 30
 
-
     class Builder {
         private var id: Int = 0
         private var name: String = ""
@@ -145,6 +144,9 @@ data class Task private constructor(
         private var sectionName: String? = null
         private var listColor: Color? = null
         private var internalFlags: TaskInternalFlags? = null
+        private var isRepeatedInstance: Boolean = false
+        private var parentTaskId: Int? = null
+        private var instanceIdentifier: String? = null
 
         fun id(id: Int) = apply { this.id = id }
         fun name(name: String) = apply { this.name = name }
@@ -174,6 +176,12 @@ data class Task private constructor(
         fun sectionName(name: String?) = apply { this.sectionName = name }
         fun listColor(color: Color?) = apply { this.listColor = color }
         fun internalFlags(flags: TaskInternalFlags?) = apply { this.internalFlags = flags }
+        fun isRepeatedInstance(isRepeatedInstance: Boolean) =
+            apply { this.isRepeatedInstance = isRepeatedInstance }
+
+        fun parentTaskId(parentTaskId: Int?) = apply { this.parentTaskId = parentTaskId }
+        fun instanceIdentifier(instanceIdentifier: String?) =
+            apply { this.instanceIdentifier = instanceIdentifier }
         fun build(): Task {
             val finalSectionId = if (listId == null) null else sectionId
             val effectiveStartDate = startDateConf ?: TimePlanning(
@@ -202,8 +210,10 @@ data class Task private constructor(
                 listName = listName,
                 sectionName = sectionName,
                 listColor = listColor,
-                allowSplitting = allowSplitting
-
+                allowSplitting = allowSplitting,
+                isRepeatedInstance = isRepeatedInstance,
+                parentTaskId = parentTaskId,
+                instanceIdentifier = instanceIdentifier
             )
             task.validate()
             return task
@@ -240,6 +250,10 @@ data class Task private constructor(
                 .listName(task.listName)
                 .sectionName(task.sectionName)
                 .listColor(task.listColor)
+                .allowSplitting(task.allowSplitting)
+                .isRepeatedInstance(task.isRepeatedInstance)
+                .parentTaskId(task.parentTaskId)
+                .instanceIdentifier(task.instanceIdentifier)
         }
     }
 }

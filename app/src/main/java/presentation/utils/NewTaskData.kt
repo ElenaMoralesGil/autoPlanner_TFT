@@ -8,7 +8,6 @@ import com.elena.autoplanner.domain.models.Subtask
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TimePlanning
 
-
 data class NewTaskData(
     val name: String,
     val priority: Priority = Priority.NONE,

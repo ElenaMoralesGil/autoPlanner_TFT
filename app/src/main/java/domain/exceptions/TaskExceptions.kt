@@ -8,5 +8,4 @@ class InvalidTaskException(message: String) :
 class TaskNotFoundException(id: Int) :
     DomainException("Task with id $id not found")
 
-
 class TaskValidationException(errorCode: ErrorCode) : Exception(errorCode.name)

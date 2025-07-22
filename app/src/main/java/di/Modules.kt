@@ -62,6 +62,10 @@ import com.elena.autoplanner.domain.usecases.tasks.SaveTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.UpdateTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ValidateTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.RepeatableTaskGenerator
+import com.elena.autoplanner.domain.usecases.tasks.GetExpandedTasksUseCase
+import com.elena.autoplanner.domain.usecases.tasks.CompleteRepeatableTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.DeleteRepeatableTaskUseCase
 import com.elena.autoplanner.notifications.NotificationScheduler
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.EditProfileViewModel
@@ -83,7 +87,6 @@ import kotlinx.coroutines.SupervisorJob
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
-
 
 val appModule = module {
 
@@ -160,7 +163,6 @@ val appModule = module {
 
 }
 
-
 val useCaseModule = module {
     single { GetTasksUseCase(get()) }
     single { GetTaskUseCase(get()) }
@@ -174,6 +176,11 @@ val useCaseModule = module {
     single { DeleteSubtaskUseCase(get(), get()) }
     single { DeleteAllTasksUseCase(get()) }
     single { FilterTasksUseCase() }
+
+    single { RepeatableTaskGenerator() }
+    single { GetExpandedTasksUseCase(get(), get()) }
+    single { CompleteRepeatableTaskUseCase(get(), get()) }
+    single { DeleteRepeatableTaskUseCase(get()) }
 
     single { TaskPrioritizer() }
     single { TaskCategorizer() }
@@ -232,10 +239,16 @@ val viewModelModule = module {
             saveListUseCase = get(),
             saveSectionUseCase = get(),
             getAllSectionsUseCase = get(),
-            savedStateHandle = handle 
+            getExpandedTasksUseCase = get(),
+            completeRepeatableTaskUseCase = get(),
+            deleteRepeatableTaskUseCase = get(),
+            savedStateHandle = handle
         )
     }
-    viewModel { (taskId: Int) ->
+
+    viewModel { parameters ->
+        val taskId = parameters.getOrNull<Int>() ?: 0
+        val instanceIdentifier = parameters.getOrNull<String>()
         TaskDetailViewModel(
             getTaskUseCase = get(),
             toggleTaskCompletionUseCase = get(),
@@ -243,7 +256,8 @@ val viewModelModule = module {
             addSubtaskUseCase = get(),
             toggleSubtaskUseCase = get(),
             deleteSubtaskUseCase = get(),
-            taskId = taskId
+            taskId = taskId,
+            instanceIdentifier = instanceIdentifier
         )
     }
 

@@ -93,7 +93,6 @@ class OverdueTaskHandler {
 
             Log.d("OverdueTaskHandler", "Task $taskId marked for placement on $targetDate")
 
-            // Move to next day for distribution
             dayIndex++
         }
     }

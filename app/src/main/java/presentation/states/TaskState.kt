@@ -23,7 +23,6 @@ data class TaskState(
     fun isEmpty() = filteredTasks.isEmpty() && uiState !is UiState.Loading
 }
 
-
 enum class TaskStatus(val displayName: String) {
     ALL("All"),
     COMPLETED("Completed"),

@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-
 interface Intent
 
 interface UiEffect
@@ -48,7 +47,6 @@ abstract class BaseViewModel<I : Intent, S, E : UiEffect> : ViewModel() {
             _state.update { (it ?: createInitialState()).reducer() }
         }
     }
-
 
     fun setEffect(effect: E) {
         viewModelScope.launch { _effect.emit(effect) }

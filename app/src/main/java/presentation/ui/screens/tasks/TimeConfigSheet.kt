@@ -78,7 +78,6 @@ fun TimeConfigSheet(
 
     var openDialog by remember { mutableStateOf<TimeDialogType?>(null) }
 
-
     ModalBottomSheet(
         onDismissRequest = onClose,
         containerColor = MaterialTheme.colorScheme.surface
@@ -166,7 +165,6 @@ fun TimeConfigSheet(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Compact splitting options for dialog
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)

@@ -48,7 +48,6 @@ class ListRepositoryImpl(
         observeUserLoginState()
     }
 
-
     private fun getUserListsCollection(userId: String): CollectionReference {
         return firestore.collection(USERS_COLLECTION).document(userId)
             .collection(LISTS_SUBCOLLECTION)
@@ -57,7 +56,6 @@ class ListRepositoryImpl(
         return firestore.collection(USERS_COLLECTION).document(userId)
             .collection(SECTIONS_SUBCOLLECTION)
     }
-
 
     private suspend fun updateFirestoreListDeletedFlag(userId: String, firestoreId: String, isDeleted: Boolean) {
         try {
@@ -83,7 +81,6 @@ class ListRepositoryImpl(
             Log.e(TAG, "Error updating Firestore isDeleted flag for section $firestoreId", e)
         }
     }
-
 
     private fun observeUserLoginState() {
         repoScope.launch(dispatcher) {
@@ -122,7 +119,6 @@ class ListRepositoryImpl(
             val localListIdsToDelete = mutableListOf<Long>()
             val localSectionIdsToDelete = mutableListOf<Long>()
 
-
             val localOnlyLists = listDao.getLocalOnlyListsList() 
             if (localOnlyLists.isNotEmpty()) {
                 Log.i(TAG, "Found ${localOnlyLists.size} local-only lists. Preparing upload...")
@@ -134,7 +130,6 @@ class ListRepositoryImpl(
                     localListIdsToDelete.add(listEntity.id)
                 }
             }
-
 
             val localOnlySections = sectionDao.getAllLocalOnlySectionsList() 
             if (localOnlySections.isNotEmpty()) {
@@ -160,7 +155,6 @@ class ListRepositoryImpl(
                     Log.d(TAG,"Prepared upload for local section ID ${sectionEntity.id} -> FS ID ${sectionDocRef.id}")
                 }
             }
-
 
             if (localListIdsToDelete.isNotEmpty() || localSectionIdsToDelete.isNotEmpty()) {
                 Log.i(TAG, "Committing batch for ${localListIdsToDelete.size} lists and ${localSectionIdsToDelete.size} sections.")
@@ -393,7 +387,6 @@ class ListRepositoryImpl(
         }
     }
 
-
     override fun getListsInfo(): Flow<TaskResult<List<TaskListInfo>>> {
 
         return userRepository.getCurrentUser().flatMapLatest { user ->
@@ -440,7 +433,6 @@ class ListRepositoryImpl(
             TaskResult.Error(mapExceptionMessage(e), e)
         }
     }
-
 
     override suspend fun saveList(list: TaskList): TaskResult<Long> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
@@ -510,7 +502,6 @@ class ListRepositoryImpl(
         }
     }
 
-
     override suspend fun deleteList(listId: Long): TaskResult<Unit> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
         try {
@@ -523,8 +514,8 @@ class ListRepositoryImpl(
 
             if (listUserId == null) {
 
-                taskDao.clearListIdForTasks(listId) 
-                
+                taskDao.clearListIdForTasks(listId)
+
                 listDao.deleteLocalOnlyList(listId)
                 Log.i(TAG, "Physically deleted local-only list $listId and cleared task FKs.")
 
@@ -532,10 +523,8 @@ class ListRepositoryImpl(
 
                 val loggedInUserId = user.uid
 
-
                 listDao.updateListDeletedFlag(listId, true, timestamp)
                 Log.d(TAG, "Marked local list $listId as deleted")
-
 
                 val allLocalSections = sectionDao.getAllSectionsForListList(listId)
 
@@ -544,10 +533,8 @@ class ListRepositoryImpl(
                     Log.d(TAG, "Marked local section ${sec.id} (under list $listId) as deleted")
                 }
 
-
                 taskDao.clearListIdForTasks(listId)
                 Log.d(TAG, "Cleared FKs for tasks associated with list $listId locally")
-
 
                 if (listFirestoreId != null) {
                     val tasksToUpdate = taskDao.getSyncedTasksByListId(loggedInUserId, listId) 
@@ -566,11 +553,9 @@ class ListRepositoryImpl(
                     }
                 }
 
-
                 if (listFirestoreId != null) {
                     updateFirestoreListDeletedFlag(loggedInUserId, listFirestoreId, true) 
                 }
-
 
                 allLocalSections.filter { it.userId == loggedInUserId }.forEach { sec ->
                     sec.firestoreId?.let { secFsId ->
@@ -582,12 +567,11 @@ class ListRepositoryImpl(
                     }
                 }
             } else {
-                if (listUserId != null) { 
-                    
+                if (listUserId != null) {
+
                     listDao.updateListDeletedFlag(listId, true, timestamp)
 
                     sectionDao.getAllSectionsForListList(listId).forEach { sec ->
-
 
                         if (sec.userId == listUserId) { 
                             sectionDao.updateSectionDeletedFlag(sec.id, true, timestamp)
@@ -605,7 +589,6 @@ class ListRepositoryImpl(
             TaskResult.Error(mapExceptionMessage(e) + " (Error during list deletion)", e)
         }
     }
-
 
     override suspend fun deleteSection(sectionId: Long): TaskResult<Unit> = withContext(dispatcher) {
         val user = userRepository.getCurrentUser().firstOrNull()
@@ -625,13 +608,10 @@ class ListRepositoryImpl(
 
             } else if (user != null && sectionUserId == user.uid) {
 
-
                 sectionDao.updateSectionDeletedFlag(sectionId, true, timestamp)
                 Log.d(TAG, "Marked local section $sectionId as deleted")
 
-
                 taskDao.clearSectionIdForTasks(sectionId)
-
 
                 if (sectionFirestoreId != null) {
                     val tasksToUpdate = taskDao.getSyncedTasksBySectionId(user.uid, sectionId) 
@@ -649,14 +629,13 @@ class ListRepositoryImpl(
                     }
                 }
 
-
                 if (sectionFirestoreId != null) {
                     updateFirestoreSectionDeletedFlag(user.uid, sectionFirestoreId, true)
                 }
 
             } else {
-                if (sectionUserId != null) { 
-                    
+                if (sectionUserId != null) {
+
                     sectionDao.updateSectionDeletedFlag(sectionId, true, timestamp)
                     taskDao.clearSectionIdForTasks(sectionId) 
                     Log.d(TAG, "Marked local section $sectionId as deleted while offline/unauthorized")
@@ -671,7 +650,6 @@ class ListRepositoryImpl(
             TaskResult.Error(mapExceptionMessage(e) + " (Error during section deletion)", e)
         }
     }
-
 
     override fun getSections(listId: Long): Flow<TaskResult<List<TaskSection>>> {
 

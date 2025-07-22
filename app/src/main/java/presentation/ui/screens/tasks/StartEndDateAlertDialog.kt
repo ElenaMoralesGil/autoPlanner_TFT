@@ -82,7 +82,6 @@ fun StartEndDateAlertDialog(
         }
     }
 
-
     GeneralAlertDialog(
 
         title = {
@@ -107,7 +106,6 @@ fun StartEndDateAlertDialog(
                     ) {
                         handlePeriodSelection(DayPeriod.MORNING)
                     }
-
 
                     DayPeriodOption(
                         iconRes = R.drawable.evening,
@@ -152,7 +150,6 @@ fun StartEndDateAlertDialog(
                 )
 
                 Spacer(Modifier.height(16.dp))
-
 
                 AnimatedVisibility(
                     visible = (dayPeriod == DayPeriod.NONE),
@@ -338,7 +335,6 @@ fun HourMinutePickerDialog(
 
         )
 }
-
 
 @Composable
 fun TimePickerColumn(

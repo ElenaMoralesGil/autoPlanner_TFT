@@ -1,5 +1,3 @@
-
-
 package com.elena.autoplanner.presentation.ui.screens.more
 
 import androidx.compose.foundation.background
@@ -61,7 +59,6 @@ fun ListSelectionDialog(
                             HorizontalDivider()
                         }
 
-
                         items(lists, key = { it.id }) { list ->
                             ListSelectItem(
                                 name = list.name,
@@ -75,7 +72,6 @@ fun ListSelectionDialog(
                             )
                             HorizontalDivider()
                         }
-
 
                         item {
                             ListSelectItem(
@@ -96,10 +92,8 @@ fun ListSelectionDialog(
             onDismiss() 
         },
 
-
         )
 }
-
 
 @Composable
 private fun ListSelectItem(

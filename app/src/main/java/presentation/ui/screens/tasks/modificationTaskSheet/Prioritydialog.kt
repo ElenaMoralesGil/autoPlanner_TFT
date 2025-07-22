@@ -102,7 +102,6 @@ private fun PriorityOptionItem(
         priorityVisuals.color 
     }
 
-
     val iconToShowVector =
         if (isSelected) Icons.Filled.CheckCircle else null 
     val iconToShowResId =
@@ -160,7 +159,6 @@ private fun PriorityOptionItem(
     } 
 }
 
-
 private data class PriorityVisuals(
     val color: Color,
     val iconVector: ImageVector? = null,
@@ -175,7 +173,6 @@ private data class PriorityVisuals(
         }
     }
 }
-
 
 @Composable
 private fun Priority.getVisuals(): PriorityVisuals {

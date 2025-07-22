@@ -25,8 +25,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-
-
 fun Task.toFirebaseMap(
     userId: String,
     resolvedListFirestoreId: String? = null,
@@ -47,7 +45,6 @@ fun Task.toFirebaseMap(
         "scheduledEndDateTime" to scheduledEndDateTime?.toTimestamp(),
         "completionDateTime" to completionDateTime?.toTimestamp(),
         "isDeleted" to false,
-
 
         "listFirestoreId" to resolvedListFirestoreId,
         "sectionFirestoreId" to resolvedSectionFirestoreId, 
@@ -127,7 +124,6 @@ fun RepeatPlan.toFirebaseMap(): Map<String, Any?> {
     )
 }
 
-
 fun Subtask.toFirebaseMap(): Map<String, Any?> {
     return mapOf(
 
@@ -136,10 +132,6 @@ fun Subtask.toFirebaseMap(): Map<String, Any?> {
         "estimatedDurationInMinutes" to estimatedDurationInMinutes
     ).filterValues { it != null } 
 }
-
-
-
-
 
 data class TaskFirestoreDTO(
     val task: Task,
@@ -161,7 +153,6 @@ data class SectionFirestoreDTO(
     val lastUpdated: Long?,
     val isDeleted: Boolean,
 )
-
 
 fun DocumentSnapshot.toTaskFirestoreDTO(localIdFallback: Int? = null): TaskFirestoreDTO? {
     return try {
@@ -248,8 +239,6 @@ fun DocumentSnapshot.toSectionFirestoreDTO(
     }
 }
 
-
-
 fun Map<String, Any>.toTimePlanning(): TimePlanning? {
     return try {
         TimePlanning(
@@ -328,7 +317,6 @@ fun Map<String, Any>.toRepeatPlan(): RepeatPlan? {
     }
 }
 
-
 fun Map<String, Any>.toSubtask(generatedId: Int): Subtask? {
     return try {
         Subtask(
@@ -342,7 +330,6 @@ fun Map<String, Any>.toSubtask(generatedId: Int): Subtask? {
         null
     }
 }
-
 
 fun LocalDateTime.toTimestamp(): Timestamp {
 

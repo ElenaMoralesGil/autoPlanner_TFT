@@ -97,7 +97,6 @@ class UserRepositoryImpl(
             user.verifyBeforeUpdateEmail(newEmail)
                 .await()
 
-
             AuthResult.Success(Unit)
         } catch (e: FirebaseAuthWeakPasswordException) { 
             AuthResult.Error("Invalid email format.")

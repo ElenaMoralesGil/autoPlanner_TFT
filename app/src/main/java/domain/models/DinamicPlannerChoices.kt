@@ -18,7 +18,6 @@ enum class OverdueTaskHandling {
     POSTPONE_TO_TOMORROW
 }
 
-
 enum class ResolutionOption { MOVE_TO_NEAREST_FREE, MOVE_TO_TOMORROW, MANUALLY_SCHEDULE, LEAVE_IT_LIKE_THAT, RESOLVED }
 
 data class ScheduledTaskItem(
@@ -89,7 +88,6 @@ enum class PlannerStep {
     REVIEW_PLAN
 }
 
-
 data class TimeBlock(
     val start: LocalDateTime,
     var end: LocalDateTime,
@@ -105,7 +103,6 @@ data class TimeBlock(
 
     fun allowsOverlap(): Boolean = false
 }
-
 
 data class PlannerInput(
     val tasks: List<Task>,
@@ -123,7 +120,6 @@ enum class PlacementHeuristic {
     BEST_FIT
 }
 
-
 data class PlannerOutput(
     val scheduledTasks: Map<LocalDate, List<ScheduledTaskItem>>,
     val unresolvedExpired: List<Task>,
@@ -138,9 +134,6 @@ data class InfoItem(
     val relevantDate: LocalDate? = null,
 )
 
-
-
-
 data class CategorizationResult(
     val fixedOccurrences: List<Pair<PlanningTask, LocalDateTime>>,
     val periodTasksPending: Map<LocalDate, Map<DayPeriod, List<PlanningTask>>>,
@@ -148,7 +141,6 @@ data class CategorizationResult(
     val deadlineFlexibleTasks: List<PlanningTask>,
     val fullyFlexibleTasks: List<PlanningTask>,     
 )
-
 
 sealed class PlacementResultInternal {
     data class Success(val placedBlock: TimeBlock) : PlacementResultInternal()
@@ -161,7 +153,6 @@ sealed class PlacementResultInternal {
 
     data class Failure(val reason: String) : PlacementResultInternal()
 }
-
 
 sealed class PlacementResult {
     data class Success(val blocks: List<TimeBlock>) :
@@ -178,14 +169,12 @@ sealed class PlacementResult {
     ) : PlacementResult()
 }
 
-
 data class PlanningTask(
     val task: Task,
     val flags: PlanningFlags = PlanningFlags(),
 ) {
     val id: Int get() = task.id
 }
-
 
 data class PlanningFlags(
     var isHardConflict: Boolean = false,

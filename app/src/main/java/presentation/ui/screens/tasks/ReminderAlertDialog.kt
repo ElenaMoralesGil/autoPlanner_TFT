@@ -27,7 +27,6 @@ import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 import com.elena.autoplanner.presentation.ui.utils.SelectionGrid
 import com.elena.autoplanner.presentation.ui.utils.StringPicker
 
-
 @Composable
 fun ReminderAlertDialog(
     existing: ReminderPlan?,
@@ -85,7 +84,6 @@ fun ReminderAlertDialog(
     }
 }
 
-
 @Composable
 fun ReminderPersonalizedAlertDialog(
     existing: ReminderPlan,
@@ -97,7 +95,6 @@ fun ReminderPersonalizedAlertDialog(
 
     var selectedDayIndex by remember { mutableIntStateOf(0) }
     var selectedWeekIndex by remember { mutableIntStateOf(0) }
-
 
     var selectedHour by remember { mutableIntStateOf(8) }
     var selectedMinute by remember { mutableIntStateOf(0) }
@@ -200,7 +197,6 @@ fun ReminderPersonalizedAlertDialog(
         }
     )
 }
-
 
 @Composable
 fun ScrollingStringPickerColumn(

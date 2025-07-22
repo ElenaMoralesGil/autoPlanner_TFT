@@ -40,7 +40,6 @@ class TaskCategorizer {
                 "Task ${task.id}: isOverdue=${planningTask.flags.isOverdue}, constraintDate=${planningTask.flags.constraintDate}, startDate=${task.startDateConf.dateTime}"
             )
 
-
             if (planningTask.flags.isOverdue) {
                 when {
 
@@ -96,12 +95,10 @@ class TaskCategorizer {
                 if (occurrences.isNotEmpty() || planningTask.flags.isHardConflict) return@taskLoop
             }
 
-
             if (!taskFitsScope(task, scopeStart, scopeEnd) && !planningTask.flags.isOverdue) {
 
                 return@taskLoop
             }
-
 
             val startDate = task.startDateConf.dateTime
             val startPeriod = task.startDateConf.dayPeriod
@@ -117,7 +114,6 @@ class TaskCategorizer {
                     Log.v("Categorizer", "Task ${task.id} - Type: Overdue Today -> DateFlex")
                     dateFlex.computeIfAbsent(today) { mutableListOf() }.add(planningTask)
                 }
-
 
                 startDate != null && hasSpecificStartTime && !hasEndDate && !hasPeriod -> {
                     Log.v(
@@ -135,7 +131,6 @@ class TaskCategorizer {
                     }
                 }
 
-
                 startDate != null && hasSpecificStartTime && hasEndDate -> {
                     Log.v(
                         "Categorizer",
@@ -143,7 +138,6 @@ class TaskCategorizer {
                     )
                     deadlineFlex.add(planningTask)
                 }
-
 
                 startDate != null && hasPeriod && !hasEndDate -> {
                     Log.v(
@@ -172,7 +166,6 @@ class TaskCategorizer {
                     deadlineFlex.add(planningTask)
                 }
 
-
                 startDate != null && !hasSpecificStartTime && !hasPeriod && !hasEndDate -> {
                     Log.v(
                         "Categorizer",
@@ -190,7 +183,6 @@ class TaskCategorizer {
                     }
                 }
 
-
                 startDate != null && !hasSpecificStartTime && !hasPeriod && hasEndDate -> {
                     Log.v(
                         "Categorizer",
@@ -199,12 +191,10 @@ class TaskCategorizer {
                     deadlineFlex.add(planningTask)
                 }
 
-
                 hasEndDate -> {
                     Log.v("Categorizer", "Task ${task.id} - Type: End Date Only -> DeadlineFlex")
                     deadlineFlex.add(planningTask)
                 }
-
 
                 else -> {
                     Log.v("Categorizer", "Task ${task.id} - Type: Fully Flexible -> FullFlex")
@@ -214,7 +204,6 @@ class TaskCategorizer {
         }
         return CategorizationResult(fixed, periodPending, dateFlex, deadlineFlex, fullFlex)
     }
-
 
     private fun taskFitsScope(task: Task, scopeStart: LocalDate, scopeEnd: LocalDate): Boolean {
         val taskStart = task.startDateConf.dateTime?.toLocalDate()

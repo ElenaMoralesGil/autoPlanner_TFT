@@ -94,7 +94,6 @@ class EditProfileViewModel(
 
             setState { copy(isLoading = true, error = null) }
 
-
             val reAuthResult = reauthenticateUseCase(state.currentPasswordForReAuth)
 
             when (reAuthResult) {
@@ -121,7 +120,6 @@ class EditProfileViewModel(
         viewModelScope.launch {
             val state = currentState
             var validationError: String? = null
-
 
             if (state.newPassword.isNotEmpty() && !state.isPasswordChangeValid) {
                 validationError = when {
@@ -154,7 +152,6 @@ class EditProfileViewModel(
                 return@launch
             }
 
-
             setState {
                 copy(
                     pendingDisplayName = displayNameToUpdate,
@@ -162,7 +159,6 @@ class EditProfileViewModel(
                     pendingPassword = passwordToUpdate
                 )
             }
-
 
             attemptProfileUpdate(displayNameToUpdate, emailToUpdate, passwordToUpdate)
         }
@@ -207,8 +203,8 @@ class EditProfileViewModel(
                             showReAuthDialog = true,
                             error = null
                         )
-                    } 
-                    
+                    }
+
                 } else {
 
                     Log.e("EditProfileVM", "Update failed: ${result.message}")
@@ -226,9 +222,7 @@ class EditProfileViewModel(
         val email = state.pendingEmail
         val password = state.pendingPassword
 
-
         setState { copy(pendingDisplayName = null, pendingEmail = null, pendingPassword = null) }
-
 
         setState { copy(isLoading = true, error = null) } 
         Log.d(
@@ -283,7 +277,6 @@ class EditProfileViewModel(
         }
 
         setEffect(EditProfileEffect.ShowSnackbar(finalMessage))
-
 
         if (shouldReloadData && currentState.pendingDisplayName != null) {
             Log.d("EditProfileVM", "Reloading data after non-email update.")

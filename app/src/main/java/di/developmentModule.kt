@@ -6,7 +6,6 @@ import com.elena.autoplanner.domain.utils.NoOpDataSeeder
 import com.elena.autoplanner.domain.utils.RealDataSeeder
 import org.koin.dsl.module
 
-
 val developmentModule = module {
 
     single<DataSeeder> {

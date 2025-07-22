@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -90,7 +89,6 @@ fun DurationAlertDialog(
                 Button(onClick = { expanded = true }) {
                     Text(if (useHours) "Hours" else "Minutes")
                 }
-
 
                 DropdownMenu(
                     expanded = expanded,

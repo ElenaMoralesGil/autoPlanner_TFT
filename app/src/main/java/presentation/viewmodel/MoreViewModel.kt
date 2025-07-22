@@ -139,8 +139,6 @@ class MoreViewModel(
         }
     }
 
-
-
     private suspend fun updateList(listId: Long, newName: String, newColorHex: String) {
         setState { copy(isLoading = true) }
 
@@ -178,7 +176,6 @@ class MoreViewModel(
 
     }
 
-
     private suspend fun handleToggleExpansion(listId: Long) {
         val currentExpanded = currentState.expandedListIds
         val isCurrentlyExpanded = currentExpanded.contains(listId)
@@ -188,7 +185,6 @@ class MoreViewModel(
             currentExpanded + listId
         }
         setState { copy(expandedListIds = newExpanded) }
-
 
         if (!isCurrentlyExpanded && !currentState.sectionsByListId.containsKey(listId)) {
             loadSections(listId)
@@ -228,7 +224,6 @@ class MoreViewModel(
                     )
                 }
 
-
                 Log.e("MoreViewModel", "Error loading sections for list $listId: ${result.message}")
             }
         }
@@ -266,7 +261,6 @@ class MoreViewModel(
                 setEffect(MoreEffect.ShowSnackbar("Error creating section: ${result.message}"))
             }
         }
-
 
     }
 

@@ -1,9 +1,7 @@
 package com.elena.autoplanner.presentation.effects
 
-
 import com.elena.autoplanner.presentation.viewmodel.UiEffect
 import java.time.LocalDate
-
 
 sealed class CalendarEffect : UiEffect {
 

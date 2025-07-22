@@ -47,7 +47,6 @@ fun TaskDetailSheet(
 
     val state by viewModel.state.collectAsState()
 
-
     LaunchedEffect(viewModel) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
@@ -63,7 +62,6 @@ fun TaskDetailSheet(
             }
         }
     }
-
 
     LaunchedEffect(taskId) {
         viewModel.sendIntent(TaskDetailIntent.LoadTask(taskId))
@@ -158,7 +156,6 @@ fun TaskDetailSheet(
                         Text("Edit Task")
                     }
                 }
-
 
                 Row(
                     modifier = Modifier

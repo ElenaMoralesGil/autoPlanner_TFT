@@ -30,7 +30,6 @@ class TaskEditViewModel(
 
     override fun createInitialState(): TaskEditState = TaskEditState()
 
-
     override suspend fun handleIntent(intent: TaskEditIntent) {
         when (intent) {
             is TaskEditIntent.LoadTask -> loadTask(intent.taskId)
@@ -92,7 +91,6 @@ class TaskEditViewModel(
                             error = null
                         )
                     }
-
 
                 },
                 onError = { errorMessage ->

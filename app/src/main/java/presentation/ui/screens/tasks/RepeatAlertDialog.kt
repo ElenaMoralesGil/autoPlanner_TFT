@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.ui.screens.tasks
 
-
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,7 +32,6 @@ import com.elena.autoplanner.presentation.ui.utils.AnimatedSection
 import com.elena.autoplanner.presentation.ui.utils.GeneralAlertDialog
 import com.elena.autoplanner.presentation.ui.utils.NumberPicker
 import com.elena.autoplanner.presentation.ui.utils.SelectionGrid
-
 
 @Composable
 fun RepeatAlertDialog(
@@ -113,7 +111,6 @@ fun RepeatAlertDialog(
         )
     }
 }
-
 
 @Composable
 private fun DaysOfWeekSelector(
@@ -232,7 +229,6 @@ private fun DayChip(
     }
 }
 
-
 @Composable
 fun SegmentedControlColumn(
     options: List<String>,
@@ -249,7 +245,6 @@ fun SegmentedControlColumn(
         Column {
             options.forEachIndexed { index, option ->
                 val isSelected = index == selectedIndex
-
 
                 val shapeItem = when (index) {
                     0 -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)

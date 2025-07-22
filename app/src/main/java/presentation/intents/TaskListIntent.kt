@@ -11,9 +11,15 @@ sealed class TaskListIntent : Intent {
     data class UpdateStatusFilter(val status: TaskStatus) : TaskListIntent()
     data class UpdateTimeFrameFilter(val timeFrame: TimeFrame) : TaskListIntent()
     data class ToggleTaskCompletion(val taskId: Int, val completed: Boolean) : TaskListIntent()
-    data class SelectTask(val taskId: Int) : TaskListIntent()
+    data class SelectTask(val taskId: Int, val instanceIdentifier: String? = null) :
+        TaskListIntent()
     data class UpdateTask(val task: Task) : TaskListIntent()
     data class DeleteTask(val taskId: Int) : TaskListIntent()
+    data class DeleteRepeatableTask(val task: Task) : TaskListIntent()
+    data class ConfirmRepeatableTaskDeletion(
+        val task: Task,
+        val option: com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption,
+    ) : TaskListIntent()
     data class LoadTasks(val listId: Long) : TaskListIntent()
     data class ViewList(val listId: Long) : TaskListIntent()
     data object ViewAllTasks : TaskListIntent()

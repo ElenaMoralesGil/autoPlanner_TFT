@@ -105,7 +105,7 @@ fun TaskConfigDisplay(
                             icon = splittingIcon,
                             label = "Splitting",
                             value = splittingText,
-                            modifier = Modifier.padding(start = 8.dp) // Slight indent to show it's related to duration
+                            modifier = Modifier.padding(start = 8.dp) 
                         )
                     }
                 }
@@ -135,7 +135,6 @@ fun TaskConfigDisplay(
                     color = getPriorityColor(priority)
                 )
             }
-
 
             listName?.let { name ->
                 val displayValue = if (sectionName != null) "$name / $sectionName" else name

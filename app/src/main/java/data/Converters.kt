@@ -44,7 +44,6 @@ object ListOfIntConverter {
 object DayOfWeekSetConverter {
     private val gson = Gson()
 
-
     private val typeToken = object : TypeToken<Set<DayOfWeek>>() {}.type
 
     @TypeConverter
@@ -67,7 +66,6 @@ object DayOfWeekSetConverter {
         }
     }
 }
-
 
 object IntervalUnitConverter {
     @TypeConverter

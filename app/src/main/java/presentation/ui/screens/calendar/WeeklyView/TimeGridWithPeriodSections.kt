@@ -66,12 +66,10 @@ fun TimeGridWithPeriodSections(
     val density = LocalDensity.current
     val hourHeightPx = remember(density, hourHeightDp) { with(density) { hourHeightDp.toPx() } }
 
-
     var dayWidthPx by remember { mutableStateOf(0f) }
     var gridStartTimeAreaWidthPx by remember { mutableStateOf(0f) } 
     var draggedTaskState by remember { mutableStateOf<WeeklyTaskDragState?>(null) }
     var taskAreaCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-
 
     @Composable
     fun rememberTaskMetrics(task: Task): Pair<Dp, Dp> {
@@ -87,7 +85,6 @@ fun TimeGridWithPeriodSections(
 
         val topOffsetDp = with(density) { (startTotalMinutes / 60f * hourHeightPx).toDp() }
 
-
         (endTotalMinutes - startTotalMinutes).coerceAtLeast(15) 
         val heightDp = with(density) {
             (effectiveDuration / 60f * hourHeightPx)
@@ -96,7 +93,6 @@ fun TimeGridWithPeriodSections(
         }
         return Pair(topOffsetDp, heightDp)
     }
-
 
     val tasksByDate = remember(scheduledTasks, weekDays) {
         weekDays.associateWith { date ->
@@ -135,9 +131,7 @@ fun TimeGridWithPeriodSections(
 
         Spacer(Modifier.height(8.dp))
 
-
         Box(modifier = Modifier.fillMaxWidth()) {
-
 
             Column {
                 hours.forEach { hour ->
@@ -170,7 +164,6 @@ fun TimeGridWithPeriodSections(
                                 modifier = Modifier.offset(y = (-4).dp)
                             )
                         }
-
 
                         Row(
                             modifier = Modifier
@@ -229,7 +222,6 @@ fun TimeGridWithPeriodSections(
                                         }
                                     }
 
-
                                     if (dayIndex == currentDateIndex && hour == currentTime.hour && dayWidthPx > 0) {
                                         val minuteRatio = currentTime.minute / 60f
                                         val indicatorY = minuteRatio * hourHeightPx
@@ -250,7 +242,6 @@ fun TimeGridWithPeriodSections(
                     }
                 }
             }
-
 
             Row(
                 modifier = Modifier
@@ -383,7 +374,6 @@ fun TimeGridWithPeriodSections(
                     }
                 }
             }
-
 
             draggedTaskState?.let { currentDrag ->
                 val ghostDayIndex = weekDays.indexOf(currentDrag.targetDate)

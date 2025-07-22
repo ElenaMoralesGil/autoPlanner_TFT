@@ -75,7 +75,6 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         """
         )
 
-
         db.execSQL(
             """
             CREATE TABLE IF NOT EXISTS `task_sections` (
@@ -89,17 +88,12 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_task_sections_listId` ON `task_sections` (`listId`)")
 
-
         db.execSQL("ALTER TABLE tasks ADD COLUMN listId INTEGER DEFAULT NULL")
         db.execSQL("ALTER TABLE tasks ADD COLUMN sectionId INTEGER DEFAULT NULL")
         db.execSQL("ALTER TABLE tasks ADD COLUMN displayOrder INTEGER NOT NULL DEFAULT 0")
 
-
-
-
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_listId` ON `tasks` (`listId`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_sectionId` ON `tasks` (`sectionId`)")
-
 
     }
 }
@@ -112,13 +106,11 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_task_lists_userId ON task_lists(userId)")
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_task_lists_firestoreId ON task_lists(firestoreId)")
 
-
         db.execSQL("ALTER TABLE task_sections ADD COLUMN userId TEXT")
         db.execSQL("ALTER TABLE task_sections ADD COLUMN firestoreId TEXT")
         db.execSQL("ALTER TABLE task_sections ADD COLUMN lastUpdated INTEGER NOT NULL DEFAULT 0")
         db.execSQL("CREATE INDEX IF NOT EXISTS index_task_sections_userId ON task_sections(userId)")
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_task_sections_firestoreId ON task_sections(firestoreId)")
-
 
     }
 }
@@ -139,4 +131,3 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         database.execSQL("ALTER TABLE tasks ADD COLUMN allow_splitting INTEGER")
     }
 }
-

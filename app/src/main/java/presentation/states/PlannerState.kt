@@ -1,5 +1,3 @@
-
-
 package com.elena.autoplanner.presentation.states
 
 import com.elena.autoplanner.domain.models.ConflictItem
@@ -26,9 +24,7 @@ data class PlannerState(
     val selectedOverdueHandling: OverdueTaskHandling? = null,
     val selectedPlacementHeuristic: PlacementHeuristic = PlacementHeuristic.BEST_FIT,
 
-
     val numOverdueTasks: Int = 0,
-
 
     val generatedPlan: Map<LocalDate, List<ScheduledTaskItem>> = emptyMap(),
     val expiredTasksToResolve: List<Task> = emptyList(),
@@ -38,7 +34,6 @@ data class PlannerState(
     val taskResolutions: Map<Int, ResolutionOption> = emptyMap(),
     val conflictResolutions: Map<Int, ResolutionOption> = emptyMap(),
     val tasksFlaggedForManualEdit: Set<Int> = emptySet(),
-
 
     val isLoading: Boolean = false,
     val error: String? = null,

@@ -11,7 +11,6 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 
-
 class GeneratePlanUseCase(
     private val taskCategorizer: TaskCategorizer,
     private val recurrenceExpander: RecurrenceExpander,
@@ -20,7 +19,6 @@ class GeneratePlanUseCase(
     private val overdueTaskHandler: OverdueTaskHandler,
     private val taskPrioritizer: TaskPrioritizer,
 ) {
-
 
     suspend operator fun invoke(input: PlannerInput): PlannerOutput =
         withContext(Dispatchers.Default) {
@@ -37,7 +35,6 @@ class GeneratePlanUseCase(
                 "Phase 0: Preparation - Scope: $scheduleStartDate to $scheduleEndDate, Tasks: ${context.planningTaskMap.size}"
             )
 
-
             overdueTaskHandler.handleOverdueTasks(
                 context = context,
                 strategy = input.overdueTaskHandling,
@@ -49,7 +46,6 @@ class GeneratePlanUseCase(
                 "GeneratePlanUseCase",
                 "After Overdue Handling: Tasks to Plan=${context.getTasksToPlan().size}, Postponed=${context.postponedTasks.size}, Manual=${context.expiredForResolution.size}"
             )
-
 
             val categorizationResult = taskCategorizer.categorizeTasks(
                 planningTasks = context.getTasksToPlan(), 
@@ -63,7 +59,6 @@ class GeneratePlanUseCase(
                 "GeneratePlanUseCase",
                 "Categorization Result: Fixed=${categorizationResult.fixedOccurrences.size}, Period=${categorizationResult.periodTasksPending.values.sumOf { it.values.sumOf { list -> list.size } }}, DateFlex=${categorizationResult.dateFlexPending.values.sumOf { it.size }}, DeadlineFlex=${categorizationResult.deadlineFlexibleTasks.size}, FullFlex=${categorizationResult.fullyFlexibleTasks.size}"
             )
-
 
             timelineManager.initialize(
                 start = scheduleStartDate,
@@ -79,7 +74,6 @@ class GeneratePlanUseCase(
                 "Timeline initialized for ${timelineManager.getDates().size} days."
             )
 
-
             Log.i(
                 "GeneratePlanUseCase",
                 "--- Phase 1: Place Fixed Tasks (${categorizationResult.fixedOccurrences.size}) ---"
@@ -90,9 +84,7 @@ class GeneratePlanUseCase(
                 context
             )
 
-
             Log.i("GeneratePlanUseCase", "--- Phase 2: Place Prioritized Remaining Tasks ---")
-
 
             val tasksToPrioritize = (
                     categorizationResult.periodTasksPending.values.flatMap { it.values.flatten() } +
@@ -103,7 +95,6 @@ class GeneratePlanUseCase(
                 .mapNotNull { context.planningTaskMap[it.id] }
                 .filterNot { context.placedTaskIds.contains(it.id) }
                 .distinctBy { it.id }
-
 
             val sortedTasksToPlace = tasksToPrioritize
                 .sortedByDescending {
@@ -117,7 +108,6 @@ class GeneratePlanUseCase(
                 "GeneratePlanUseCase",
                 "Prioritized ${sortedTasksToPlace.size} tasks for placement."
             )
-
 
             sortedTasksToPlace.forEach { planningTask ->
                 if (!context.placedTaskIds.contains(planningTask.id)) { 
@@ -133,7 +123,6 @@ class GeneratePlanUseCase(
                 }
             }
 
-
             Log.i("GeneratePlanUseCase", "--- Consolidating Results ---")
             consolidateResults(context, timelineManager) 
 
@@ -141,7 +130,6 @@ class GeneratePlanUseCase(
                 "GeneratePlanUseCase",
                 "Final Results: Scheduled=${context.scheduledItemsMap.values.sumOf { it.size }}, Conflicts=${context.conflicts.size}, Expired=${context.expiredForResolution.size}, Postponed=${context.postponedTasks.size}, Info=${context.infoItems.size}"
             )
-
 
             return@withContext PlannerOutput(
                 scheduledTasks = context.scheduledItemsMap,
@@ -159,7 +147,7 @@ class GeneratePlanUseCase(
         return when (scope) {
             ScheduleScope.TODAY -> today to today
             ScheduleScope.TOMORROW -> today.plusDays(1) to today.plusDays(1)
-            ScheduleScope.THIS_WEEK -> today to today.with(TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY))
+            ScheduleScope.THIS_WEEK -> today to today.plusDays(6)
         }
     }
 
@@ -190,7 +178,6 @@ class GeneratePlanUseCase(
             }
         }
 
-
         val hardConflictTaskIds = context.conflicts
             .filter { it.conflictType == ConflictType.FIXED_VS_FIXED || it.conflictType == ConflictType.RECURRENCE_ERROR }
             .flatMap { it.conflictingTasks.map { t -> t.id } }
@@ -220,7 +207,6 @@ class GeneratePlanUseCase(
                 }
             }
         }
-
 
         context.scheduledItemsMap.values.forEach { it.sortBy { item -> item.scheduledStartTime } }
     }

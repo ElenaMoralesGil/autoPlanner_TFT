@@ -133,7 +133,6 @@ class TaskWorkflowTest {
         assertEquals("Should have 1 task in the system", 1, allTasks.size)
         assertTrue("The task should be marked as completed", allTasks.first().isCompleted)
 
-
     }
 
     @Test
@@ -149,7 +148,6 @@ class TaskWorkflowTest {
         val taskId = (saveResult as TaskResult.Success).data
         val getResult = getTaskUseCase(taskId)
         assertTrue("Should be able to retrieve saved task", getResult is TaskResult.Success)
-
 
         val deleteResult = deleteTaskUseCase(taskId)
         when (deleteResult) {

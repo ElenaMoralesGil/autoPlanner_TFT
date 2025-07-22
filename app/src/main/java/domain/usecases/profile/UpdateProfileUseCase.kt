@@ -7,7 +7,6 @@ import kotlinx.coroutines.withContext
 
 class UpdateProfileUseCase(private val userRepository: UserRepository) {
 
-
     suspend operator fun invoke(
         newDisplayName: String?,
         newEmail: String?,
@@ -16,21 +15,17 @@ class UpdateProfileUseCase(private val userRepository: UserRepository) {
 
         val results = mutableListOf<AuthResult<Unit>>()
 
-
         if (newDisplayName != null) {
             results.add(userRepository.updateDisplayName(newDisplayName))
         }
-
 
         if (newEmail != null) {
             results.add(userRepository.updateEmail(newEmail))
         }
 
-
         if (newPassword != null) {
             results.add(userRepository.updatePassword(newPassword))
         }
-
 
         val firstError = results.filterIsInstance<AuthResult.Error>().firstOrNull()
 

@@ -1,6 +1,5 @@
 package com.elena.autoplanner.presentation.ui.utils
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement

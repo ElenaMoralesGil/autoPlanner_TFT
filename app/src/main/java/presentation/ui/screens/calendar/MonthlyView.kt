@@ -67,7 +67,6 @@ fun MonthlyView(
         }
     }
 
-
     Column(modifier = Modifier.fillMaxSize()) {
         MonthHeader(
             currentMonth = selectedMonth,

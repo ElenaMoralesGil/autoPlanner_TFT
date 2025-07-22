@@ -279,7 +279,7 @@ class PlannerViewModel(
                 setState {
                     copy(
                         isLoading = false,
-                        workStartTime = effectiveWorkStartTime, // Update the state with the adjusted time
+                        workStartTime = effectiveWorkStartTime, 
                         generatedPlan = plannerOutput.scheduledTasks,
                         expiredTasksToResolve = plannerOutput.unresolvedExpired,
                         conflictsToResolve = plannerOutput.unresolvedConflicts,

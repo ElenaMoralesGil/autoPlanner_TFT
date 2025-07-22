@@ -25,7 +25,6 @@ import com.elena.autoplanner.R
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.ui.screens.calendar.getPriorityColor
 
-
 @Composable
 fun TaskItem(
     task: Task,

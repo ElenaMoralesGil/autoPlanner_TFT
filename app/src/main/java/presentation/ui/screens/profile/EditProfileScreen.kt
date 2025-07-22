@@ -85,7 +85,6 @@ fun EditProfileScreen(
                 ) {
                     Text("Account Information", style = MaterialTheme.typography.titleMedium)
 
-
                     OutlinedTextField(
                         value = state?.displayName ?: "",
                         onValueChange = {
@@ -101,7 +100,6 @@ fun EditProfileScreen(
                         isError = state?.error?.contains("name", ignoreCase = true) == true
                     )
 
-
                     OutlinedTextField(
                         value = state?.currentEmail ?: "",
                         onValueChange = { },
@@ -110,7 +108,6 @@ fun EditProfileScreen(
                         readOnly = true,
                         enabled = false 
                     )
-
 
                     OutlinedTextField(
                         value = state?.newEmail ?: "",
@@ -131,10 +128,8 @@ fun EditProfileScreen(
                         )
                     }
 
-
                     Spacer(Modifier.height(16.dp))
                     Text("Change Password (Optional)", style = MaterialTheme.typography.titleMedium)
-
 
                     OutlinedTextField(
                         value = state?.newPassword ?: "",
@@ -154,7 +149,6 @@ fun EditProfileScreen(
                         isError = state?.error?.contains("password", ignoreCase = true) == true ||
                                 (state?.newPassword?.isNotEmpty() == true && state?.newPassword?.length ?: 0 < 6)
                     )
-
 
                     OutlinedTextField(
                         value = state?.confirmPassword ?: "",
@@ -182,7 +176,6 @@ fun EditProfileScreen(
                         )
                     }
 
-
                     state?.error?.let {
                         if (!it.contains("password", ignoreCase = true) && !it.contains(
                                 "email",
@@ -198,7 +191,6 @@ fun EditProfileScreen(
                         }
                     }
 
-
                     if (state?.needsReAuthentication == true) {
                         Text(
                             "Recent login required to change sensitive data. Please log out and log back in.",
@@ -207,7 +199,6 @@ fun EditProfileScreen(
                             modifier = Modifier.padding(top = 8.dp)
                         )
                     }
-
 
                     Spacer(Modifier.weight(1f)) 
 

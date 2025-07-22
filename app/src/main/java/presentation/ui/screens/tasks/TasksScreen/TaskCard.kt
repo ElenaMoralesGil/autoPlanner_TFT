@@ -42,7 +42,6 @@ import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
 import kotlin.math.roundToInt
 
-
 @Composable
 fun TaskCard(
     task: Task,

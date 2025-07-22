@@ -34,7 +34,6 @@ fun BottomNavigationBar(
 
         val navBackStackEntry by navController.currentBackStackEntryAsState()
 
-
         val currentRouteBase = navBackStackEntry?.destination?.route?.substringBefore("?")
 
         items.forEach { item ->
@@ -75,7 +74,6 @@ fun BottomNavigationBar(
         }
     }
 }
-
 
 data class BottomNavItem(
     val label: String,

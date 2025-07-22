@@ -28,6 +28,7 @@ import com.elena.autoplanner.presentation.ui.screens.tasks.TaskDetailSheet
 import com.elena.autoplanner.presentation.ui.screens.tasks.modificationTaskSheet.ModificationTaskSheet
 import com.elena.autoplanner.presentation.ui.utils.ErrorMessage
 import com.elena.autoplanner.presentation.ui.utils.LoadingIndicator
+import com.elena.autoplanner.presentation.ui.utils.RepeatTaskDeleteDialog
 import com.elena.autoplanner.presentation.viewmodel.TaskDetailViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskEditViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
@@ -46,20 +47,27 @@ fun TasksScreen(
     val state by listViewModel.state.collectAsState()
     var showAddEditSheet by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Int?>(null) }
+    var selectedInstanceIdentifier by remember { mutableStateOf<String?>(null) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
+    var showRepeatDeleteDialog by remember { mutableStateOf(false) }
+    var taskToDelete by remember { mutableStateOf<Task?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
-
-
 
     LaunchedEffect(listViewModel) {
         listViewModel.effect.collectLatest { effect ->
             when (effect) {
                 is TaskListEffect.NavigateToTaskDetail -> {
                     selectedTaskId = effect.taskId
+                    selectedInstanceIdentifier = effect.instanceIdentifier
                 }
 
                 is TaskListEffect.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(effect.message)
+                }
+
+                is TaskListEffect.ShowRepeatTaskDeleteDialog -> {
+                    taskToDelete = effect.task
+                    showRepeatDeleteDialog = true
                 }
 
                 is TaskListEffect.ShowEditListDialog -> TODO()
@@ -128,10 +136,19 @@ fun TasksScreen(
                                     )
                                 },
                                 onTaskSelected = { task ->
-                                    listViewModel.sendIntent(TaskListIntent.SelectTask(task.id))
+                                    listViewModel.sendIntent(
+                                        TaskListIntent.SelectTask(
+                                            task.id,
+                                            task.instanceIdentifier
+                                        )
+                                    )
                                 },
                                 onDelete = { task ->
-                                    listViewModel.sendIntent(TaskListIntent.DeleteTask(task.id))
+                                    listViewModel.sendIntent(
+                                        TaskListIntent.DeleteRepeatableTask(
+                                            task
+                                        )
+                                    )
                                 },
                                 onEdit = { task ->
                                     taskToEdit = task
@@ -145,12 +162,10 @@ fun TasksScreen(
         }
     )
 
-
     selectedTaskId?.let { taskId ->
 
         val detailViewModel: TaskDetailViewModel =
-            koinViewModel(parameters = { parametersOf(taskId) })
-
+            koinViewModel(parameters = { parametersOf(taskId, selectedInstanceIdentifier) })
 
         LaunchedEffect(detailViewModel) {
             detailViewModel.effect.collectLatest { effect ->
@@ -174,11 +189,9 @@ fun TasksScreen(
             }
         }
 
-
         LaunchedEffect(taskId) {
             detailViewModel.sendIntent(TaskDetailIntent.LoadTask(taskId))
         }
-
 
         TaskDetailSheet(
             taskId = taskId,
@@ -187,12 +200,9 @@ fun TasksScreen(
         )
     }
 
-
     if (showAddEditSheet) {
-
         val editViewModel: TaskEditViewModel =
             koinViewModel(parameters = { parametersOf(taskToEdit?.id ?: 0) })
-
 
         LaunchedEffect(editViewModel) {
             editViewModel.effect.collectLatest { effect ->
@@ -212,16 +222,34 @@ fun TasksScreen(
             }
         }
 
-
         LaunchedEffect(taskToEdit?.id) {
             editViewModel.sendIntent(TaskEditIntent.LoadTask(taskToEdit?.id ?: 0))
         }
-
 
         ModificationTaskSheet(
             taskEditViewModel = editViewModel,
             onClose = {
                 editViewModel.sendIntent(TaskEditIntent.Cancel)
+            }
+        )
+    }
+
+    if (showRepeatDeleteDialog && taskToDelete != null) {
+        RepeatTaskDeleteDialog(
+            task = taskToDelete!!,
+            onOptionSelected = { option ->
+                listViewModel.sendIntent(
+                    TaskListIntent.ConfirmRepeatableTaskDeletion(
+                        taskToDelete!!,
+                        option
+                    )
+                )
+                showRepeatDeleteDialog = false
+                taskToDelete = null
+            },
+            onDismiss = {
+                showRepeatDeleteDialog = false
+                taskToDelete = null
             }
         )
     }
