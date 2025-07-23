@@ -30,7 +30,7 @@ class GeneratePlanUseCase(
 
             // Include both tasks and their instances in the planning context
             val allTasks =
-                input.tasks.filter { !it.isCompleted } + input.tasks.flatMap { it.instances }
+                input.tasks.filter { !it.isCompleted }
             val context = PlanningContext(allTasks.distinctBy { it.id })
 
             Log.d(
