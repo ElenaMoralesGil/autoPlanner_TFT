@@ -6,6 +6,7 @@ import android.util.Log
 import com.elena.autoplanner.data.dao.ListDao
 import com.elena.autoplanner.data.dao.ReminderDao
 import com.elena.autoplanner.data.dao.RepeatConfigDao
+import com.elena.autoplanner.data.dao.RepeatableTaskInstanceDao
 import com.elena.autoplanner.data.dao.SectionDao
 import com.elena.autoplanner.data.dao.SubtaskDao
 import com.elena.autoplanner.data.dao.TaskDao
@@ -41,6 +42,7 @@ class TaskRepositoryImpl(
     private val listRepository: ListRepository,
     private val notificationScheduler: NotificationScheduler,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val repeatableTaskInstanceDao: RepeatableTaskInstanceDao,
 ) : TaskRepository {
 
     private val taskMapper = TaskMapper()
@@ -970,6 +972,70 @@ class TaskRepositoryImpl(
         }
     }
 
+    override suspend fun getTaskByInstanceIdentifier(instanceIdentifier: String): Task? {
+        return withContext(dispatcher) {
+            try {
+                val taskWithRelations =
+                    taskDao.getTaskWithRelationsByInstanceIdentifier(instanceIdentifier)
+                if (taskWithRelations != null) {
+                    taskWithRelations.toDomainTask()
+                } else {
+                    Log.w(
+                        TAG,
+                        "getTaskByInstanceIdentifier: No task found for identifier $instanceIdentifier"
+                    )
+                    null
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "getTaskByInstanceIdentifier($instanceIdentifier) error", e)
+                null
+            }
+        }
+    }
+
+    override suspend fun insertRepeatableInstance(instance: RepeatableTaskInstance) {
+        withContext(dispatcher) {
+            try {
+                repeatableTaskInstanceDao.insertInstance(instance)
+                Log.d(
+                    TAG,
+                    "insertRepeatableInstance: Inserted instance with identifier ${instance.instanceIdentifier}"
+                )
+            } catch (e: Exception) {
+                Log.e(
+                    TAG,
+                    "insertRepeatableInstance error for instance ${instance.instanceIdentifier}",
+                    e
+                )
+            }
+        }
+    }
+
+    override suspend fun deleteInstanceByIdentifier(instanceIdentifier: String): TaskResult<Unit> {
+        return withContext(dispatcher) {
+            try {
+                val instance = repeatableTaskInstanceDao.getInstanceByIdentifier(instanceIdentifier)
+                if (instance != null) {
+                    repeatableTaskInstanceDao.deleteInstance(instance.toString())
+                    Log.d(
+                        TAG,
+                        "deleteInstanceByIdentifier: Deleted instance with identifier $instanceIdentifier"
+                    )
+                    TaskResult.Success(Unit)
+                } else {
+                    Log.w(
+                        TAG,
+                        "deleteInstanceByIdentifier: No instance found for identifier $instanceIdentifier"
+                    )
+                    TaskResult.Error("Instance not found")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteInstanceByIdentifier($instanceIdentifier) error", e)
+                TaskResult.Error(mapExceptionMessage(e), e)
+            }
+        }
+    }
+
     override suspend fun getTaskInstancesByParentId(parentTaskId: Int): TaskResult<List<Task>> =
         withContext(dispatcher) {
             try {
@@ -991,41 +1057,36 @@ class TaskRepositoryImpl(
             }
         }
 
-    override suspend fun deleteFutureInstancesByParentId(parentTaskId: Int): TaskResult<Unit> =
+    override suspend fun deleteFutureInstancesByParentTaskId(
+        parentTaskId: Int,
+        fromDate: String,
+    ): TaskResult<Unit> =
         withContext(dispatcher) {
             try {
-                val currentDate = LocalDateTime.now()
-
-                // Obtener todas las instancias del padre
-                when (val instancesResult = getTaskInstancesByParentId(parentTaskId)) {
-                    is TaskResult.Success -> {
-                        val futureInstances = instancesResult.data.filter { instance ->
-                            val instanceDate = instance.startDateConf?.dateTime
-                            instanceDate != null && instanceDate.isAfter(currentDate) && !instance.isCompleted
-                        }
-
-                        // Eliminar cada instancia futura
-                        futureInstances.forEach { instance ->
-                            deleteTask(instance.id)
-                        }
-
-                        Log.d(
-                            TAG,
-                            "deleteFutureInstancesByParentId: Deleted ${futureInstances.size} future instances for parent $parentTaskId"
-                        )
-                        TaskResult.Success(Unit)
-                    }
-
-                    is TaskResult.Error -> instancesResult
-                }
+                repeatableTaskInstanceDao.markFutureInstancesDeleted(parentTaskId, fromDate)
+                TaskResult.Success(Unit)
             } catch (e: Exception) {
-                Log.e(TAG, "deleteFutureInstancesByParentId($parentTaskId) error", e)
-                TaskResult.Error(mapExceptionMessage(e), e)
+                TaskResult.Error("Error al borrar instancias futuras: ${e.message}")
             }
         }
 
-    override suspend fun getTaskByInstanceIdentifier(instanceIdentifier: String): Task? {
-        val entity = taskDao.getTaskByInstanceIdentifier(instanceIdentifier)
-        return entity?.let { taskMapper.mapToDomain(it) }
+    override suspend fun deleteAllInstancesByParentTaskId(parentTaskId: Int): TaskResult<Unit> =
+        withContext(dispatcher) {
+            try {
+                repeatableTaskInstanceDao.deleteInstancesByParentTaskId(parentTaskId)
+                TaskResult.Success(Unit)
+            } catch (e: Exception) {
+                TaskResult.Error("Error al borrar todas las instancias: ${e.message}")
+            }
+        }
+
+    override suspend fun getDeletedTaskInstancesByParentId(parentTaskId: Int): TaskResult<List<RepeatableTaskInstance>> {
+        return try {
+            val deletedInstances =
+                repeatableTaskInstanceDao.getDeletedInstancesByParentTaskId(parentTaskId)
+            TaskResult.Success(deletedInstances)
+        } catch (e: Exception) {
+            TaskResult.Error("Error retrieving deleted instances: ${e.message}")
+        }
     }
 }

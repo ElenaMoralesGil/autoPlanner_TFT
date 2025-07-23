@@ -3,7 +3,6 @@ package com.elena.autoplanner.presentation.viewmodels
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import app.cash.turbine.test
 import com.elena.autoplanner.domain.models.*
-import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.tasks.*
 import com.elena.autoplanner.presentation.effects.PlannerEffect
 import com.elena.autoplanner.presentation.intents.PlannerIntent

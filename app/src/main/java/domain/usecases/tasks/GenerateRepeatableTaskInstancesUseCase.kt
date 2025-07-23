@@ -11,17 +11,21 @@ class GenerateRepeatableTaskInstancesUseCase(private val instanceDao: Repeatable
         startDate: LocalDateTime,
         repeatCount: Int,
     ) {
+        val existingInstances = instanceDao.getInstancesForTask(parentTaskId)
+        val existingDates = existingInstances.map { it.scheduledDateTime }
+
         for (i in 0 until repeatCount) {
             val instanceDate = startDate.plusWeeks(i.toLong())
-            val instanceIdentifier = UUID.randomUUID().toString()
-            val instance = RepeatableTaskInstance(
-                parentTaskId = parentTaskId,
-                instanceIdentifier = instanceIdentifier,
-                scheduledDateTime = instanceDate,
-                isCompleted = false
-            )
-            instanceDao.insertInstance(instance)
+            if (instanceDate !in existingDates) {
+                val instanceIdentifier = UUID.randomUUID().toString()
+                val instance = RepeatableTaskInstance(
+                    parentTaskId = parentTaskId,
+                    instanceIdentifier = instanceIdentifier,
+                    scheduledDateTime = instanceDate,
+                    isCompleted = false
+                )
+                instanceDao.insertInstance(instance)
+            }
         }
     }
 }
-

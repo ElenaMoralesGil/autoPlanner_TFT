@@ -15,6 +15,16 @@ sealed class TaskDetailIntent : Intent {
         val instanceIdentifier: String,
         val deleteType: RepeatableDeleteType,
     ) : TaskDetailIntent()
+    data class EditRepeatableTask(
+        val newTask: com.elena.autoplanner.domain.models.Task,
+        val newRepeatConfig: Any?,
+        val fromDate: java.time.LocalDateTime? = null,
+    ) : TaskDetailIntent()
+
+    data class UpdateRepeatableTaskInstances(
+        val newRepeatConfig: Any,
+        val fromDate: java.time.LocalDateTime = java.time.LocalDateTime.now(),
+    ) : TaskDetailIntent()
 }
 
 // Tipo de borrado para tareas repetidas

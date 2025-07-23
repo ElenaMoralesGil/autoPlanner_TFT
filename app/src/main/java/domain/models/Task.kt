@@ -7,6 +7,9 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
 import kotlin.jvm.Transient
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import androidx.room.Ignore
 
 enum class ErrorCode {
     TASK_NAME_EMPTY,
@@ -29,14 +32,14 @@ data class Task private constructor(
     val name: String,
     val isCompleted: Boolean,
     val priority: Priority,
-    val startDateConf: TimePlanning?, // CAMBIO: Permitir null para tareas sin fecha de inicio
+    val startDateConf: TimePlanning?,
     val endDateConf: TimePlanning?,
     val durationConf: DurationPlan?,
     val reminderPlan: ReminderPlan?,
     val repeatPlan: RepeatPlan?,
     val subtasks: List<Subtask>,
     val completionDateTime: LocalDateTime? = null,
-    val createdDateTime: LocalDateTime = LocalDateTime.now(), // Nuevo campo para fecha de creación
+    val createdDateTime: LocalDateTime = LocalDateTime.now(),
     @Transient var internalFlags: TaskInternalFlags? = null,
     val scheduledStartDateTime: LocalDateTime? = null,
     val scheduledEndDateTime: LocalDateTime? = null,
@@ -99,7 +102,7 @@ data class Task private constructor(
         startDateConf?.dateTime?.toLocalDate()?.let { it.month == LocalDate.now().month } == true
 
     fun copyForPlanning(flags: TaskInternalFlags? = this.internalFlags): Task {
-        val newTask = this.copy() 
+        val newTask = this.copy()
         newTask.internalFlags = flags
         return newTask
     }
@@ -246,7 +249,7 @@ data class Task private constructor(
                 .scheduledStartDateTime(task.scheduledStartDateTime)
                 .scheduledEndDateTime(task.scheduledEndDateTime)
                 .completionDateTime(task.completionDateTime)
-                .createdDateTime(task.createdDateTime) // Agregar createdDateTime
+                .createdDateTime(task.createdDateTime)
                 .listId(task.listId)
                 .sectionId(task.sectionId)
                 .displayOrder(task.displayOrder)

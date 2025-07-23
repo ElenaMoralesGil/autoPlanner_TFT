@@ -16,8 +16,6 @@ class TaskCategorizer {
         planningTasks: Collection<PlanningTask>,
         scopeStart: LocalDate,
         scopeEnd: LocalDate,
-        defaultTime: LocalTime,
-        recurrenceExpander: RecurrenceExpander,
         context: PlanningContext,
     ): CategorizationResult {
         val fixed = mutableListOf<Pair<PlanningTask, LocalDateTime>>()
@@ -77,22 +75,8 @@ class TaskCategorizer {
             }
 
             if (task.repeatPlan?.frequencyType != FrequencyType.NONE) {
-                val occurrences = recurrenceExpander.expandRecurringTask(
-                    planningTask,
-                    scopeStart,
-                    scopeEnd,
-                    context
-                )
-                if (occurrences.isNotEmpty()) {
-                    occurrences.forEach { time -> fixed.add(planningTask to time) }
-                    context.placedTaskIds.add(task.id)
-                } else if (planningTask.flags.isHardConflict) {
-
-                } else {
-                    if (!taskFitsScope(task, scopeStart, scopeEnd)) return@taskLoop
-
-                }
-                if (occurrences.isNotEmpty() || planningTask.flags.isHardConflict) return@taskLoop
+                // Las tareas repetibles ya están generadas y no necesitan expansión adicional.
+                if (!taskFitsScope(task, scopeStart, scopeEnd)) return@taskLoop
             }
 
             if (!taskFitsScope(task, scopeStart, scopeEnd) && !planningTask.flags.isOverdue) {
@@ -122,7 +106,7 @@ class TaskCategorizer {
                 // 1. TAREAS FIJAS: Tienen fecha inicio específica + hora específica SIN rango de flexibilidad
                 // Solo si la fecha de inicio y fin son la misma (cita puntual)
                 startDate != null && hasEndDate && hasDuration && hasSpecificStartTime &&
-                        startDate.toLocalDate() == endDate?.toLocalDate() -> {
+                        startDate.toLocalDate() == endDate.toLocalDate() -> {
                     Log.v(
                         "Categorizer",
                         "Task ${task.id} - Type: Fixed Appointment (Same day start-end) -> Fixed"
@@ -166,7 +150,7 @@ class TaskCategorizer {
                 }
 
                 // 5. TAREAS CON HORARIO SUGERIDO: Fecha + hora específica pero flexible
-                startDate != null && hasSpecificStartTime && !hasEndDate && !hasPeriod -> {
+                startDate != null && hasSpecificStartTime && !hasEndDate -> {
                     Log.v(
                         "Categorizer",
                         "Task ${task.id} - Type: Suggested Time (Start Only) -> DateFlex"
@@ -178,7 +162,7 @@ class TaskCategorizer {
                 }
 
                 // 6. TAREAS CON FECHA PERO SIN HORA: Solo fecha (flexible en horario)
-                startDate != null && !hasSpecificStartTime && !hasPeriod && !hasEndDate -> {
+                startDate != null && !hasSpecificStartTime && !hasEndDate -> {
                     Log.v(
                         "Categorizer",
                         "Task ${task.id} - Type: Date Only -> DateFlex"

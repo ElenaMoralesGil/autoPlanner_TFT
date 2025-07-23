@@ -119,4 +119,7 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE instanceIdentifier = :instanceIdentifier AND isDeleted = 0")
     suspend fun getTaskByInstanceIdentifier(instanceIdentifier: String): TaskEntity?
 
+    @Transaction
+    @Query("SELECT * FROM tasks WHERE instanceIdentifier = :instanceIdentifier AND isDeleted = 0")
+    suspend fun getTaskWithRelationsByInstanceIdentifier(instanceIdentifier: String): TaskWithRelations?
 }

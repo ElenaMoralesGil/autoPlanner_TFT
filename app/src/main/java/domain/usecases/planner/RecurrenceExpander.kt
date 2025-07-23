@@ -43,21 +43,7 @@ class RecurrenceExpander {
         val occurrences = mutableListOf<LocalDateTime>()
         val repeatPlan = task.repeatPlan ?: return emptyList()
 
-        val startDateTime = task.startDateConf?.dateTime ?: run {
-            if (repeatPlan.frequencyType != FrequencyType.NONE) {
-                context.addConflict(
-                    ConflictItem(
-                        listOf(task),
-                        "Recurring task missing start date",
-                        null,
-                        ConflictType.RECURRENCE_ERROR
-                    ),
-                    task.id
-                )
-                planningTask.flags.isHardConflict = true
-            }
-            return emptyList()
-        }
+        val startDateTime = task.startDateConf?.dateTime ?: task.createdDateTime
 
         if (repeatPlan.frequencyType == FrequencyType.NONE) {
             if (!startDateTime.toLocalDate().isBefore(scopeStart) && !startDateTime.toLocalDate()
@@ -167,6 +153,53 @@ class RecurrenceExpander {
 
         Log.d("RecurrenceExpander", "Task ${task.id} generated ${occurrences.size} occurrences.")
         return occurrences.distinct()
+    }
+
+    suspend fun expandTaskInstances(
+        task: com.elena.autoplanner.domain.models.Task,
+        scopeStart: LocalDate,
+        scopeEnd: LocalDate,
+        repeatableTaskInstanceDao: com.elena.autoplanner.data.dao.RepeatableTaskInstanceDao,
+    ): List<com.elena.autoplanner.domain.models.Task> {
+        val instanceDates = expandRecurringTask(
+            PlanningTask(task),
+            scopeStart,
+            scopeEnd,
+            PlanningContext(listOf(task))
+        )
+        return instanceDates.mapIndexed { idx, date ->
+            val instanceIdentifier = "${task.id}_${date.toLocalDate()}_${idx + 1}"
+            // Consultar si la instancia está borrada en la base de datos
+            val isDeleted =
+                repeatableTaskInstanceDao.getDeletedInstancesByIdentifier(instanceIdentifier)
+                    .isNotEmpty()
+            if (isDeleted) return@mapIndexed null
+            task.copy(
+                id = instanceIdentifier.hashCode(),
+                isRepeatedInstance = true,
+                startDateConf = task.startDateConf?.copy(dateTime = date),
+                endDateConf = task.endDateConf,
+                durationConf = task.durationConf,
+                reminderPlan = task.reminderPlan,
+                repeatPlan = task.repeatPlan,
+                subtasks = task.subtasks,
+                priority = task.priority,
+                name = task.name,
+                isCompleted = task.isCompleted,
+                completionDateTime = task.completionDateTime,
+                createdDateTime = task.createdDateTime,
+                internalFlags = task.internalFlags,
+                scheduledStartDateTime = task.scheduledStartDateTime,
+                scheduledEndDateTime = task.scheduledEndDateTime,
+                listId = task.listId,
+                sectionId = task.sectionId,
+                displayOrder = task.displayOrder,
+                listName = task.listName,
+                sectionName = task.sectionName,
+                listColor = task.listColor,
+                allowSplitting = task.allowSplitting
+            )
+        }.filterNotNull()
     }
 
     private fun buildRRuleString(repeatPlan: RepeatPlan, startDateTime: LocalDateTime): String? {

@@ -111,4 +111,45 @@ data class RepeatPlan(
             else -> RepeatFrequency.DAILY
         }
     }
+
+
+    fun shouldGenerateInstanceOn(dateTime: LocalDateTime): Boolean {
+        val date = dateTime.toLocalDate()
+
+        // Verificar si la fecha está dentro del rango permitido
+        if (repeatEndDate != null && date.isAfter(repeatEndDate)) {
+            return false
+        }
+
+        return when (frequencyType) {
+            FrequencyType.DAILY -> true
+            FrequencyType.WEEKLY -> selectedDays.contains(date.dayOfWeek)
+            FrequencyType.MONTHLY -> {
+                intervalUnit == IntervalUnit.MONTH && interval != null &&
+                        date.dayOfMonth % interval == 0
+            }
+
+            FrequencyType.CUSTOM -> {
+                // Verificar si se han seleccionado días específicos
+                if (selectedDays.isNotEmpty()) {
+                    return selectedDays.contains(date.dayOfWeek)
+                }
+
+                // Verificar intervalos personalizados
+                if (interval != null && intervalUnit != null) {
+                    val startDate =
+                        repeatEndDate?.minusDays((interval * intervalUnit.ordinal).toLong()) ?: date
+                    val daysBetween =
+                        java.time.temporal.ChronoUnit.DAYS.between(startDate, date).toInt()
+
+                    return daysBetween % interval == 0
+                }
+
+                // Si no hay configuración específica, no generar instancia
+                return false
+            }
+
+            else -> false
+        }
+    }
 }

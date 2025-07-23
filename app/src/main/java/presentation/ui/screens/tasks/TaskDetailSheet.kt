@@ -183,7 +183,8 @@ fun TaskDetailSheet(
                     }
                 }
 
-                var showDeleteDialog = remember { mutableStateOf(false) }
+                val showDeleteDialog = remember { mutableStateOf(false) }
+                val deleteOption = remember { mutableStateOf<RepeatTaskDeleteOption?>(null) }
 
                 Row(
                     modifier = Modifier
@@ -208,45 +209,21 @@ fun TaskDetailSheet(
                         Text("Edit Task")
                     }
                 }
-                if (showDeleteDialog.value) {
+                if (showDeleteDialog.value && state?.task != null) {
                     RepeatTaskDeleteDialog(
                         task = task,
                         onOptionSelected = { option ->
-                            // Si la instancia no tiene identificador, mostrar mensaje y no intentar borrar
-                            if (task.isRepeatedInstance && (task.instanceIdentifier == null || task.instanceIdentifier.isEmpty())) {
-                                val instanceDate = task.startDateConf?.dateTime?.toString() ?: ""
-                                viewModel.deleteGeneratedInstanceByDate(instanceDate)
-                                viewModel.setEffect(TaskDetailEffect.ShowSnackbar("Instancia generada eliminada (soft delete)."))
-                                showDeleteDialog.value = false
-                                return@RepeatTaskDeleteDialog
-                            }
-                            if (task.instanceIdentifier == null || task.instanceIdentifier.isEmpty()) {
-                                viewModel.setEffect(TaskDetailEffect.ShowSnackbar("No se puede eliminar: instancia no encontrada."))
-                                showDeleteDialog.value = false
-                                return@RepeatTaskDeleteDialog
-                            }
-                            when (option) {
-                                RepeatTaskDeleteOption.THIS_INSTANCE_ONLY -> viewModel.sendIntent(
-                                    TaskDetailIntent.DeleteRepeatableTask(
-                                        task.instanceIdentifier!!,
-                                        RepeatableDeleteType.INSTANCE
-                                    )
+                            deleteOption.value = option
+                            viewModel.sendIntent(
+                                TaskDetailIntent.DeleteRepeatableTask(
+                                    instanceIdentifier = state?.task?.instanceIdentifier ?: "",
+                                    deleteType = when (option) {
+                                        RepeatTaskDeleteOption.THIS_INSTANCE_ONLY -> RepeatableDeleteType.INSTANCE
+                                        RepeatTaskDeleteOption.THIS_AND_FUTURE -> RepeatableDeleteType.FUTURE
+                                        RepeatTaskDeleteOption.ALL_INSTANCES -> RepeatableDeleteType.ALL
+                                    }
                                 )
-
-                                RepeatTaskDeleteOption.THIS_AND_FUTURE -> viewModel.sendIntent(
-                                    TaskDetailIntent.DeleteRepeatableTask(
-                                        task.instanceIdentifier!!,
-                                        RepeatableDeleteType.FUTURE
-                                    )
-                                )
-
-                                RepeatTaskDeleteOption.ALL_INSTANCES -> viewModel.sendIntent(
-                                    TaskDetailIntent.DeleteRepeatableTask(
-                                        task.instanceIdentifier!!,
-                                        RepeatableDeleteType.ALL
-                                    )
-                                )
-                            }
+                            )
                             showDeleteDialog.value = false
                         },
                         onDismiss = { showDeleteDialog.value = false }

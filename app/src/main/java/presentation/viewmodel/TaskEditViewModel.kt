@@ -172,17 +172,9 @@ class TaskEditViewModel(
                     setEffect(TaskEditEffect.ShowSnackbar(message))
                     // Si la tarea tiene repetición, generar y guardar instancias
                     if (taskToSave.repeatPlan != null && taskToSave.repeatPlan.isEnabled) {
-                        val parentTaskId = savedTaskId
-                        val startDate = state.startDateConf?.dateTime
-                        val repeatCount = taskToSave.repeatPlan.maxOccurrences ?: 1
-                        if (startDate != null && repeatCount > 0) {
-                            viewModelScope.launch {
-                                generateRepeatableTaskInstancesUseCase.generateWeeklyInstances(
-                                    parentTaskId = parentTaskId,
-                                    startDate = startDate,
-                                    repeatCount = repeatCount
-                                )
-                            }
+                        val parentTask = taskToSave.copy(id = savedTaskId)
+                        viewModelScope.launch {
+                            repeatableTaskGenerator.generateInstancesForNewTask(parentTask)
                         }
                     }
                 },

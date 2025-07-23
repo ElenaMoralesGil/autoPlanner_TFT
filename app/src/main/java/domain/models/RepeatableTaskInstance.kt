@@ -12,5 +12,5 @@ data class RepeatableTaskInstance(
     val instanceIdentifier: String,
     val scheduledDateTime: LocalDateTime,
     val isCompleted: Boolean = false,
+    val isDeleted: Boolean = false,
 )
-

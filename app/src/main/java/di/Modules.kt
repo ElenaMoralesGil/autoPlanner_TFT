@@ -11,6 +11,7 @@ import com.elena.autoplanner.data.MIGRATION_10_11
 import com.elena.autoplanner.data.MIGRATION_11_12
 import com.elena.autoplanner.data.MIGRATION_12_13
 import com.elena.autoplanner.data.MIGRATION_13_14 // Agregar nueva migración
+import com.elena.autoplanner.data.MIGRATION_14_15
 import com.elena.autoplanner.data.MIGRATION_6_7
 import com.elena.autoplanner.data.MIGRATION_7_8
 import com.elena.autoplanner.data.MIGRATION_8_9
@@ -114,7 +115,7 @@ val appModule = module {
         )
             .addMigrations(
                 MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-                MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14
+                MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15
             )
             .addCallback(roomCallback)
             .build()
@@ -146,7 +147,9 @@ val appModule = module {
             firestore = get(),
             repoScope = get(),
             listRepository = get(),
-            notificationScheduler = get()
+            notificationScheduler = get(),
+            dispatcher = Dispatchers.IO,
+            repeatableTaskInstanceDao = get()
         )
     }
     single { FirebaseAuth.getInstance() }
@@ -187,10 +190,14 @@ val useCaseModule = module {
     single { DeleteAllTasksUseCase(get()) }
     single { FilterTasksUseCase() }
 
-    single { RepeatableTaskGenerator(get()) }
+    single {
+        RepeatableTaskGenerator(
+            get(),
+            instanceManager = get()
+        )
+    }
     single {
         GetExpandedTasksUseCase(
-            get(),
             get()
         )
     } // Agregar RepeatableTaskGenerator como segunda dependencia

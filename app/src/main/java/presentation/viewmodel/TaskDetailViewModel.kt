@@ -1,6 +1,7 @@
 package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.elena.autoplanner.domain.models.RepeatPlan
 import com.elena.autoplanner.domain.models.RepeatableTaskInstance
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.results.TaskResult
@@ -12,6 +13,7 @@ import com.elena.autoplanner.domain.usecases.tasks.DeleteRepeatableTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.CompleteRepeatableTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption
 import com.elena.autoplanner.domain.usecases.tasks.RepeatableTaskInstanceManager
 import com.elena.autoplanner.presentation.effects.TaskDetailEffect
 import com.elena.autoplanner.presentation.intents.RepeatableDeleteType
@@ -56,6 +58,16 @@ class TaskDetailViewModel(
             is TaskDetailIntent.DeleteRepeatableTask -> deleteRepeatableTask(
                 intent.instanceIdentifier,
                 intent.deleteType
+            )
+            is TaskDetailIntent.EditRepeatableTask -> editRepeatableTask(
+                intent.newTask,
+                intent.newRepeatConfig,
+                intent.fromDate
+            )
+
+            is TaskDetailIntent.UpdateRepeatableTaskInstances -> updateRepeatableTaskInstances(
+                intent.newRepeatConfig,
+                intent.fromDate
             )
         }
     }
@@ -323,18 +335,22 @@ class TaskDetailViewModel(
 
     fun isInstanceDateDeleted(date: String): Boolean = deletedGeneratedInstanceDates.contains(date)
 
-    fun loadRepeatableInstances() {
-        viewModelScope.launch {
-            repeatableInstances = repeatableTaskInstanceManager.getInstancesForTask(taskId)
-            setState { copy() } // Actualiza la UI si es necesario
+    fun loadRepeatableInstances(instanceIdentifier: String? = null) {
+        val id = instanceIdentifier ?: this.instanceIdentifier
+        if (id != null) {
+            viewModelScope.launch {
+                val allInstances = repeatableTaskInstanceManager.getInstancesForIdentifier(id)
+                repeatableInstances = allInstances.filter { !it.isDeleted }
+                setState { copy(repeatableInstances = repeatableInstances) }
+            }
         }
     }
 
     fun deleteRepeatableInstance(instanceIdentifier: String) {
         viewModelScope.launch {
-            repeatableTaskInstanceManager.deleteInstanceByIdentifier(instanceIdentifier)
-            loadRepeatableInstances()
-            setEffect(TaskDetailEffect.ShowSnackbar("Instancia eliminada correctamente"))
+            deleteRepeatableTaskUseCase.deleteInstance(instanceIdentifier)
+            loadRepeatableInstances(instanceIdentifier)
+            setEffect(TaskDetailEffect.ShowSnackbar("Instancia eliminada"))
         }
     }
 
@@ -351,11 +367,12 @@ class TaskDetailViewModel(
             viewModelScope.launch {
                 repeatableTaskInstanceManager.updateFutureInstances(
                     currentTask.id,
-                    newRepeatConfig,
                     fromDate
                 )
-                loadRepeatableInstances()
-                setEffect(TaskDetailEffect.ShowSnackbar("Instancias futuras actualizadas"))
+                if (currentTask.instanceIdentifier != null) {
+                    loadRepeatableInstances(currentTask.instanceIdentifier)
+                }
+                setEffect(TaskDetailEffect.ShowSnackbar("Instancias futuras eliminadas"))
             }
         }
     }
@@ -363,13 +380,14 @@ class TaskDetailViewModel(
     /**
      * Edita una tarea repetida y actualiza sus instancias futuras si cambia la configuración de repetición.
      */
-    fun editRepeatableTask(newTask: Task, newRepeatConfig: Any?) {
+    fun editRepeatableTask(
+        newTask: Task,
+        newRepeatConfig: Any?,
+        fromDate: java.time.LocalDateTime? = null,
+    ) {
         viewModelScope.launch {
-            // Actualiza la tarea en la base de datos (debes tener un caso de uso para esto)
-            // Por ejemplo: val result = updateTaskUseCase(newTask)
-            // Si la configuración de repetición cambió, actualiza las instancias futuras
-            if (newRepeatConfig != null) {
-                updateRepeatableTaskInstances(newRepeatConfig)
+            if (newRepeatConfig != null && fromDate != null) {
+                updateRepeatableTaskInstances(newRepeatConfig, fromDate)
             }
             loadTask(newTask.id)
             setEffect(TaskDetailEffect.ShowSnackbar("Tarea repetida editada y futuras instancias actualizadas"))

@@ -51,8 +51,6 @@ class GeneratePlanUseCase(
                 planningTasks = context.getTasksToPlan(), 
                 scopeStart = scheduleStartDate,
                 scopeEnd = scheduleEndDate,
-                defaultTime = input.workStartTime,
-                recurrenceExpander = recurrenceExpander,
                 context = context
             )
             Log.d(

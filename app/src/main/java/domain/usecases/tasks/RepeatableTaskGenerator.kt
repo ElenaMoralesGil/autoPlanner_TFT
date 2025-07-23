@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit
 
 class RepeatableTaskGenerator(
     private val taskRepository: TaskRepository,
+    val instanceManager: RepeatableTaskInstanceManager,
 ) {
 
     /**
@@ -22,7 +23,11 @@ class RepeatableTaskGenerator(
         val savedInstanceIds = mutableListOf<Int>()
 
         try {
-            instances.forEach { instance ->
+            for (instance in instances) {
+                // Verificar si la instancia fue eliminada manualmente
+                val deleted = instanceManager.getInstanceDao()
+                    .getDeletedInstancesByIdentifier(instance.instanceIdentifier ?: "")
+                if (deleted.isNotEmpty()) continue // No crear si ya fue eliminada
                 when (val result = taskRepository.saveTask(instance)) {
                     is TaskResult.Success -> savedInstanceIds.add(result.data)
                     is TaskResult.Error -> {
@@ -78,7 +83,7 @@ class RepeatableTaskGenerator(
                 .startDateConf(
                     TimePlanning(
                         dateTime = currentDate,
-                        dayPeriod = parentTask.startDateConf?.dayPeriod ?: DayPeriod.NONE
+                        dayPeriod = parentTask.startDateConf.dayPeriod
                     )
                 )
                 .endDateConf(parentTask.endDateConf?.let { endConf ->
@@ -145,28 +150,26 @@ class RepeatableTaskGenerator(
     }
 
     /**
-     * Regenera instancias futuras cuando se modifica una tarea repetible
-     */
-    suspend fun regenerateInstancesForUpdatedTask(updatedParentTask: Task): TaskResult<Unit> {
-        if (updatedParentTask.repeatPlan == null || !updatedParentTask.repeatPlan.isEnabled) {
-            // Si se deshabilitó la repetición, eliminar instancias futuras
-            return deleteFutureInstances(updatedParentTask.id)
-        }
-
-        // Eliminar instancias futuras no completadas
-        deleteFutureInstances(updatedParentTask.id)
-
-        // Generar nuevas instancias con la configuración actualizada
-        generateInstancesForNewTask(updatedParentTask)
-
-        return TaskResult.Success(Unit)
-    }
-
-    /**
-     * Elimina instancias futuras no completadas de una tarea repetible
+     * Elimina instancias futuras de una tarea repetible (sin importar si están modificadas o completadas)
      */
     private suspend fun deleteFutureInstances(parentTaskId: Int): TaskResult<Unit> {
-        return taskRepository.deleteFutureInstancesByParentId(parentTaskId)
+        val instancesResult = taskRepository.getTaskInstancesByParentId(parentTaskId)
+        return when (instancesResult) {
+            is TaskResult.Success -> {
+                val instances = instancesResult.data
+                val currentDate = LocalDateTime.now()
+                instances.forEach { instance ->
+                    val instanceDate = instance.startDateConf?.dateTime
+                    val isFuture = instanceDate != null && instanceDate.isAfter(currentDate)
+                    if (isFuture) {
+                        taskRepository.deleteTask(instance.id)
+                    }
+                }
+                TaskResult.Success(Unit)
+            }
+
+            is TaskResult.Error -> TaskResult.Error(instancesResult.message)
+        }
     }
 
     /**
@@ -178,34 +181,6 @@ class RepeatableTaskGenerator(
                 instance.durationConf != parentTask.durationConf ||
                 instance.reminderPlan != parentTask.reminderPlan ||
                 instance.priority != parentTask.priority
-    }
-
-    /**
-     * Actualiza una instancia con cambios del padre, preservando modificaciones individuales
-     */
-    private fun updateInstanceWithParentChanges(instance: Task, parentTask: Task): Task {
-        return Task.Builder()
-            .id(instance.id)
-            .name(parentTask.name) // Actualizar nombre desde el padre
-            .isCompleted(instance.isCompleted) // Preservar estado de completado
-            .priority(parentTask.priority) // Actualizar prioridad desde el padre
-            .startDateConf(instance.startDateConf) // Preservar fecha específica de la instancia
-            .endDateConf(instance.endDateConf) // Preservar fecha específica de la instancia
-            .durationConf(parentTask.durationConf) // Actualizar duración desde el padre
-            .reminderPlan(parentTask.reminderPlan) // Actualizar recordatorio desde el padre
-            .repeatPlan(null) // Las instancias no tienen plan de repetición
-            .subtasks(instance.subtasks) // Preservar subtareas de la instancia
-            .scheduledStartDateTime(instance.scheduledStartDateTime) // Preservar programación
-            .scheduledEndDateTime(instance.scheduledEndDateTime) // Preservar programación
-            .completionDateTime(instance.completionDateTime) // Preservar fecha de completado
-            .listId(parentTask.listId) // Actualizar lista desde el padre
-            .sectionId(parentTask.sectionId) // Actualizar sección desde el padre
-            .displayOrder(instance.displayOrder) // Preservar orden
-            .allowSplitting(parentTask.allowSplitting) // Actualizar desde el padre
-            .isRepeatedInstance(true) // Mantener como instancia
-            .parentTaskId(parentTask.id) // Mantener referencia al padre
-            .instanceIdentifier(instance.instanceIdentifier) // Preservar identificador
-            .build()
     }
 
     /**
@@ -239,6 +214,17 @@ class RepeatableTaskGenerator(
             return TaskResult.Success(null) // No generar más instancias
         }
 
+        // Verificar si la instancia ha sido eliminada
+        val deletedInstancesResult =
+            taskRepository.getDeletedTaskInstancesByParentId(completedTask.id)
+        if (deletedInstancesResult is TaskResult.Success) {
+            val deletedInstanceIdentifiers =
+                deletedInstancesResult.data.map { it.instanceIdentifier }
+            if (deletedInstanceIdentifiers.contains("${completedTask.id}_${nextDateTime.toLocalDate()}_next")) {
+                return TaskResult.Success(null) // No generar más instancias si está eliminada
+            }
+        }
+
         // Generar la siguiente instancia
         val duration = completedTask.durationConf?.totalMinutes ?: 0
         val nextEndDateTime =
@@ -246,7 +232,7 @@ class RepeatableTaskGenerator(
 
         val newStartConf = TimePlanning(
             dateTime = nextDateTime,
-            dayPeriod = completedTask.startDateConf?.dayPeriod ?: DayPeriod.NONE
+            dayPeriod = completedTask.startDateConf.dayPeriod
         )
         val newEndConf = completedTask.endDateConf?.let {
             TimePlanning(
@@ -293,27 +279,40 @@ class RepeatableTaskGenerator(
             is TaskResult.Success -> {
                 val instances = instancesResult.data
                 val currentDate = LocalDateTime.now()
-
+                val parentTask = instances.firstOrNull { it.id == parentTaskId }
                 // Solo eliminar instancias futuras que NO han sido modificadas individualmente
                 instances.forEach { instance ->
                     val instanceDate = instance.startDateConf?.dateTime
                     val isFuture = instanceDate != null && instanceDate.isAfter(currentDate)
                     val isNotCompleted = !instance.isCompleted
-                    val hasNoIndividualMods = !hasIndividualModifications(
-                        instance,
-                        instance
-                    ) // Usar la instancia como referencia base
-
+                    val hasNoIndividualMods =
+                        parentTask != null && !hasIndividualModifications(instance, parentTask)
                     if (isFuture && isNotCompleted && hasNoIndividualMods) {
                         taskRepository.deleteTask(instance.id)
                     }
-                    // Preservar instancias que han sido modificadas individualmente o ya completadas
                 }
-
                 TaskResult.Success(Unit)
             }
-
             is TaskResult.Error -> instancesResult
+        }
+    }
+
+    /**
+     * Regenera instancias futuras cuando se modifica una tarea repetible
+     */
+    suspend fun regenerateInstancesForUpdatedTask(updatedParentTask: Task): TaskResult<Unit> {
+        if (updatedParentTask.repeatPlan == null || !updatedParentTask.repeatPlan.isEnabled) {
+            // Si se deshabilitó la repetición, eliminar instancias futuras
+            return cleanupInstancesWhenDisabled(updatedParentTask.id)
+        }
+        // Eliminar instancias futuras
+        deleteFutureInstances(updatedParentTask.id)
+        // Generar nuevas instancias con la configuración actualizada
+        val result = generateInstancesForNewTask(updatedParentTask)
+        return if (result is TaskResult.Error) {
+            TaskResult.Error(result.message)
+        } else {
+            TaskResult.Success(Unit)
         }
     }
 }

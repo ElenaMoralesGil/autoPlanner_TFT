@@ -7,20 +7,20 @@ import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.RepeatFrequency
 import com.elena.autoplanner.domain.models.FrequencyType
 import com.elena.autoplanner.domain.models.DayOfWeek
-import com.elena.autoplanner.domain.models.IntervalUnit
 import com.elena.autoplanner.domain.models.RepeatPlan
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.results.TaskResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
 class GetExpandedTasksUseCase(
     private val taskRepository: TaskRepository,
-    private val repeatableTaskGenerator: RepeatableTaskGenerator,
 ) {
 
     /**
@@ -38,6 +38,37 @@ class GetExpandedTasksUseCase(
                 is TaskResult.Success -> {
                     val expandedTasks =
                         filterAndOrganizeTasks(result.data, startDate, endDate, limit, offset)
+
+                    // Guardar instancias generadas en la base de datos solo si no existen
+                    val tasksToInsert = expandedTasks.filter { task ->
+                        task.isRepeatedInstance && task.parentTaskId != null &&
+                                run {
+                                    val instanceIdentifier = task.instanceIdentifier
+                                        ?: "${task.parentTaskId}_${task.startDateConf?.dateTime?.toLocalDate()}"
+                                    taskRepository.getTaskByInstanceIdentifier(instanceIdentifier) == null
+                                }
+                    }
+                    if (tasksToInsert.isNotEmpty()) {
+                        kotlinx.coroutines.runBlocking {
+                            withContext(Dispatchers.IO) {
+                                tasksToInsert.forEach { task ->
+                                    val instanceIdentifier = task.instanceIdentifier
+                                        ?: "${task.parentTaskId}_${task.startDateConf?.dateTime?.toLocalDate()}"
+                                    val scheduledDateTime =
+                                        task.startDateConf?.dateTime ?: LocalDateTime.now()
+                                    val repeatableInstance =
+                                        com.elena.autoplanner.domain.models.RepeatableTaskInstance(
+                                            parentTaskId = task.parentTaskId!!,
+                                            instanceIdentifier = instanceIdentifier,
+                                            scheduledDateTime = scheduledDateTime,
+                                            isCompleted = task.isCompleted,
+                                            isDeleted = false
+                                        )
+                                    taskRepository.insertRepeatableInstance(repeatableInstance)
+                                }
+                            }
+                        }
+                    }
                     TaskResult.Success(expandedTasks)
                 }
                 is TaskResult.Error -> {
@@ -49,19 +80,6 @@ class GetExpandedTasksUseCase(
             Log.e("GetExpandedTasksUseCase", "Exception in expanded tasks flow", error)
             emit(TaskResult.Error("Error getting expanded tasks: ${error.message}"))
         }
-    }
-
-    /**
-     * Versión simplificada que obtiene todas las tareas con un rango amplio
-     * Útil para la vista "Todas las tareas"
-     */
-    fun getAllExpandedTasks(limit: Int = 50, offset: Int = 0): Flow<TaskResult<List<Task>>> {
-        return invoke(
-            startDate = LocalDate.now().minusYears(1),
-            endDate = LocalDate.now().plusYears(2),
-            limit = limit,
-            offset = offset
-        )
     }
 
     /**
@@ -301,12 +319,12 @@ class GetExpandedTasksUseCase(
                     )
 
                     repeatPlan.daysOfMonth.isNotEmpty() -> MonthlyDaysGenerator(repeatPlan)
-                    else -> DefaultGenerator(repeatPlan)
+                    else -> DefaultGenerator()
                 }
             }
         }
 
-        protected fun createTaskInstance(
+        fun createTaskInstance(
             parentTask: Task,
             date: LocalDate,
             instanceNumber: Int,
@@ -359,12 +377,7 @@ class GetExpandedTasksUseCase(
 
         override fun calculateMaxInstances(startDate: LocalDate, endDate: LocalDate): Int {
             val daysBetween = ChronoUnit.DAYS.between(startDate, endDate).toInt()
-            return when {
-                daysBetween <= 7 -> daysBetween
-                daysBetween <= 31 -> 31
-                daysBetween <= 365 -> 365
-                else -> 400
-            }
+            return daysBetween.coerceAtMost(7) // Limitar a un máximo de 7 días (una semana)
         }
 
         override fun generateInstances(
@@ -380,9 +393,19 @@ class GetExpandedTasksUseCase(
             val interval = repeatPlan.interval ?: 1
 
             while (currentDate <= endDate && instanceNumber <= maxInstances) {
-                instances.add(createTaskInstance(parentTask, currentDate, instanceNumber))
+                // Solo agregar instancias que caen dentro del rango de planificación
+                if (currentDate in startDate..endDate) {
+                    instances.add(createTaskInstance(parentTask, currentDate, instanceNumber))
+                }
                 instanceNumber++
-                currentDate = currentDate.plusDays(interval.toLong())
+
+                currentDate = when (repeatPlan.frequencyType) {
+                    FrequencyType.DAILY -> currentDate.plusDays(interval.toLong())
+                    FrequencyType.WEEKLY -> currentDate.plusWeeks(interval.toLong())
+                    FrequencyType.MONTHLY -> currentDate.plusMonths(interval.toLong())
+                    FrequencyType.YEARLY -> currentDate.plusYears(interval.toLong())
+                    else -> currentDate.plusDays(1)
+                }
             }
 
             return instances
@@ -475,7 +498,10 @@ class GetExpandedTasksUseCase(
             val interval = repeatPlan.interval ?: 1
 
             while (currentDate <= endDate && instanceNumber <= maxInstances) {
-                instances.add(createTaskInstance(parentTask, currentDate, instanceNumber))
+                // Solo agregar instancias que caen dentro del rango de planificación
+                if (currentDate in startDate..endDate) {
+                    instances.add(createTaskInstance(parentTask, currentDate, instanceNumber))
+                }
                 instanceNumber++
 
                 currentDate = when (repeatPlan.frequencyType) {
@@ -527,7 +553,8 @@ class GetExpandedTasksUseCase(
                             )
                             instanceNumber++
                         }
-                    } catch (e: Exception) {
+                        // Día inválido para este mes
+                    } catch (Exception) {
                         // Día inválido para este mes
                     }
                 }
@@ -541,7 +568,7 @@ class GetExpandedTasksUseCase(
     /**
      * Generador por defecto
      */
-    private class DefaultGenerator(private val repeatPlan: RepeatPlan) : RepeatInstanceGenerator() {
+    private class DefaultGenerator() : RepeatInstanceGenerator() {
 
         override fun calculateMaxInstances(startDate: LocalDate, endDate: LocalDate): Int = 1
 
@@ -557,39 +584,6 @@ class GetExpandedTasksUseCase(
             } else {
                 emptyList()
             }
-        }
-    }
-
-    /**
-     * Calcula la siguiente fecha para repeticiones basadas en frecuencia
-     */
-    private fun calculateNextDateForFrequency(
-        currentDate: LocalDate,
-        repeatPlan: RepeatPlan,
-    ): LocalDate {
-        val interval = repeatPlan.intervalNew
-
-        return when (repeatPlan.frequency) {
-            RepeatFrequency.DAILY -> currentDate.plusDays(interval.toLong())
-            RepeatFrequency.WEEKLY -> currentDate.plusWeeks(interval.toLong())
-            RepeatFrequency.MONTHLY -> currentDate.plusMonths(interval.toLong())
-            RepeatFrequency.YEARLY -> currentDate.plusYears(interval.toLong())
-            else -> currentDate.plusDays(1) // Fallback para casos no contemplados
-        }
-    }
-
-    /**
-     * Convierte java.time.DayOfWeek a nuestro enum personalizado DayOfWeek
-     */
-    private fun convertToCustomDayOfWeek(dayOfWeek: java.time.DayOfWeek): DayOfWeek {
-        return when (dayOfWeek) {
-            java.time.DayOfWeek.MONDAY -> DayOfWeek.MON
-            java.time.DayOfWeek.TUESDAY -> DayOfWeek.TUE
-            java.time.DayOfWeek.WEDNESDAY -> DayOfWeek.WED
-            java.time.DayOfWeek.THURSDAY -> DayOfWeek.THU
-            java.time.DayOfWeek.FRIDAY -> DayOfWeek.FRI
-            java.time.DayOfWeek.SATURDAY -> DayOfWeek.SAT
-            java.time.DayOfWeek.SUNDAY -> DayOfWeek.SUN
         }
     }
 }
