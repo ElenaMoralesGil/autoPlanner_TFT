@@ -584,7 +584,10 @@ class TaskListViewModel(
     private fun handleUpdateTask(task: Task) {
         viewModelScope.launch {
             when (val result = saveTaskUseCase(task)) {
-                is TaskResult.Success -> setEffect(ShowSnackbar("Task updated"))
+                is TaskResult.Success -> {
+                    loadTasks(currentState.currentListId, currentState.currentSectionId)
+                    setEffect(ShowSnackbar("Task updated"))
+                }
                 is TaskResult.Error -> {
                     setState { copy(error = result.message) }
                     setEffect(ShowSnackbar("Error updating: ${result.message}"))

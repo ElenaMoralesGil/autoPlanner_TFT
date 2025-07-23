@@ -86,18 +86,21 @@ fun DailyView(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val state = calendarViewModel.state.collectAsState().value
-    var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
+    // Usar observer reactivo para tareas
+    val tasksState by tasksViewModel.state.collectAsState()
+    val tasks = remember(tasksState, selectedDate) {
+        tasksState?.tasks?.filter { task ->
+            val relevantDate = task.scheduledStartDateTime?.toLocalDate()
+                ?: task.startDateConf?.dateTime?.toLocalDate()
+            relevantDate == selectedDate
+        } ?: emptyList()
+    }
     var isLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedDate, state?.offset) {
         isLoading = true
         coroutineScope.launch {
             calendarViewModel.loadTasksForCurrentMonth()
-            tasks = calendarViewModel.loadedTasks.filter { task ->
-                val relevantDate = task.scheduledStartDateTime?.toLocalDate()
-                    ?: task.startDateConf?.dateTime?.toLocalDate()
-                relevantDate == selectedDate
-            }
             isLoading = false
         }
     }
@@ -137,33 +140,39 @@ fun DailyView(
     val nightTasks =
         remember(periodTasks) { periodTasks.filter { it.startDateConf?.dayPeriod == DayPeriod.NIGHT } }
 
+    // Mejorar el manejo del estado de drag para que la UI refleje el movimiento en tiempo real
+    var draggedTasks by remember { mutableStateOf(emptyMap<Int, TaskDragState>()) }
     val onTaskTimeChanged: (Task, LocalTime) -> Unit = { task, newTime ->
         val originalDateTime = task.scheduledStartDateTime ?: task.startDateConf?.dateTime
+        val durationMinutes = task.durationConf?.totalMinutes ?: task.effectiveDurationMinutes
         if (originalDateTime == null) {
             Log.e(
                 "DailyView",
                 "Cannot update task ${task.id} time, original date/time context is missing."
             )
+        } else {
+            val newDateTime = LocalDateTime.of(selectedDate, newTime)
+            val newEndDateTime = newDateTime.plusMinutes(durationMinutes.toLong())
+            if (!newEndDateTime.isBefore(newDateTime)) {
+                val newStartDateConf = TimePlanning(
+                    dateTime = newDateTime,
+                    dayPeriod = DayPeriod.NONE
+                )
+                val updatedTask = Task.from(task)
+                    .startDateConf(newStartDateConf)
+                    .scheduledStartDateTime(null)
+                    .scheduledEndDateTime(null)
+                    .build()
+                tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
+                // Limpiar el estado temporal del drag para evitar snapping
+                draggedTasks = draggedTasks - task.id
+            } else {
+                Log.e(
+                    "DailyView",
+                    "Invalid time range for task ${task.id}: start > end. Drag ignored."
+                )
+            }
         }
-
-        val newDateTime = LocalDateTime.of(selectedDate, newTime)
-
-        val newStartDateConf = TimePlanning(
-            dateTime = newDateTime,
-            dayPeriod = DayPeriod.NONE
-        )
-
-        val updatedTask = Task.from(task)
-            .startDateConf(newStartDateConf)
-            .scheduledStartDateTime(null)
-            .scheduledEndDateTime(null)
-            .build()
-
-        Log.d(
-            "DailyView",
-            "Task ${updatedTask.id} dragged. Updating with StartConf: ${updatedTask.startDateConf}, Cleared Scheduled Times."
-        )
-        tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
     }
 
     val onDateSelected: (LocalDate) -> Unit = { date ->
@@ -233,7 +242,11 @@ private fun EnhancedTimeSchedule(
     )
 
     fun updateDragState(newState: TaskDragState) {
-        draggedTasks = draggedTasks + (newState.task.id to newState)
+        draggedTasks = if (newState.tempStartTime != null) {
+            draggedTasks + (newState.task.id to newState)
+        } else {
+            draggedTasks - newState.task.id
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -383,21 +396,19 @@ fun TaskBox(
 ) {
     val dayStart = LocalTime.MIDNIGHT
     val dayEnd = LocalTime.of(23, 59)
-    var localDragOffset by remember { mutableStateOf(0f) }
+    var localDragOffset by remember(task.id) { mutableStateOf(0f) }
+    var initialTaskStartTime by remember(task.id) {
+        mutableStateOf(
+            task.scheduledStartDateTime?.toLocalTime() ?: task.startTime
+        )
+    }
     val dragOffset by animateFloatAsState(targetValue = localDragOffset, label = "dragOffset")
 
-    var initialTaskStartTime by remember(task.id) {
-        mutableStateOf(task.scheduledStartDateTime?.toLocalTime() ?: task.startTime)
-    }
-
-    val taskDuration = task.effectiveDurationMinutes.toLong() 
+    val taskDuration = task.effectiveDurationMinutes.toLong()
     val isShortTask = taskDuration < 50
 
-    val calculationStartTime =
-        draggedTasks[task.id]?.tempStartTime
-            ?: task.scheduledStartDateTime?.toLocalTime()
-            ?: task.startTime
-
+    // Usar tempStartTime si existe, si no, initialTaskStartTime
+    val calculationStartTime = draggedTasks[task.id]?.tempStartTime ?: initialTaskStartTime
     val calculationEndTime = calculationStartTime.plusMinutes(taskDuration)
 
     val xOffset = with(LocalDensity.current) { (parentWidth * position.xFraction).toPx() }
@@ -413,8 +424,7 @@ fun TaskBox(
         java.time.Duration.between(blockStartTime, displayStartTime).toMinutes().toFloat()
     val heightMinutes =
         java.time.Duration.between(displayStartTime, displayEndTime).toMinutes().toFloat()
-            .coerceAtLeast(1f) 
-
+            .coerceAtLeast(1f)
     val visualY = (offsetMinutes / 60f) * hourHeightPx
     val rectHeightDpValue = (heightMinutes / 60f) * hourHeightDp.value
     val minVisibleHeight = if (isShortTask) 30.dp else 40.dp
@@ -430,24 +440,19 @@ fun TaskBox(
             .pointerInput(task.id) {
                 detectDragGestures(
                     onDragStart = {
-
-                        initialTaskStartTime =
-                            task.scheduledStartDateTime?.toLocalTime() ?: task.startTime
+                        // Solo actualiza initialTaskStartTime al iniciar el drag
+                        initialTaskStartTime = draggedTasks[task.id]?.tempStartTime
+                            ?: task.scheduledStartDateTime?.toLocalTime() ?: task.startTime
                         localDragOffset = 0f
                     },
                     onDrag = { _, dragAmount ->
                         localDragOffset += dragAmount.y
                         val totalMinutesDragged = (localDragOffset / hourHeightPx * 60).roundToInt()
-                        val snappedMinutesDragged =
-                            (totalMinutesDragged / 5) * 5L
-
+                        val snappedMinutesDragged = (totalMinutesDragged / 5) * 5L
                         val newTempStartTime = initialTaskStartTime
                             .plusMinutes(snappedMinutesDragged)
-                            .coerceIn(
-                                dayStart,
-                                dayEnd.minusMinutes(taskDuration)
-                            )
-
+                            .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration))
+                        // Actualizar el estado temporal para que la UI se mueva en tiempo real
                         updateDragState(TaskDragState(task, localDragOffset, newTempStartTime))
                     },
                     onDragEnd = {
@@ -456,18 +461,18 @@ fun TaskBox(
                         val finalNewTime = initialTaskStartTime
                             .plusMinutes(snappedMinutesDragged)
                             .coerceIn(dayStart, dayEnd.minusMinutes(taskDuration))
-
                         val originalTime =
                             task.scheduledStartDateTime?.toLocalTime() ?: task.startTime
                         if (finalNewTime != originalTime) {
                             onTaskTimeChanged(task, finalNewTime)
+                        } else {
+                            // Solo limpiar el estado de drag si no hubo cambio
+                            updateDragState(TaskDragState(task, 0f, null))
                         }
-
-                        updateDragState(TaskDragState(task, 0f, null))
                         localDragOffset = 0f
                     },
                     onDragCancel = {
-
+                        // Limpiar el estado temporal del drag correctamente
                         updateDragState(TaskDragState(task, 0f, null))
                         localDragOffset = 0f
                     }

@@ -74,25 +74,34 @@ fun WeeklyView(
 
     val onTaskTimeChanged: (Task, LocalTime, Long) -> Unit = { task, newTime, dayOffset ->
         val originalDateTime = task.scheduledStartDateTime ?: task.startDateConf?.dateTime
+        val durationMinutes = task.durationConf?.totalMinutes ?: task.effectiveDurationMinutes
         if (originalDateTime != null) {
             val originalDate = originalDateTime.toLocalDate()
-            val newDate = originalDate.plusDays(dayOffset) 
+            val newDate = originalDate.plusDays(dayOffset)
             val newDateTime = LocalDateTime.of(newDate, newTime)
-
-            val newConf = TimePlanning(
-                dateTime = newDateTime,
-                dayPeriod = DayPeriod.NONE 
-            )
-            val updatedTask = Task.from(task)
-                .startDateConf(newConf)
-                .scheduledStartDateTime(null)
-                .scheduledEndDateTime(null)   
-                .build()
-            Log.d(
-                "WeeklyView",
-                "Task ${updatedTask.id} dragged. Updating with StartConf: ${updatedTask.startDateConf}, Cleared Scheduled Times."
-            )
-            tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
+            val newEndDateTime = newDateTime.plusMinutes(durationMinutes.toLong())
+            // Validar que inicio <= fin
+            if (!newEndDateTime.isBefore(newDateTime)) {
+                val newConf = TimePlanning(
+                    dateTime = newDateTime,
+                    dayPeriod = DayPeriod.NONE
+                )
+                val updatedTask = Task.from(task)
+                    .startDateConf(newConf)
+                    .scheduledStartDateTime(null)
+                    .scheduledEndDateTime(null)
+                    .build()
+                Log.d(
+                    "WeeklyView",
+                    "Task ${updatedTask.id} dragged. Updating with StartConf: ${updatedTask.startDateConf}, Cleared Scheduled Times."
+                )
+                tasksViewModel.sendIntent(TaskListIntent.UpdateTask(updatedTask))
+            } else {
+                Log.e(
+                    "WeeklyView",
+                    "Invalid time range for task ${task.id}: start > end. Drag ignored."
+                )
+            }
         } else {
             Log.e(
                 "WeeklyView",

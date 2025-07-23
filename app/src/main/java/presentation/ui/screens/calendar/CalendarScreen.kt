@@ -2,6 +2,7 @@ package com.elena.autoplanner.presentation.ui.screens.calendar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -371,14 +374,19 @@ private fun ViewSelector(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier,
-        shadowElevation = 8.dp,
+        modifier = modifier
+            .wrapContentHeight()
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp)),
+        shadowElevation = 12.dp,
         shape = RoundedCornerShape(8.dp)
     ) {
         Row(
             modifier = Modifier
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(16.dp),
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(24.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             CalendarView.entries.forEach { view ->
@@ -404,20 +412,20 @@ private fun ViewOption(
     Column(
         modifier = Modifier
             .clickable(onClick = onSelected)
-            .padding(12.dp),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             painter = painterResource(view.getIconRes()),
             contentDescription = view.name,
             tint = tintColor,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(36.dp)
         )
         Text(
             text = view.name,
             color = tintColor,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(top = 4.dp)
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 8.dp)
         )
     }
 }
