@@ -74,7 +74,7 @@ fun TimeConfigSheet(
     var localReminder by remember { mutableStateOf(currentReminder) }
     var localRepeat by remember { mutableStateOf(currentRepeat) }
     var allowSplitting by remember { mutableStateOf(currentAllowSplitting) }
-    val shouldShowSplitting = localDuration?.let { it.totalMinutes!! >= 30 } == true
+    val shouldShowSplitting = localDuration?.let { it.totalMinutes!! >= 60 } == true
 
     var openDialog by remember { mutableStateOf<TimeDialogType?>(null) }
 

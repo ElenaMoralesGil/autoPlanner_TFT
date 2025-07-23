@@ -340,5 +340,5 @@ private fun hasAnyConfig(state: com.elena.autoplanner.presentation.states.TaskEd
             state.reminderPlan != null ||
             state.repeatPlan != null ||
             state.priority != Priority.NONE ||
-            (state.allowSplitting != null && (state.durationConf?.totalMinutes ?: 0) >= 30)
+            (state.allowSplitting != null && (state.durationConf?.totalMinutes ?: 0) >= 60)
 }
