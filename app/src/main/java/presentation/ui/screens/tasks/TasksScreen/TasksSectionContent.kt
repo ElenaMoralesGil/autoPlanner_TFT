@@ -31,6 +31,7 @@ fun TasksSectionContent(
     // CORREGIR: Separar correctamente las tareas sin solapamiento
     val expiredNotCompletedTasks = tasks.filter { it.isExpired() && !it.isCompleted }
     val notDoneTasks = tasks.filter { !it.isCompleted && !it.isExpired() }
+        .sortedBy { it.scheduledStartDateTime ?: it.startDateConf?.dateTime }
     // Solo mostrar tareas completadas si el filtro global es ALL o COMPLETED
     val completedTasks =
         if (state.statusFilter == TaskStatus.ALL || state.statusFilter == TaskStatus.COMPLETED) {

@@ -65,17 +65,8 @@ fun MonthlyView(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val state = calendarViewModel.state.collectAsState().value
-    var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-
-    LaunchedEffect(selectedMonth, state?.offset) {
-        isLoading = true
-        coroutineScope.launch {
-            calendarViewModel.loadTasksForCurrentMonth()
-            tasks = calendarViewModel.loadedTasks
-            isLoading = false
-        }
-    }
+    val tasks = calendarViewModel.loadedTasks // Usar directamente el estado observable
+    val isLoading = state?.isLoading ?: false
 
     val weeksInMonth = remember(selectedMonth) {
         generateCalendarDays(selectedMonth)
@@ -87,6 +78,8 @@ fun MonthlyView(
                 ?: task.startDateConf?.dateTime?.toLocalDate()
             relevantDate?.year == selectedMonth.year && relevantDate.month == selectedMonth.month
         }
+            // Ordenar tareas completadas por fecha de finalización y luego por id para evitar glitches
+            .sortedWith(compareBy<Task>({ it.completionDateTime }, { it.id }))
     }
 
     Column(modifier = Modifier.fillMaxSize()) {

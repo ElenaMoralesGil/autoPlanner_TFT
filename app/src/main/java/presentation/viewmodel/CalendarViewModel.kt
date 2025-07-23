@@ -91,4 +91,12 @@ class CalendarViewModel(
             }
         }
     }
+
+    fun reloadTasks() {
+        loadTasksForCurrentMonth()
+    }
+
+    fun onTaskDeletedOrCompleted() {
+        reloadTasks()
+    }
 }

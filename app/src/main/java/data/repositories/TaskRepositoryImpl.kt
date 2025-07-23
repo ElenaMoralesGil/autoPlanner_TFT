@@ -436,11 +436,16 @@ class TaskRepositoryImpl(
                     docRef.set(firestoreMap).await() 
                     Log.d(TAG, "saveTask (New): Created Firestore task $taskFirestoreId")
 
+                    // Obtener el timestamp real de Firestore
+                    val firestoreDoc = docRef.get().await()
+                    val firestoreTimestamp =
+                        firestoreDoc.getTimestamp("lastUpdated")?.toDate()?.time ?: timestamp
+
                     localEntity = taskMapper.mapToEntity(task).copy(
                         userId = userId,
                         firestoreId = taskFirestoreId,
-                        lastUpdated = timestamp,
-                        isDeleted = false 
+                        lastUpdated = firestoreTimestamp,
+                        isDeleted = false
                     )
                     finalLocalId = taskDao.insertTask(localEntity).toInt()
                     Log.d(TAG, "saveTask (New): Inserted into Room with local ID $finalLocalId")
@@ -477,12 +482,18 @@ class TaskRepositoryImpl(
                         .set(firestoreMap, SetOptions.merge()).await()
                     Log.d(TAG, "saveTask (Update): Updated Firestore task $taskFirestoreId")
 
+                    // Obtener el timestamp real de Firestore
+                    val firestoreDoc =
+                        getUserTasksCollection(userId).document(taskFirestoreId).get().await()
+                    val firestoreTimestamp =
+                        firestoreDoc.getTimestamp("lastUpdated")?.toDate()?.time ?: timestamp
+
                     localEntity = taskMapper.mapToEntity(task).copy(
                         id = finalLocalId,
                         userId = userId,
                         firestoreId = taskFirestoreId,
-                        lastUpdated = timestamp,
-                        isDeleted = false 
+                        lastUpdated = firestoreTimestamp,
+                        isDeleted = false
                     )
                     taskDao.updateTask(localEntity)
                     Log.d(TAG, "saveTask (Update): Updated Room task $finalLocalId")
@@ -1018,4 +1029,3 @@ class TaskRepositoryImpl(
         return entity?.let { taskMapper.mapToDomain(it) }
     }
 }
-

@@ -337,4 +337,42 @@ class TaskDetailViewModel(
             setEffect(TaskDetailEffect.ShowSnackbar("Instancia eliminada correctamente"))
         }
     }
+
+    /**
+     * Llama a esta función después de modificar la configuración de repetición de una tarea repetida.
+     * Actualiza las instancias futuras según la nueva configuración.
+     */
+    fun updateRepeatableTaskInstances(
+        newRepeatConfig: Any,
+        fromDate: java.time.LocalDateTime = java.time.LocalDateTime.now(),
+    ) {
+        val currentTask = currentState.task ?: return
+        if (currentTask.repeatPlan != null) {
+            viewModelScope.launch {
+                repeatableTaskInstanceManager.updateFutureInstances(
+                    currentTask.id,
+                    newRepeatConfig,
+                    fromDate
+                )
+                loadRepeatableInstances()
+                setEffect(TaskDetailEffect.ShowSnackbar("Instancias futuras actualizadas"))
+            }
+        }
+    }
+
+    /**
+     * Edita una tarea repetida y actualiza sus instancias futuras si cambia la configuración de repetición.
+     */
+    fun editRepeatableTask(newTask: Task, newRepeatConfig: Any?) {
+        viewModelScope.launch {
+            // Actualiza la tarea en la base de datos (debes tener un caso de uso para esto)
+            // Por ejemplo: val result = updateTaskUseCase(newTask)
+            // Si la configuración de repetición cambió, actualiza las instancias futuras
+            if (newRepeatConfig != null) {
+                updateRepeatableTaskInstances(newRepeatConfig)
+            }
+            loadTask(newTask.id)
+            setEffect(TaskDetailEffect.ShowSnackbar("Tarea repetida editada y futuras instancias actualizadas"))
+        }
+    }
 }

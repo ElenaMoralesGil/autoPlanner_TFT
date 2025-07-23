@@ -18,4 +18,10 @@ interface RepeatableTaskInstanceDao {
 
     @Query("SELECT * FROM repeatable_task_instances WHERE instanceIdentifier = :instanceIdentifier")
     suspend fun getInstancesForIdentifier(instanceIdentifier: String): List<RepeatableTaskInstance>
+
+    @Query("SELECT * FROM repeatable_task_instances WHERE parentTaskId = :parentTaskId AND scheduledDateTime >= :fromDate")
+    suspend fun getFutureInstancesForTask(
+        parentTaskId: Int,
+        fromDate: String,
+    ): List<RepeatableTaskInstance>
 }
