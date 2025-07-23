@@ -40,6 +40,10 @@ class OverdueTaskHandler {
 
             when (strategy) {
                 OverdueTaskHandling.POSTPONE_TO_TOMORROW -> {
+                    // Marcar la tarea como vencida y posponerla para mañana
+                    planningTask.flags.isOverdue = true
+                    planningTask.flags.constraintDate = today.plusDays(1)
+                    planningTask.flags.isPostponed = true
                     context.addPostponedTask(planningTask.task)
                 }
 
@@ -56,6 +60,30 @@ class OverdueTaskHandler {
                         scopeEndDate
                     )
                 }
+            }
+        }
+
+        // Si el scope es solo mañana, marcar todas las tareas no completadas cuya fecha de inicio sea anterior o igual a hoy (no citas fijas) como vencidas para mañana
+        if (scopeStartDate == today.plusDays(1) && scopeEndDate == today.plusDays(1)) {
+            val tasksToMove = context.planningTaskMap.values.filter { planningTask ->
+                val task = planningTask.task
+                val startDate = task.startDateConf?.dateTime?.toLocalDate()
+                val isFixedAppointment = task.startDateConf?.dateTime != null &&
+                        task.endDateConf?.dateTime != null &&
+                        task.startDateConf.dateTime.toLocalDate() == task.endDateConf?.dateTime?.toLocalDate() &&
+                        task.durationConf?.totalMinutes != null && task.durationConf.totalMinutes > 0
+                val hasDuration =
+                    task.durationConf?.totalMinutes != null && task.durationConf.totalMinutes > 0
+                // Solo mover tareas vencidas si su fecha de inicio es hoy o anterior, pero nunca programar en el pasado
+                !planningTask.task.isCompleted && (startDate == null || startDate <= today) && !isFixedAppointment && hasDuration && !context.placedTaskIds.contains(
+                    planningTask.id
+                )
+            }
+            tasksToMove.forEach { planningTask ->
+                planningTask.flags.isOverdue = true
+                // Si la fecha de inicio es pasada, mover a mañana (nunca programar en el pasado)
+                planningTask.flags.constraintDate = today.plusDays(1)
+                planningTask.flags.needsManualResolution = false
             }
         }
     }

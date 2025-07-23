@@ -38,6 +38,16 @@ class TaskCategorizer {
                 "Task ${task.id}: isOverdue=${planningTask.flags.isOverdue}, constraintDate=${planningTask.flags.constraintDate}, startDate=${task.startDateConf?.dateTime}"
             )
 
+            // AJUSTE: incluir tareas vencidas para mañana aunque no tengan fecha fin
+            if (planningTask.flags.isOverdue && planningTask.flags.constraintDate == today.plusDays(
+                    1
+                )
+            ) {
+                Log.d("Categorizer", "Task ${task.id} - Type: Overdue Tomorrow -> DateFlex")
+                dateFlex.computeIfAbsent(today.plusDays(1)) { mutableListOf() }.add(planningTask)
+                return@taskLoop
+            }
+
             if (planningTask.flags.isOverdue) {
                 when {
 
@@ -199,13 +209,21 @@ class TaskCategorizer {
             (task.effectiveDurationMinutes / (24 * 60)).coerceAtLeast(0).toLong()
         )
 
-        // Para tareas expiradas, permitir que se procesen independientemente del scope
         val today = LocalDate.now()
         val isExpired = (taskStart != null && taskStart.isBefore(today)) ||
                 (taskEnd != null && taskEnd.isBefore(today))
 
+        // Permitir tareas sin fecha fin, o con fecha fin distinta al inicio, aunque el inicio sea anterior al scope
+        if (taskStart != null && taskStart.isBefore(scopeStart)) {
+            // Si no tiene fecha fin, puede colocarse en cualquier día del scope
+            if (taskEnd == null) return true
+            // Si tiene fecha fin y no es el mismo día que el inicio, y la fecha fin está dentro del scope
+            if (taskEnd != taskStart && taskEnd >= scopeStart) return true
+            // Si la fecha fin es el mismo día que el inicio, no entra en el scope
+            if (taskEnd == taskStart) return false
+        }
+
         return when {
-            // Tareas expiradas siempre "fit" para poder ser procesadas
             isExpired -> true
             taskStart == null && taskEnd == null -> true
             taskStart != null && taskStart.isAfter(scopeEnd) -> false

@@ -49,9 +49,9 @@ class GeneratePlanUseCase(
                 "GeneratePlanUseCase",
                 "Overdue tasks handled."
             )
-
+            // Eliminar lógica de modificación de fecha de inicio, ya no es necesaria
             val categorizationResult = taskCategorizer.categorizeTasks(
-                planningTasks = context.getTasksToPlan(), 
+                planningTasks = context.getTasksToPlan(),
                 scopeStart = scheduleStartDate,
                 scopeEnd = scheduleEndDate,
                 context = context

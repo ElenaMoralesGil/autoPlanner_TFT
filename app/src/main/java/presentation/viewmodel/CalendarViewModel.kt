@@ -42,6 +42,32 @@ class CalendarViewModel(
                 showDatePicker = if (dismiss) false else showDatePicker
             )
         }
+        // NUEVO: Recargar tareas para el mes de la nueva fecha
+        loadTasksForMonth(adjustedDate)
+    }
+
+    // NUEVO: Cargar tareas para el mes de la fecha dada
+    fun loadTasksForMonth(date: LocalDate) {
+        setState { copy(isLoading = true) }
+        viewModelScope.launch {
+            getExpandedTasksUseCase.invoke(
+                startDate = date.withDayOfMonth(1),
+                endDate = date.withDayOfMonth(date.lengthOfMonth()),
+                limit = currentState.limit,
+                offset = currentState.offset
+            ).collect { result ->
+                when (result) {
+                    is TaskResult.Success -> {
+                        loadedTasks = result.data
+                        setState { copy(isLoading = false) }
+                    }
+
+                    is TaskResult.Error -> {
+                        setState { copy(isLoading = false) }
+                    }
+                }
+            }
+        }
     }
 
     fun loadTasksForCurrentMonth() {

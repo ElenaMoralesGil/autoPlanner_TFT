@@ -357,6 +357,10 @@ class TaskPlacer(
             }
         }
 
+        // Asegurar que nunca se programe en el pasado
+        val now = LocalDateTime.now()
+        minSearchTime = maxOf(minSearchTime, now)
+
         Log.d(
             "TaskPlacer",
             "Task ${task.id}: Primary search window: $minSearchTime -> $maxSearchTime"
