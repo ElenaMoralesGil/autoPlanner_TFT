@@ -10,9 +10,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.elena.autoplanner.domain.models.Task
+import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.states.TaskListState
 import com.elena.autoplanner.presentation.states.TaskStatus
 
@@ -23,12 +25,19 @@ fun TasksSectionContent(
     onTaskSelected: (Task) -> Unit,
     onDelete: (Task) -> Unit,
     onEdit: (Task) -> Unit,
+    listViewModel: com.elena.autoplanner.presentation.viewmodel.TaskListViewModel, // <-- Agregado
 ) {
     val tasks = state.filteredTasks
     // CORREGIR: Separar correctamente las tareas sin solapamiento
     val expiredNotCompletedTasks = tasks.filter { it.isExpired() && !it.isCompleted }
     val notDoneTasks = tasks.filter { !it.isCompleted && !it.isExpired() }
-    val completedTasks = tasks.filter { it.isCompleted }
+    // Solo mostrar tareas completadas si el filtro global es ALL o COMPLETED
+    val completedTasks =
+        if (state.statusFilter == TaskStatus.ALL || state.statusFilter == TaskStatus.COMPLETED) {
+            state.filteredTasks.filter { it.isCompleted }
+        } else {
+            emptyList()
+        }
 
     // Debug: Verificar si hay tareas expiradas
     println("DEBUG: Total tasks: ${tasks.size}, Expired: ${expiredNotCompletedTasks.size}, NotDone: ${notDoneTasks.size}, Completed: ${completedTasks.size}")
@@ -51,7 +60,7 @@ fun TasksSectionContent(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(8.dp)
+        contentPadding = PaddingValues(bottom = 80.dp)
     ) {
         if (showExpired && expiredNotCompletedTasks.isNotEmpty()) {
             stickyHeader(key = "expired_header") {
@@ -107,25 +116,30 @@ fun TasksSectionContent(
             stickyHeader(key = "completed_header") {
                 SectionHeader(
                     title = "Completed",
-                    count = completedTasks.size,
+                    count = completedTasks.size, // El contador ahora coincide con la lista
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
             itemsIndexed(
                 completedTasks,
                 key = { index, task -> "completed_${index}_${task.id}_${task.instanceIdentifier ?: ""}" }) { index, task ->
-                TaskCard(
-                    task = task,
-                    onCheckedChange = { checked -> onTaskChecked(task, checked) },
-                    onDelete = { onDelete(task) },
-                    onEdit = { onEdit(task) },
-                    onTaskSelected = { onTaskSelected(task) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 24.dp, end = 8.dp, top = 8.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                if (task.isCompleted) { // Solo renderizar tareas realmente completadas
+                    TaskCard(
+                        task = task,
+                        onCheckedChange = { checked -> onTaskChecked(task, checked) },
+                        onDelete = { onDelete(task) },
+                        onEdit = { onEdit(task) },
+                        onTaskSelected = { onTaskSelected(task) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, end = 8.dp, top = 8.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
         }
+
+        // Eliminar renderizado duplicado de todas las tareas
+        // itemsIndexed(tasks) { ... } <-- QUITAR ESTE BLOQUE
     }
 }

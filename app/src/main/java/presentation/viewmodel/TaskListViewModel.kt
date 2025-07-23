@@ -27,6 +27,7 @@ import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.states.TaskListState
 import com.elena.autoplanner.presentation.states.TaskStatus
 import com.elena.autoplanner.presentation.states.TimeFrame
+import com.elena.autoplanner.domain.repositories.TaskRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -46,6 +47,7 @@ class TaskListViewModel(
     private val deleteRepeatableTaskUseCase: DeleteRepeatableTaskUseCase,
     private val repeatableTaskGenerator: RepeatableTaskGenerator,
     private val savedStateHandle: SavedStateHandle,
+    private val taskRepository: TaskRepository,
 ) : BaseViewModel<TaskListIntent, TaskListState, TaskListEffect>() {
 
     private var taskLoadingJob: Job? = null
@@ -162,6 +164,18 @@ class TaskListViewModel(
                     } 
                 }
                 loadTasks(currentState.requestedListId, currentState.requestedSectionId)
+            }
+            is TaskListIntent.LoadTasksForDateRange -> { // Nuevo intent para calendario
+                Log.d(
+                    "TaskListVM",
+                    "LoadTasksForDateRange Intent received for range: ${intent.startDate} to ${intent.endDate}"
+                )
+                loadTasksForDateRange(intent.startDate, intent.endDate)
+            }
+
+            is TaskListIntent.LoadMoreTasks -> {
+                // Lógica para cargar más tareas (paginación)
+                loadMoreTasks()
             }
         }
     }
@@ -299,6 +313,86 @@ class TaskListViewModel(
         }
     }
 
+    // Nuevo método para cargar tareas con rango de fechas específico (para calendario)
+    private fun loadTasksForDateRange(
+        startDate: java.time.LocalDate,
+        endDate: java.time.LocalDate,
+    ) {
+        taskLoadingJob?.cancel()
+        taskLoadingJob = viewModelScope.launch {
+            Log.d("TaskListVM", "loadTasksForDateRange ENTERED for range: $startDate to $endDate")
+
+            setState { copy(isLoading = true, error = null) }
+
+            getExpandedTasksUseCase(startDate, endDate)
+                .catch { error ->
+                    Log.e("TaskListVM", "Error in getExpandedTasksUseCase for date range", error)
+                    setState {
+                        copy(
+                            isLoading = false,
+                            error = error.localizedMessage
+                                ?: "Unknown error loading tasks for date range"
+                        )
+                    }
+                    setEffect(ShowSnackbar("Error loading tasks: ${error.localizedMessage}"))
+                }
+                .collect { result ->
+                    when (result) {
+                        is TaskResult.Success -> {
+                            val expandedTasks = result.data
+                            Log.d(
+                                "TaskListVM",
+                                "Loaded ${expandedTasks.size} tasks for date range $startDate to $endDate"
+                            )
+
+                            // Aplicar filtros
+                            val filteredTasks = filterTasksUseCase(
+                                expandedTasks,
+                                currentState.statusFilter,
+                                currentState.timeFrameFilter
+                            )
+
+                            setState {
+                                copy(
+                                    tasks = expandedTasks,
+                                    filteredTasks = filteredTasks,
+                                    isLoading = false,
+                                    // Mantener los IDs actuales para el calendario
+                                    currentListId = null, // Calendario no filtra por lista
+                                    currentSectionId = null
+                                )
+                            }
+                        }
+
+                        is TaskResult.Error -> {
+                            Log.e(
+                                "TaskListVM",
+                                "Error loading tasks for date range: ${result.message}"
+                            )
+                            setState {
+                                copy(
+                                    isLoading = false,
+                                    error = result.message
+                                )
+                            }
+                            setEffect(ShowSnackbar("Error loading tasks: ${result.message}"))
+                        }
+                    }
+                }
+        }
+    }
+
+    // Agrega la función para cargar más tareas
+    private fun loadMoreTasks() {
+        viewModelScope.launch {
+            setState { copy(isLoading = true) }
+            // Aquí deberías implementar la lógica real de paginación, por ejemplo:
+            // val moreTasks = ...
+            // setState { copy(tasks = tasks + moreTasks, isLoading = false) }
+            setState { copy(isLoading = false) } // Placeholder
+        }
+    }
+
     private fun updateStatusFilter(status: TaskStatus) {
         val filteredTasks =
             filterTasksUseCase(currentState.tasks, status, currentState.timeFrameFilter)
@@ -377,19 +471,19 @@ class TaskListViewModel(
     }
 
     private fun updateTaskCompletionInState(taskId: Int, completed: Boolean) {
-        val updatedTasks = currentState.tasks.map {
-            if (it.id == taskId) {
-                Task.from(it).isCompleted(completed).build()
-            } else {
-                it
+        viewModelScope.launch {
+            taskRepository.getTasks().collect { result ->
+                if (result is TaskResult.Success) {
+                    val refreshedTasks = result.data
+                    val filtered = filterTasksUseCase(
+                        refreshedTasks,
+                        currentState.statusFilter,
+                        currentState.timeFrameFilter
+                    )
+                    setState { copy(tasks = refreshedTasks, filteredTasks = filtered) }
+                }
             }
         }
-        val filtered = filterTasksUseCase(
-            updatedTasks,
-            currentState.statusFilter,
-            currentState.timeFrameFilter
-        )
-        setState { copy(tasks = updatedTasks, filteredTasks = filtered) }
     }
 
     private fun handleDeleteTask(taskId: Int) {
@@ -409,39 +503,79 @@ class TaskListViewModel(
 
             setEffect(ShowRepeatTaskDeleteDialog(task))
         } else {
-
             viewModelScope.launch {
-                when (val result = deleteTaskUseCase(task.id)) {
-                    is TaskResult.Success -> setEffect(ShowSnackbar("Task deleted"))
-                    is TaskResult.Error -> {
-                        setState { copy(error = result.message) }
-                        setEffect(ShowSnackbar("Error deleting: ${result.message}"))
+                // Log para depuración del instanceIdentifier
+                android.util.Log.d(
+                    "TaskDeleteDebug",
+                    "Deleting instance with identifier: ${task.instanceIdentifier}"
+                )
+                if (task.instanceIdentifier != null) {
+                    when (val result =
+                        deleteRepeatableTaskUseCase.deleteInstance(task.instanceIdentifier)) {
+                        is TaskResult.Success -> setEffect(ShowSnackbar("Instance deleted"))
+                        is TaskResult.Error -> {
+                            setState { copy(error = result.message) }
+                            setEffect(ShowSnackbar("Error deleting instance: ${result.message}"))
+                        }
+                    }
+                } else {
+                    when (val result = deleteTaskUseCase(task.id)) {
+                        is TaskResult.Success -> setEffect(ShowSnackbar("Task deleted"))
+                        is TaskResult.Error -> {
+                            setState { copy(error = result.message) }
+                            setEffect(ShowSnackbar("Error deleting: ${result.message}"))
+                        }
                     }
                 }
             }
         }
     }
 
-    private fun handleConfirmRepeatableTaskDeletion(
-        task: Task,
-        option: RepeatTaskDeleteOption,
-    ) {
+    private fun handleConfirmRepeatableTaskDeletion(task: Task, option: RepeatTaskDeleteOption) {
         viewModelScope.launch {
-            when (val result = deleteRepeatableTaskUseCase.execute(task, option)) {
-                is TaskResult.Success -> {
-                    val message = when (option) {
-                        RepeatTaskDeleteOption.THIS_INSTANCE_ONLY -> "This instance deleted"
-                        RepeatTaskDeleteOption.THIS_AND_FUTURE -> "This and future instances deleted"
-                        RepeatTaskDeleteOption.ALL_INSTANCES -> "All instances deleted"
-                    }
-                    setEffect(ShowSnackbar(message))
+            setState { copy(isLoading = true) }
+            val instanceIdentifier = task.instanceIdentifier ?: return@launch
+            when (option) {
+                RepeatTaskDeleteOption.THIS_INSTANCE_ONLY -> {
+                    when (val result =
+                        deleteRepeatableTaskUseCase.deleteInstance(instanceIdentifier)) {
+                        is TaskResult.Success<*> -> {
+                            setEffect(TaskListEffect.ShowSnackbar("Instance deleted"))
+                            loadTasks(currentState.currentListId, currentState.currentSectionId)
+                        }
 
-                    loadTasks(currentState.currentListId, currentState.currentSectionId)
+                        is TaskResult.Error -> {
+                            setEffect(TaskListEffect.ShowSnackbar("Error deleting instance: ${result.message}"))
+                        }
+                    }
                 }
 
-                is TaskResult.Error -> {
-                    setState { copy(error = result.message) }
-                    setEffect(ShowSnackbar("Error deleting task: ${result.message}"))
+                RepeatTaskDeleteOption.THIS_AND_FUTURE -> {
+                    when (val result =
+                        deleteRepeatableTaskUseCase.deleteFutureInstances(instanceIdentifier)) {
+                        is TaskResult.Success<*> -> {
+                            setEffect(TaskListEffect.ShowSnackbar("Instance and future deleted"))
+                            loadTasks(currentState.currentListId, currentState.currentSectionId)
+                        }
+
+                        is TaskResult.Error -> {
+                            setEffect(TaskListEffect.ShowSnackbar("Error deleting future instances: ${result.message}"))
+                        }
+                    }
+                }
+
+                RepeatTaskDeleteOption.ALL_INSTANCES -> {
+                    when (val result =
+                        deleteRepeatableTaskUseCase.deleteAllInstances(instanceIdentifier)) {
+                        is TaskResult.Success<*> -> {
+                            setEffect(TaskListEffect.ShowSnackbar("All instances deleted"))
+                            loadTasks(currentState.currentListId, currentState.currentSectionId)
+                        }
+
+                        is TaskResult.Error -> {
+                            setEffect(TaskListEffect.ShowSnackbar("Error deleting all instances: ${result.message}"))
+                        }
+                    }
                 }
             }
         }

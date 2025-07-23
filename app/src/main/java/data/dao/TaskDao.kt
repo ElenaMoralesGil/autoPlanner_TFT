@@ -114,6 +114,9 @@ interface TaskDao {
     suspend fun clearListIdForTasks(listId: Long) 
 
     @Query("UPDATE tasks SET sectionId = NULL WHERE sectionId = :sectionId")
-    suspend fun clearSectionIdForTasks(sectionId: Long) 
+    suspend fun clearSectionIdForTasks(sectionId: Long)
+
+    @Query("SELECT * FROM tasks WHERE instanceIdentifier = :instanceIdentifier AND isDeleted = 0")
+    suspend fun getTaskByInstanceIdentifier(instanceIdentifier: String): TaskEntity?
 
 }

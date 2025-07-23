@@ -36,6 +36,7 @@ data class Task private constructor(
     val repeatPlan: RepeatPlan?,
     val subtasks: List<Subtask>,
     val completionDateTime: LocalDateTime? = null,
+    val createdDateTime: LocalDateTime = LocalDateTime.now(), // Nuevo campo para fecha de creación
     @Transient var internalFlags: TaskInternalFlags? = null,
     val scheduledStartDateTime: LocalDateTime? = null,
     val scheduledEndDateTime: LocalDateTime? = null,
@@ -133,6 +134,7 @@ data class Task private constructor(
         private var repeatPlan: RepeatPlan? = null
         private var subtasks: List<Subtask> = emptyList()
         private var completionDateTime: LocalDateTime? = null
+        private var createdDateTime: LocalDateTime = LocalDateTime.now() // Nuevo campo
         private var scheduledStartDateTime: LocalDateTime? = null
         private var scheduledEndDateTime: LocalDateTime? = null
         private var allowSplitting: Boolean? = null
@@ -162,6 +164,8 @@ data class Task private constructor(
         fun subtasks(subtasks: List<Subtask>) = apply { this.subtasks = subtasks }
         fun completionDateTime(dateTime: LocalDateTime?) =
             apply { this.completionDateTime = dateTime }
+        fun createdDateTime(dateTime: LocalDateTime) =
+            apply { this.createdDateTime = dateTime } // Nuevo método
         fun scheduledStartDateTime(dateTime: LocalDateTime?) =
             apply { this.scheduledStartDateTime = dateTime }
 
@@ -201,6 +205,7 @@ data class Task private constructor(
                 scheduledStartDateTime = scheduledStartDateTime,
                 scheduledEndDateTime = scheduledEndDateTime,
                 completionDateTime = completionDateTime,
+                createdDateTime = createdDateTime, // Agregar al constructor
                 listId = listId,
                 internalFlags = internalFlags,
                 sectionId = finalSectionId,
@@ -241,6 +246,7 @@ data class Task private constructor(
                 .scheduledStartDateTime(task.scheduledStartDateTime)
                 .scheduledEndDateTime(task.scheduledEndDateTime)
                 .completionDateTime(task.completionDateTime)
+                .createdDateTime(task.createdDateTime) // Agregar createdDateTime
                 .listId(task.listId)
                 .sectionId(task.sectionId)
                 .displayOrder(task.displayOrder)

@@ -10,6 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.elena.autoplanner.data.MIGRATION_10_11
 import com.elena.autoplanner.data.MIGRATION_11_12
 import com.elena.autoplanner.data.MIGRATION_12_13
+import com.elena.autoplanner.data.MIGRATION_13_14 // Agregar nueva migración
 import com.elena.autoplanner.data.MIGRATION_6_7
 import com.elena.autoplanner.data.MIGRATION_7_8
 import com.elena.autoplanner.data.MIGRATION_8_9
@@ -67,6 +68,8 @@ import com.elena.autoplanner.domain.usecases.tasks.RepeatableTaskGenerator
 import com.elena.autoplanner.domain.usecases.tasks.GetExpandedTasksUseCase
 import com.elena.autoplanner.domain.usecases.tasks.CompleteRepeatableTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.DeleteRepeatableTaskUseCase
+import com.elena.autoplanner.domain.usecases.tasks.GenerateRepeatableTaskInstancesUseCase
+import com.elena.autoplanner.domain.usecases.tasks.RepeatableTaskInstanceManager
 import com.elena.autoplanner.notifications.NotificationScheduler
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.EditProfileViewModel
@@ -111,7 +114,7 @@ val appModule = module {
         )
             .addMigrations(
                 MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-                MIGRATION_11_12, MIGRATION_12_13
+                MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14
             )
             .addCallback(roomCallback)
             .build()
@@ -123,6 +126,12 @@ val appModule = module {
     single<SubtaskDao> { get<TaskDatabase>().subtaskDao() }
     single<ListDao> { get<TaskDatabase>().listDao() }
     single<SectionDao> { get<TaskDatabase>().sectionDao() }
+
+    // DAO para instancias de tareas repetibles
+    single { get<TaskDatabase>().repeatableTaskInstanceDao() }
+
+    // Usecase para instancias de tareas repetibles
+    single { RepeatableTaskInstanceManager(get()) }
 
     single<TaskRepository> {
         TaskRepositoryImpl(
@@ -166,7 +175,7 @@ val appModule = module {
 
 val useCaseModule = module {
     single { GetTasksUseCase(get()) }
-    single { GetTaskUseCase(get()) } // Agregar el segundo parámetro RepeatableTaskGenerator
+    single { GetTaskUseCase(get(), get()) } // Actualizado para incluir GetExpandedTasksUseCase
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
     single { AddSubtaskUseCase(get(), get()) }
@@ -179,7 +188,12 @@ val useCaseModule = module {
     single { FilterTasksUseCase() }
 
     single { RepeatableTaskGenerator(get()) }
-    single { GetExpandedTasksUseCase(get()) }
+    single {
+        GetExpandedTasksUseCase(
+            get(),
+            get()
+        )
+    } // Agregar RepeatableTaskGenerator como segunda dependencia
     single { CompleteRepeatableTaskUseCase(get(), get()) }
     single { DeleteRepeatableTaskUseCase(get(), get()) }
 
@@ -217,10 +231,16 @@ val useCaseModule = module {
     single { SaveSectionUseCase(get()) }
     single { DeleteListUseCase(get()) } 
     single { DeleteSectionUseCase(get()) }
+
+    single { GenerateRepeatableTaskInstancesUseCase(get()) }
 }
 
 val viewModelModule = module {
-    viewModel { CalendarViewModel() }
+    viewModel {
+        CalendarViewModel(
+            getExpandedTasksUseCase = get()
+        )
+    }
 
     viewModel {
         PlannerViewModel(
@@ -245,7 +265,8 @@ val viewModelModule = module {
             completeRepeatableTaskUseCase = get(),
             deleteRepeatableTaskUseCase = get(),
             repeatableTaskGenerator = get<RepeatableTaskGenerator>(),
-            savedStateHandle = handle
+            savedStateHandle = handle,
+            taskRepository = get()
         )
     }
 
@@ -261,9 +282,9 @@ val viewModelModule = module {
             addSubtaskUseCase = get(),
             toggleSubtaskUseCase = get(),
             deleteSubtaskUseCase = get(),
-            repeatableTaskGenerator = get<RepeatableTaskGenerator>(),
             taskId = taskId,
-            instanceIdentifier = instanceIdentifier
+            instanceIdentifier = instanceIdentifier,
+            repeatableTaskInstanceManager = get()
         )
     }
 
@@ -273,9 +294,10 @@ val viewModelModule = module {
             saveTaskUseCase = get(),
             getAllListsUseCase = get(),
             getAllSectionsUseCase = get(),
-            saveListUseCase = get(),      
-            saveSectionUseCase = get()
-
+            saveListUseCase = get(),
+            saveSectionUseCase = get(),
+            repeatableTaskGenerator = get(),
+            generateRepeatableTaskInstancesUseCase = get()
         )
     }
     viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }

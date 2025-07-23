@@ -242,4 +242,31 @@ class DeleteRepeatableTaskUseCase(
         // Luego eliminar la tarea padre
         return deleteThisOccurrence(parentTaskId)
     }
+
+    /**
+     * Elimina una instancia repetida usando el instanceIdentifier
+     */
+    suspend fun deleteInstance(instanceIdentifier: String): TaskResult<Unit> {
+        val instance = taskRepository.getTaskByInstanceIdentifier(instanceIdentifier)
+            ?: return TaskResult.Error("Instance not found")
+        return deleteThisOccurrence(instance.id)
+    }
+
+    suspend fun deleteFutureInstances(instanceIdentifier: String): TaskResult<Unit> {
+        val instance = taskRepository.getTaskByInstanceIdentifier(instanceIdentifier)
+            ?: return TaskResult.Error("Instance not found")
+        val parentId = instance.parentTaskId ?: return TaskResult.Error("Instance has no parent")
+        val startDate =
+            instance.startDateConf?.dateTime ?: return TaskResult.Error("Instance has no date")
+        val result1 = deleteThisOccurrence(instance.id)
+        val result2 = deleteFutureInstancesFromDate(parentId, startDate)
+        return if (result1 is TaskResult.Error) result1 else result2
+    }
+
+    suspend fun deleteAllInstances(instanceIdentifier: String): TaskResult<Unit> {
+        val instance = taskRepository.getTaskByInstanceIdentifier(instanceIdentifier)
+            ?: return TaskResult.Error("Instance not found")
+        val parentId = instance.parentTaskId ?: return TaskResult.Error("Instance has no parent")
+        return deleteAllInstancesAndDisableRepeat(parentId)
+    }
 }

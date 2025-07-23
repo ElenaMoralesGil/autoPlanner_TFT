@@ -21,6 +21,10 @@ sealed class TaskListIntent : Intent {
         val option: com.elena.autoplanner.domain.usecases.tasks.RepeatTaskDeleteOption,
     ) : TaskListIntent()
     data class LoadTasks(val listId: Long) : TaskListIntent()
+    data class LoadTasksForDateRange(
+        val startDate: java.time.LocalDate,
+        val endDate: java.time.LocalDate,
+    ) : TaskListIntent()
     data class ViewList(val listId: Long) : TaskListIntent()
     data object ViewAllTasks : TaskListIntent()
     data object RequestEditList : TaskListIntent()
@@ -28,4 +32,5 @@ sealed class TaskListIntent : Intent {
     data object RequestEditSections : TaskListIntent()
     data class SaveList(val list: TaskList) : TaskListIntent()
     data class SaveSection(val section: TaskSection) : TaskListIntent()
+    data object LoadMoreTasks : TaskListIntent()
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -22,7 +23,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,14 +54,28 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 
 @Composable
 fun MonthlyView(
     selectedMonth: YearMonth,
-    tasks: List<Task>,
     onTaskSelected: (Task) -> Unit,
     calendarViewModel: CalendarViewModel,
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val state = calendarViewModel.state.collectAsState().value
+    var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedMonth, state?.offset) {
+        isLoading = true
+        coroutineScope.launch {
+            calendarViewModel.loadTasksForCurrentMonth()
+            tasks = calendarViewModel.loadedTasks
+            isLoading = false
+        }
+    }
 
     val weeksInMonth = remember(selectedMonth) {
         generateCalendarDays(selectedMonth)
@@ -110,6 +132,8 @@ fun MonthlyView(
                     )
                 }
             }
+            // Eliminar scroll infinito y cargar todas las tareas del mes al entrar
+            // Ya no se muestra el indicador de carga ni lógica de scroll
         }
     }
 }

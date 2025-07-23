@@ -33,9 +33,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +70,7 @@ import com.elena.autoplanner.presentation.intents.TaskListIntent
 import com.elena.autoplanner.presentation.ui.screens.calendar.DailyView.DailyNavigationHeader
 import com.elena.autoplanner.presentation.viewmodel.CalendarViewModel
 import com.elena.autoplanner.presentation.viewmodel.TaskListViewModel
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -76,11 +80,28 @@ import kotlin.math.roundToInt
 @Composable
 fun DailyView(
     selectedDate: LocalDate,
-    tasks: List<Task>,
     onTaskSelected: (Task) -> Unit,
     calendarViewModel: CalendarViewModel,
     tasksViewModel: TaskListViewModel,
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val state = calendarViewModel.state.collectAsState().value
+    var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedDate, state?.offset) {
+        isLoading = true
+        coroutineScope.launch {
+            calendarViewModel.loadTasksForCurrentMonth()
+            tasks = calendarViewModel.loadedTasks.filter { task ->
+                val relevantDate = task.scheduledStartDateTime?.toLocalDate()
+                    ?: task.startDateConf?.dateTime?.toLocalDate()
+                relevantDate == selectedDate
+            }
+            isLoading = false
+        }
+    }
+
     val hourHeightDp = 60.dp
     val hourHeightPx = with(LocalDensity.current) { hourHeightDp.toPx() }
     val scrollState = rememberScrollState()
@@ -269,6 +290,7 @@ private fun TimeBlockSection(
                     .clipToBounds()
             ) {
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val maxWidthDp = this.maxWidth
                     val tasksInBlock = scheduledTasks.filter { task ->
                         val effectiveTaskStart =
                             draggedTasks[task.id]?.tempStartTime ?: task.startTime
@@ -323,7 +345,7 @@ private fun TimeBlockSection(
                             position = position,
                             block = block,
                             hourHeightPx = hourHeightPx,
-                            parentWidth = maxWidth,
+                            parentWidth = maxWidthDp,
                             onTaskSelected = onTaskSelected,
                             onTaskTimeChanged = onTaskTimeChanged,
                             hourHeightDp = hourHeightDp,

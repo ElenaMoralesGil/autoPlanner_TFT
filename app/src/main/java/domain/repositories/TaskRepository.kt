@@ -19,5 +19,5 @@ interface TaskRepository {
 
     suspend fun getTasksForDate(date: LocalDate, userId: String?): List<Task>
     suspend fun getTasksForWeek(weekStartDate: LocalDate, userId: String?): List<Task>
-
+    suspend fun getTaskByInstanceIdentifier(instanceIdentifier: String): Task?
 }

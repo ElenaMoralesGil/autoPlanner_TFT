@@ -24,8 +24,10 @@ class TaskEditViewModel(
     private val saveTaskUseCase: SaveTaskUseCase,
     private val getAllListsUseCase: GetAllListsUseCase,
     private val getAllSectionsUseCase: GetAllSectionsUseCase,
-    private val saveListUseCase: SaveListUseCase,         
+    private val saveListUseCase: SaveListUseCase,
     private val saveSectionUseCase: SaveSectionUseCase,
+    private val repeatableTaskGenerator: com.elena.autoplanner.domain.usecases.tasks.RepeatableTaskGenerator,
+    private val generateRepeatableTaskInstancesUseCase: com.elena.autoplanner.domain.usecases.tasks.GenerateRepeatableTaskInstancesUseCase,
 ) : BaseTaskViewModel<TaskEditIntent, TaskEditState, TaskEditEffect>() {
 
     override fun createInitialState(): TaskEditState = TaskEditState()
@@ -164,10 +166,25 @@ class TaskEditViewModel(
             executeTaskOperation(
                 setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
                 operation = { saveTaskUseCase(taskToSave) },
-                onSuccess = { _ ->
+                onSuccess = { savedTaskId ->
                     val message = if (state.isNewTask) "Task created" else "Task updated"
                     setEffect(TaskEditEffect.NavigateBack)
                     setEffect(TaskEditEffect.ShowSnackbar(message))
+                    // Si la tarea tiene repetición, generar y guardar instancias
+                    if (taskToSave.repeatPlan != null && taskToSave.repeatPlan.isEnabled) {
+                        val parentTaskId = savedTaskId
+                        val startDate = state.startDateConf?.dateTime
+                        val repeatCount = taskToSave.repeatPlan.maxOccurrences ?: 1
+                        if (startDate != null && repeatCount > 0) {
+                            viewModelScope.launch {
+                                generateRepeatableTaskInstancesUseCase.generateWeeklyInstances(
+                                    parentTaskId = parentTaskId,
+                                    startDate = startDate,
+                                    repeatCount = repeatCount
+                                )
+                            }
+                        }
+                    }
                 },
                 onError = { errorMessage ->
                     setState { copy(isLoading = false, error = errorMessage) }

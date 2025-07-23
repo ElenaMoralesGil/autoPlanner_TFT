@@ -1,6 +1,7 @@
 package com.elena.autoplanner.presentation.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.elena.autoplanner.domain.models.RepeatableTaskInstance
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.results.TaskResult
 import com.elena.autoplanner.domain.usecases.subtasks.AddSubtaskUseCase
@@ -11,11 +12,14 @@ import com.elena.autoplanner.domain.usecases.tasks.DeleteRepeatableTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.GetTaskUseCase
 import com.elena.autoplanner.domain.usecases.tasks.ToggleTaskCompletionUseCase
 import com.elena.autoplanner.domain.usecases.tasks.CompleteRepeatableTaskUseCase
-import com.elena.autoplanner.domain.usecases.tasks.RepeatableTaskGenerator
+import com.elena.autoplanner.domain.usecases.tasks.RepeatableTaskInstanceManager
 import com.elena.autoplanner.presentation.effects.TaskDetailEffect
+import com.elena.autoplanner.presentation.intents.RepeatableDeleteType
 import com.elena.autoplanner.presentation.intents.TaskDetailIntent
 import com.elena.autoplanner.presentation.states.TaskDetailState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TaskDetailViewModel(
     private val getTaskUseCase: GetTaskUseCase,
@@ -26,22 +30,33 @@ class TaskDetailViewModel(
     private val addSubtaskUseCase: AddSubtaskUseCase,
     private val toggleSubtaskUseCase: ToggleSubtaskUseCase,
     private val deleteSubtaskUseCase: DeleteSubtaskUseCase,
-    private val repeatableTaskGenerator: RepeatableTaskGenerator,
+    private val repeatableTaskInstanceManager: RepeatableTaskInstanceManager,
     private val taskId: Int,
     private val instanceIdentifier: String? = null,
 ) : BaseTaskViewModel<TaskDetailIntent, TaskDetailState, TaskDetailEffect>() {
+
+    // Lista de fechas de instancias generadas eliminadas (soft delete)
+    private val deletedGeneratedInstanceDates = mutableSetOf<String>()
+
+    // Instancias repetidas reales
+    var repeatableInstances: List<RepeatableTaskInstance> = emptyList()
+        private set
 
     override fun createInitialState(): TaskDetailState = TaskDetailState()
 
     override suspend fun handleIntent(intent: TaskDetailIntent) {
         when (intent) {
-            is TaskDetailIntent.LoadTask -> loadTask(intent.taskId, instanceIdentifier)
+            is TaskDetailIntent.LoadTask -> loadTask(intent.taskId, intent.instanceIdentifier)
             is TaskDetailIntent.ToggleCompletion -> toggleTaskCompletion(intent.completed)
             is TaskDetailIntent.DeleteTask -> deleteTask()
             is TaskDetailIntent.AddSubtask -> addSubtask(intent.name)
             is TaskDetailIntent.ToggleSubtask -> toggleSubtask(intent.subtaskId, intent.completed)
             is TaskDetailIntent.DeleteSubtask -> deleteSubtask(intent.subtaskId)
             is TaskDetailIntent.EditTask -> navigateToEdit()
+            is TaskDetailIntent.DeleteRepeatableTask -> deleteRepeatableTask(
+                intent.instanceIdentifier,
+                intent.deleteType
+            )
         }
     }
 
@@ -117,23 +132,60 @@ class TaskDetailViewModel(
         }
     }
 
+    private suspend fun instanceExists(instanceIdentifier: String): Boolean {
+        // Verifica en la base de datos
+        val dbInstances = repeatableTaskInstanceManager.getInstancesByIdentifier(instanceIdentifier)
+        if (dbInstances.isNotEmpty()) return true
+        // Verifica en las instancias generadas en memoria
+        if (repeatableInstances.any { it.instanceIdentifier == instanceIdentifier }) return true
+        return false
+    }
+
     private fun deleteTask() {
         viewModelScope.launch {
-            val taskId = currentState.task?.id ?: return@launch
+            val currentTask = currentState.task ?: return@launch
             setState { copy(isLoading = true) }
 
-            executeTaskOperation(
-                setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
-                operation = { deleteTaskUseCase(taskId) },
-                onSuccess = {
-                    setEffect(TaskDetailEffect.NavigateBack)
-                    setEffect(TaskDetailEffect.ShowSnackbar("Task deleted"))
-                },
-                onError = { errorMessage ->
-                    setState { copy(error = errorMessage) }
-                    setEffect(TaskDetailEffect.ShowSnackbar("Error deleting task: $errorMessage"))
+            if (currentTask.isRepeatedInstance || instanceIdentifier != null) {
+                val identifier = instanceIdentifier ?: currentTask.instanceIdentifier!!
+                val exists = withContext(Dispatchers.IO) { instanceExists(identifier) }
+                if (!exists) {
+                    setState { copy(error = "Instance not found") }
+                    setEffect(TaskDetailEffect.ShowSnackbar("Error deleting repeated instance: instance not found"))
+                    return@launch
                 }
-            )
+                // Borrar solo la instancia repetida
+                executeTaskOperation<Unit>(
+                    setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                    operation = {
+                        deleteRepeatableTaskUseCase.deleteInstance(identifier)
+                    },
+                    onSuccess = {
+                        setEffect(TaskDetailEffect.NavigateBack)
+                        setEffect(TaskDetailEffect.ShowSnackbar("Repeated task instance deleted"))
+                    },
+                    onError = { errorMessage ->
+                        setState { copy(error = errorMessage) }
+                        setEffect(TaskDetailEffect.ShowSnackbar("Error deleting repeated instance: $errorMessage"))
+                    }
+                )
+            } else {
+                // Borrar tarea normal
+                executeTaskOperation<Unit>(
+                    setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                    operation = {
+                        deleteTaskUseCase(currentTask.id)
+                    },
+                    onSuccess = {
+                        setEffect(TaskDetailEffect.NavigateBack)
+                        setEffect(TaskDetailEffect.ShowSnackbar("Task deleted"))
+                    },
+                    onError = { errorMessage ->
+                        setState { copy(error = errorMessage) }
+                        setEffect(TaskDetailEffect.ShowSnackbar("Error deleting task: $errorMessage"))
+                    }
+                )
+            }
         }
     }
 
@@ -201,6 +253,88 @@ class TaskDetailViewModel(
     private fun navigateToEdit() {
         currentState.task?.let {
             setEffect(TaskDetailEffect.NavigateToEdit(it.id))
+        }
+    }
+
+    private fun deleteRepeatableTask(instanceIdentifier: String, deleteType: RepeatableDeleteType) {
+        viewModelScope.launch {
+            setState { copy(isLoading = true) }
+            when (deleteType) {
+                RepeatableDeleteType.INSTANCE -> {
+                    executeTaskOperation<Unit>(
+                        setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                        operation = {
+                            deleteRepeatableTaskUseCase.deleteInstance(instanceIdentifier)
+                        },
+                        onSuccess = {
+                            setEffect(TaskDetailEffect.NavigateBack)
+                            setEffect(TaskDetailEffect.ShowSnackbar("Instance deleted"))
+                        },
+                        onError = { errorMessage ->
+                            setState { copy(error = errorMessage) }
+                            setEffect(TaskDetailEffect.ShowSnackbar("Error deleting instance: $errorMessage"))
+                        }
+                    )
+                }
+
+                RepeatableDeleteType.FUTURE -> {
+                    executeTaskOperation<Unit>(
+                        setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                        operation = {
+                            deleteRepeatableTaskUseCase.deleteFutureInstances(instanceIdentifier)
+                        },
+                        onSuccess = {
+                            setEffect(TaskDetailEffect.NavigateBack)
+                            setEffect(TaskDetailEffect.ShowSnackbar("Instance and future deleted"))
+                        },
+                        onError = { errorMessage ->
+                            setState { copy(error = errorMessage) }
+                            setEffect(TaskDetailEffect.ShowSnackbar("Error deleting future instances: $errorMessage"))
+                        }
+                    )
+                }
+
+                RepeatableDeleteType.ALL -> {
+                    executeTaskOperation<Unit>(
+                        setLoadingState = { isLoading -> setState { copy(isLoading = isLoading) } },
+                        operation = {
+                            deleteRepeatableTaskUseCase.deleteAllInstances(instanceIdentifier)
+                        },
+                        onSuccess = {
+                            setEffect(TaskDetailEffect.NavigateBack)
+                            setEffect(TaskDetailEffect.ShowSnackbar("All instances deleted"))
+                        },
+                        onError = { errorMessage ->
+                            setState { copy(error = errorMessage) }
+                            setEffect(TaskDetailEffect.ShowSnackbar("Error deleting all instances: $errorMessage"))
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    fun deleteGeneratedInstanceByDate(date: String) {
+        deletedGeneratedInstanceDates.add(date)
+        // Fuerza la actualización del estado para re-renderizar la UI
+        setState { copy() }
+        setEffect(TaskDetailEffect.ShowSnackbar("Instancia generada eliminada"))
+    }
+
+    fun isInstanceDateDeleted(date: String): Boolean = deletedGeneratedInstanceDates.contains(date)
+
+    fun loadRepeatableInstances() {
+        viewModelScope.launch {
+            repeatableInstances = repeatableTaskInstanceManager.getInstancesForTask(taskId)
+            setState { copy() } // Actualiza la UI si es necesario
+        }
+    }
+
+    fun deleteRepeatableInstance(instanceIdentifier: String) {
+        viewModelScope.launch {
+            repeatableTaskInstanceManager.deleteInstanceByIdentifier(instanceIdentifier)
+            loadRepeatableInstances()
+            setEffect(TaskDetailEffect.ShowSnackbar("Instancia eliminada correctamente"))
         }
     }
 }

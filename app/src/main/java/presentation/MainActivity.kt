@@ -114,7 +114,7 @@ class MainActivity : ComponentActivity() {
 
                 if (shouldSeed) {
                     Log.i("MainActivity", "No tasks found, running DataSeeder.")
-                    dataSeeder.seedTasks(60)
+                    dataSeeder.seedTasks()
                 } else if (tasksResult is TaskResult.Success) {
                     Log.i(
                         "MainActivity",

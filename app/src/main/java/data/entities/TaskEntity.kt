@@ -45,6 +45,7 @@ data class TaskEntity(
     val scheduledStartDateTime: LocalDateTime? = null,
     val scheduledEndDateTime: LocalDateTime? = null,
     val completionDateTime: LocalDateTime? = null,
+    val createdDateTime: LocalDateTime = LocalDateTime.now(), // Nuevo campo para fecha de creación
     val lastUpdated: Long = System.currentTimeMillis(),
     val listId: Long? = null,
     val sectionId: Long? = null,

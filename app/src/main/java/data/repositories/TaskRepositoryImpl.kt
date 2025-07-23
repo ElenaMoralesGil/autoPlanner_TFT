@@ -1012,4 +1012,10 @@ class TaskRepositoryImpl(
                 TaskResult.Error(mapExceptionMessage(e), e)
             }
         }
+
+    override suspend fun getTaskByInstanceIdentifier(instanceIdentifier: String): Task? {
+        val entity = taskDao.getTaskByInstanceIdentifier(instanceIdentifier)
+        return entity?.let { taskMapper.mapToDomain(it) }
+    }
 }
+

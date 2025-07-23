@@ -83,6 +83,7 @@ class TaskMapper {
             .scheduledStartDateTime(taskEntity.scheduledStartDateTime)
             .scheduledEndDateTime(taskEntity.scheduledEndDateTime)
             .completionDateTime(taskEntity.completionDateTime)
+            .createdDateTime(taskEntity.createdDateTime) // Agregar createdDateTime
             .listId(taskEntity.listId)
             .sectionId(taskEntity.sectionId) 
             .displayOrder(taskEntity.displayOrder)
@@ -91,6 +92,9 @@ class TaskMapper {
             .sectionName(sectionName)
             .listColor(listColor)
             .allowSplitting(taskEntity.allowSplitting)
+            .isRepeatedInstance(taskEntity.isRepeatedInstance) // Agregar campos de repetición
+            .parentTaskId(taskEntity.parentTaskId)
+            .instanceIdentifier(taskEntity.instanceIdentifier)
             .build()
     }
 
@@ -109,13 +113,16 @@ class TaskMapper {
             scheduledStartDateTime = domain.scheduledStartDateTime,
             scheduledEndDateTime = domain.scheduledEndDateTime,
             completionDateTime = domain.completionDateTime,
+            createdDateTime = domain.createdDateTime, // Agregar createdDateTime
             lastUpdated = System.currentTimeMillis(),
             allowSplitting = domain.allowSplitting,
             listId = domain.listId,
             sectionId = domain.sectionId,
             displayOrder = domain.displayOrder,
             isDeleted = isDeletedFlag,
-
+            isRepeatedInstance = domain.isRepeatedInstance, // Agregar campos de repetición
+            parentTaskId = domain.parentTaskId,
+            instanceIdentifier = domain.instanceIdentifier,
         )
     }
 

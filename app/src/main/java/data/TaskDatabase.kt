@@ -17,6 +17,7 @@ import com.elena.autoplanner.data.entities.RepeatConfigEntity
 import com.elena.autoplanner.data.entities.SectionEntity
 import com.elena.autoplanner.data.entities.SubtaskEntity
 import com.elena.autoplanner.data.entities.TaskEntity
+import com.elena.autoplanner.domain.models.RepeatableTaskInstance
 
 @Database(
     entities = [
@@ -25,9 +26,10 @@ import com.elena.autoplanner.data.entities.TaskEntity
         RepeatConfigEntity::class,
         SubtaskEntity::class,
         ListEntity::class,
-        SectionEntity::class
+        SectionEntity::class,
+        RepeatableTaskInstance::class
     ],
-    version = 13,
+    version = 14, // Incrementar versión para la nueva migración
     exportSchema = true
 )
 @TypeConverters(
@@ -53,6 +55,7 @@ abstract class TaskDatabase : RoomDatabase() {
     abstract fun subtaskDao(): SubtaskDao
     abstract fun listDao(): ListDao         
     abstract fun sectionDao(): SectionDao
+    abstract fun repeatableTaskInstanceDao(): com.elena.autoplanner.data.dao.RepeatableTaskInstanceDao
 }
 
 val MIGRATION_6_7 = object : Migration(6, 7) {
@@ -159,5 +162,25 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
         // Crear índices para mejor rendimiento
         database.execSQL("CREATE INDEX IF NOT EXISTS index_tasks_parentTaskId ON tasks(parentTaskId)")
         database.execSQL("CREATE INDEX IF NOT EXISTS index_tasks_isRepeatedInstance ON tasks(isRepeatedInstance)")
+    }
+}
+
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Agregar campo createdDateTime para manejar tareas repetitivas sin fecha de inicio
+        database.execSQL("ALTER TABLE tasks ADD COLUMN createdDateTime TEXT NOT NULL DEFAULT '${java.time.LocalDateTime.now()}'")
+
+        // Crear tabla para instancias de tareas repetibles
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS repeatable_task_instances (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                parentTaskId INTEGER NOT NULL,
+                instanceIdentifier TEXT NOT NULL,
+                scheduledDateTime TEXT NOT NULL,
+                isCompleted INTEGER NOT NULL DEFAULT 0
+            )
+        """
+        )
     }
 }

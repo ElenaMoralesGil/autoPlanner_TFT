@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavHostController
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.presentation.effects.TaskDetailEffect
 import com.elena.autoplanner.presentation.effects.TaskEditEffect
@@ -40,7 +41,7 @@ import org.koin.core.parameter.parametersOf
 fun TasksScreen(
     onNavigateToPlanner: () -> Unit,
     listViewModel: TaskListViewModel,
-    navController: androidx.navigation.NavHostController,
+    navController: NavHostController,
 ) {
 
     val state by listViewModel.state.collectAsState()
@@ -142,9 +143,17 @@ fun TasksScreen(
                                     )
                                 },
                                 onTaskSelected = { task ->
+                                    // Manejar instancias repetidas especialmente
+                                    val taskIdToSelect =
+                                        if (task.isRepeatedInstance && task.parentTaskId != null) {
+                                            task.parentTaskId
+                                        } else {
+                                            task.id
+                                        }
+
                                     listViewModel.sendIntent(
                                         TaskListIntent.SelectTask(
-                                            task.id,
+                                            taskIdToSelect,
                                             task.instanceIdentifier
                                         )
                                     )
@@ -152,14 +161,15 @@ fun TasksScreen(
                                 onDelete = { task ->
                                     listViewModel.sendIntent(
                                         TaskListIntent.DeleteRepeatableTask(
-                                            task
+                                            task.copy(instanceIdentifier = task.instanceIdentifier)
                                         )
                                     )
                                 },
                                 onEdit = { task ->
                                     taskToEdit = task
                                     showAddEditSheet = true
-                                }
+                                },
+                                listViewModel = listViewModel
                             )
                         }
                     }

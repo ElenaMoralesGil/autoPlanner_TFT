@@ -110,6 +110,35 @@ fun CalendarScreen(
         }
     }
 
+    // NUEVO: Efecto para cargar tareas cuando cambie la fecha o vista del calendario
+    LaunchedEffect(calendarState?.currentDate, calendarState?.currentView) {
+        calendarState?.let { state ->
+            val (startDate, endDate) = when (state.currentView) {
+                CalendarView.DAY -> {
+                    // Para vista diaria: solo el día actual
+                    state.currentDate to state.currentDate
+                }
+
+                CalendarView.WEEK -> {
+                    // Para vista semanal: toda la semana
+                    val startOfWeek = state.currentDate.with(
+                        java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)
+                    )
+                    val endOfWeek = startOfWeek.plusDays(6)
+                    startOfWeek to endOfWeek
+                }
+
+                CalendarView.MONTH -> {
+                    // Para vista mensual: todo el mes
+                    val yearMonth = java.time.YearMonth.from(state.currentDate)
+                    yearMonth.atDay(1) to yearMonth.atEndOfMonth()
+                }
+            }
+
+            taskListViewModel.sendIntent(TaskListIntent.LoadTasksForDateRange(startDate, endDate))
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -133,33 +162,43 @@ fun CalendarScreen(
                 .fillMaxSize()
         ) {
             calendarState?.let { state ->
+                val taskDetailViewModel: TaskDetailViewModel =
+                    koinViewModel() // Obtener VM para el filtro
                 when (state.currentView) {
                     CalendarView.DAY -> tasksState?.tasks?.let { tasks ->
+                        val filteredTasks = tasks.filterNot { task ->
+                            val date = task.startDateConf?.dateTime?.toString() ?: ""
+                            taskDetailViewModel.isInstanceDateDeleted(date)
+                        }
                         DailyView(
                             selectedDate = state.currentDate,
-                            tasks = tasks.filter { it.isDueOn(state.currentDate) },
-                            onTaskSelected = onTaskSelected,
-                            calendarViewModel = calendarViewModel,
-                            tasksViewModel = taskListViewModel
-                        )
-                    }
-
-                    CalendarView.WEEK -> tasksState?.tasks?.let { tasks ->
-                        WeeklyView(
-                            tasks = tasks,
                             onTaskSelected = onTaskSelected,
                             calendarViewModel = calendarViewModel,
                             tasksViewModel = taskListViewModel,
-                            weekStartDateInput = calendarState!!.currentDate,
                         )
                     }
-
-                    CalendarView.MONTH -> tasksState?.tasks?.let { tasks ->
-                        MonthlyView(
-                            selectedMonth = YearMonth.from(state.currentDate),
-                            tasks = tasks,
+                    CalendarView.WEEK -> tasksState?.tasks?.let { tasks ->
+                        val filteredTasks = tasks.filterNot { task ->
+                            val date = task.startDateConf?.dateTime?.toString() ?: ""
+                            taskDetailViewModel.isInstanceDateDeleted(date)
+                        }
+                        WeeklyView(
+                            weekStartDateInput = calendarState!!.currentDate,
+                            tasks = filteredTasks,
                             onTaskSelected = onTaskSelected,
-                            calendarViewModel = calendarViewModel
+                            calendarViewModel = calendarViewModel,
+                            tasksViewModel = taskListViewModel,
+                        )
+                    }
+                    CalendarView.MONTH -> tasksState?.tasks?.let { tasks ->
+                        val filteredTasks = tasks.filterNot { task ->
+                            val date = task.startDateConf?.dateTime?.toString() ?: ""
+                            taskDetailViewModel.isInstanceDateDeleted(date)
+                        }
+                        MonthlyView(
+                            selectedMonth = java.time.YearMonth.from(calendarState!!.currentDate),
+                            onTaskSelected = onTaskSelected,
+                            calendarViewModel = calendarViewModel,
                         )
                     }
                 }
@@ -229,8 +268,8 @@ fun CalendarScreen(
 
             TaskDetailSheet(
                 taskId = taskId,
-                onDismiss = { selectedTaskId = null },
-                viewModel = detailViewModel
+                instanceIdentifier = selectedInstanceIdentifier,
+                onDismiss = { selectedTaskId = null }
             )
         }
 
