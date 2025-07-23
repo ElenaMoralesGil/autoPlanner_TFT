@@ -13,7 +13,6 @@ import java.time.temporal.TemporalAdjusters
 
 class GeneratePlanUseCase(
     private val taskCategorizer: TaskCategorizer,
-    private val recurrenceExpander: RecurrenceExpander,
     private val timelineManager: TimelineManager,
     private val taskPlacer: TaskPlacer,
     private val overdueTaskHandler: OverdueTaskHandler,
@@ -29,7 +28,11 @@ class GeneratePlanUseCase(
                 today
             )
 
-            val context = PlanningContext(input.tasks.filter { !it.isCompleted })
+            // Include both tasks and their instances in the planning context
+            val allTasks =
+                input.tasks.filter { !it.isCompleted } + input.tasks.flatMap { it.instances }
+            val context = PlanningContext(allTasks.distinctBy { it.id })
+
             Log.d(
                 "GeneratePlanUseCase",
                 "Phase 0: Preparation - Scope: $scheduleStartDate to $scheduleEndDate, Tasks: ${context.planningTaskMap.size}"
@@ -44,7 +47,7 @@ class GeneratePlanUseCase(
             )
             Log.d(
                 "GeneratePlanUseCase",
-                "After Overdue Handling: Tasks to Plan=${context.getTasksToPlan().size}, Postponed=${context.postponedTasks.size}, Manual=${context.expiredForResolution.size}"
+                "Overdue tasks handled."
             )
 
             val categorizationResult = taskCategorizer.categorizeTasks(

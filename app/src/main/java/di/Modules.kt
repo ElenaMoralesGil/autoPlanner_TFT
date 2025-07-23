@@ -46,7 +46,6 @@ import com.elena.autoplanner.domain.usecases.lists.SaveListUseCase
 import com.elena.autoplanner.domain.usecases.lists.SaveSectionUseCase
 import com.elena.autoplanner.domain.usecases.planner.GeneratePlanUseCase
 import com.elena.autoplanner.domain.usecases.planner.OverdueTaskHandler
-import com.elena.autoplanner.domain.usecases.planner.RecurrenceExpander
 import com.elena.autoplanner.domain.usecases.planner.TaskCategorizer
 import com.elena.autoplanner.domain.usecases.planner.TaskPlacer
 import com.elena.autoplanner.domain.usecases.planner.TaskPrioritizer
@@ -206,13 +205,11 @@ val useCaseModule = module {
 
     single { TaskPrioritizer() }
     single { TaskCategorizer() }
-    single { RecurrenceExpander() }
     single { TimelineManager() }
     single { OverdueTaskHandler() }
     single { TaskPlacer() }
     single {
         GeneratePlanUseCase(
-            get(),
             get(),
             get(),
             get(),
