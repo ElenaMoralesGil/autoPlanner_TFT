@@ -17,7 +17,7 @@ class CompleteRepeatableTaskUseCase(
             if (task.isRepeatedInstance) {
                 // Para instancias repetidas, solo marcar como completada, NO crear nueva instancia
                 handleInstanceCompletion(task)
-            } else if (task.repeatPlan != null && task.repeatPlan.isEnabled) {
+            } else if (task.repeatPlan != null) {
                 // Para tareas padre con repetición, marcar como completada Y generar siguiente instancia
                 handleParentTaskCompletion(task)
             } else {

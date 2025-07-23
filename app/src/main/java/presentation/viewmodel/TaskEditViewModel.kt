@@ -171,7 +171,7 @@ class TaskEditViewModel(
                     setEffect(TaskEditEffect.NavigateBack)
                     setEffect(TaskEditEffect.ShowSnackbar(message))
                     // Si la tarea tiene repetición, generar y guardar instancias
-                    if (taskToSave.repeatPlan != null && taskToSave.repeatPlan.isEnabled) {
+                    if (taskToSave.repeatPlan != null) {
                         val parentTask = taskToSave.copy(id = savedTaskId)
                         viewModelScope.launch {
                             repeatableTaskGenerator.generateInstancesForNewTask(parentTask)

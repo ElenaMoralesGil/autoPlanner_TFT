@@ -66,7 +66,6 @@ data class RepeatPlan(
     val setPos: List<Int> = emptyList(),
 
     // Sistema NUEVO (para tareas repetibles con instancias pre-generadas)
-    val isEnabled: Boolean = false,
     val frequency: RepeatFrequency = RepeatFrequency.DAILY,
     val intervalNew: Int = 1,
     val monthlyRepeatType: MonthlyRepeatType = MonthlyRepeatType.BY_DAY,
@@ -93,25 +92,6 @@ data class RepeatPlan(
                     (endDate == null && maxOccurrences == null)
         ) { "Cannot mix old and new end date/occurrence configurations" }
     }
-
-    // Funciones de conveniencia para compatibilidad
-    fun isRepeatEnabled(): Boolean = isEnabled || frequencyType != FrequencyType.NONE
-
-    fun getEffectiveFrequency(): RepeatFrequency {
-        return when {
-            isEnabled -> frequency
-            frequencyType != FrequencyType.NONE -> when (frequencyType) {
-                FrequencyType.DAILY -> RepeatFrequency.DAILY
-                FrequencyType.WEEKLY -> RepeatFrequency.WEEKLY
-                FrequencyType.MONTHLY -> RepeatFrequency.MONTHLY
-                FrequencyType.YEARLY -> RepeatFrequency.YEARLY
-                else -> RepeatFrequency.DAILY
-            }
-
-            else -> RepeatFrequency.DAILY
-        }
-    }
-
 
     fun shouldGenerateInstanceOn(dateTime: LocalDateTime): Boolean {
         val date = dateTime.toLocalDate()

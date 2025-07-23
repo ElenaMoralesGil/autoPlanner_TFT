@@ -18,13 +18,6 @@ class SaveTaskUseCase(
         }
 
         val isNewTask = task.id == 0
-        val hadRepeatPlan = if (!isNewTask) {
-            // Para tareas existentes, verificar si tenía plan de repetición antes
-            when (val existingResult = taskRepository.getTask(task.id)) {
-                is TaskResult.Success -> existingResult.data.repeatPlan?.isEnabled == true
-                is TaskResult.Error -> false
-            }
-        } else false
 
         // Guardar la tarea principal
         val saveResult = taskRepository.saveTask(task)
@@ -55,40 +48,36 @@ class SaveTaskUseCase(
                     .instanceIdentifier(task.instanceIdentifier)
                     .build()
 
-                // Manejar la generación de instancias para tareas repetibles
-                if (taskWithId.repeatPlan?.isEnabled == true) {
-                    if (isNewTask) {
-                        // Nueva tarea repetible: generar todas las instancias
-                        when (val generateResult =
-                            repeatableTaskGenerator.generateInstancesForNewTask(taskWithId)) {
-                            is TaskResult.Success -> {
-                                TaskResult.Success(savedTaskId)
-                            }
+                val hadRepeatPlan = task.repeatPlan != null
 
-                            is TaskResult.Error -> {
-                                taskRepository.deleteTask(savedTaskId)
-                                TaskResult.Error("Error generating task instances: ${generateResult.message}")
-                            }
+                // Manejar la generación de instancias para tareas repetibles
+                if (isNewTask) {
+                    // Nueva tarea repetible: generar todas las instancias
+                    when (val generateResult =
+                        repeatableTaskGenerator.generateInstancesForNewTask(taskWithId)) {
+                        is TaskResult.Success -> {
+                            TaskResult.Success(savedTaskId)
                         }
-                    } else {
-                        // Tarea existente modificada: regenerar instancias con la nueva configuración
-                        if (hadRepeatPlan) {
-                            // Ya tenía repetición, regenerar instancias futuras
-                            repeatableTaskGenerator.regenerateInstancesForUpdatedTask(taskWithId)
-                        } else {
-                            // No tenía repetición antes, generar instancias nuevas
-                            repeatableTaskGenerator.generateInstancesForNewTask(taskWithId)
+
+                        is TaskResult.Error -> {
+                            taskRepository.deleteTask(savedTaskId)
+                            return TaskResult.Error("Error generating task instances: ${generateResult.message}")
                         }
-                        TaskResult.Success(savedTaskId)
                     }
                 } else {
-                    // Tarea no repetible o repetición deshabilitada
-                    if (!isNewTask && hadRepeatPlan) {
-                        // Se deshabilitó la repetición, eliminar solo instancias futuras no modificadas
+                    // Tarea existente modificada: regenerar instancias con la nueva configuración
+                    if (hadRepeatPlan) {
+                        // Ya tenía repetición, regenerar instancias futuras
                         repeatableTaskGenerator.cleanupInstancesWhenDisabled(savedTaskId)
+                        repeatableTaskGenerator.regenerateInstancesForUpdatedTask(taskWithId)
+                    } else {
+                        // Limpiar instancias si no hay repetición o generar nuevas si hay configuración
+                        repeatableTaskGenerator.cleanupInstancesWhenDisabled(savedTaskId)
+                        repeatableTaskGenerator.generateInstancesForNewTask(taskWithId)
                     }
-                    TaskResult.Success(savedTaskId)
                 }
+
+                return TaskResult.Success(savedTaskId)
             }
 
             is TaskResult.Error -> saveResult

@@ -15,7 +15,7 @@ class RepeatableTaskGenerator(
      * Genera instancias de una tarea repetible cuando se crea inicialmente
      */
     suspend fun generateInstancesForNewTask(parentTask: Task): TaskResult<List<Int>> {
-        if (parentTask.repeatPlan == null || !parentTask.repeatPlan.isEnabled) {
+        if (parentTask.repeatPlan == null) {
             return TaskResult.Success(emptyList())
         }
 
@@ -188,7 +188,7 @@ class RepeatableTaskGenerator(
      */
     suspend fun generateNextInstanceAfterCompletion(completedTask: Task): TaskResult<Task?> {
         // Solo generar si es una tarea padre con repetición habilitada
-        if (completedTask.isRepeatedInstance || completedTask.repeatPlan == null || !completedTask.repeatPlan.isEnabled) {
+        if (completedTask.isRepeatedInstance || completedTask.repeatPlan == null) {
             return TaskResult.Success(null)
         }
 
@@ -301,7 +301,7 @@ class RepeatableTaskGenerator(
      * Regenera instancias futuras cuando se modifica una tarea repetible
      */
     suspend fun regenerateInstancesForUpdatedTask(updatedParentTask: Task): TaskResult<Unit> {
-        if (updatedParentTask.repeatPlan == null || !updatedParentTask.repeatPlan.isEnabled) {
+        if (updatedParentTask.repeatPlan == null) {
             // Si se deshabilitó la repetición, eliminar instancias futuras
             return cleanupInstancesWhenDisabled(updatedParentTask.id)
         }

@@ -110,7 +110,7 @@ class GetExpandedTasksUseCase(
                 parentTasks.add(task)
                 Log.d(
                     "GetExpandedTasksUseCase",
-                    "Found parent task: ${task.name}, hasRepeat: ${task.repeatPlan != null}, isEnabled: ${task.repeatPlan?.isEnabled}"
+                    "Found parent task: ${task.name}, hasRepeat: ${task.repeatPlan != null}, "
                 )
             }
         }
@@ -122,7 +122,6 @@ class GetExpandedTasksUseCase(
             // CORRECCIÓN COMPLETA: Verificar TODOS los posibles indicadores de repetición
             val hasRepeatConfig = parentTask.repeatPlan != null && (
                     // Sistema NUEVO
-                    parentTask.repeatPlan.isEnabled ||
                             parentTask.repeatPlan.frequency != RepeatFrequency.DAILY ||
                             parentTask.repeatPlan.intervalNew > 1 ||
                             parentTask.repeatPlan.endDate != null ||
@@ -143,7 +142,7 @@ class GetExpandedTasksUseCase(
                 Log.d("GetExpandedTasksUseCase", "Processing repeatable task: ${parentTask.name}")
                 Log.d(
                     "GetExpandedTasksUseCase",
-                    "Repeat details - isEnabled: ${parentTask.repeatPlan.isEnabled}, selectedDays: ${parentTask.repeatPlan.selectedDays}, frequencyType: ${parentTask.repeatPlan.frequencyType}"
+                    ", selectedDays: ${parentTask.repeatPlan.selectedDays}, frequencyType: ${parentTask.repeatPlan.frequencyType}"
                 )
 
                 // Para tareas repetibles, generar instancias dinámicamente
@@ -226,7 +225,13 @@ class GetExpandedTasksUseCase(
         }
 
         Log.d("GetExpandedTasksUseCase", "Total result tasks: ${resultTasks.size}")
-        return resultTasks.sortedBy {
+
+        // Combinar instancias existentes con las tareas principales para la planificación
+        val allPlannedTasks = resultTasks + instanceTasks.filter { instance ->
+            resultTasks.none { it.id == instance.id }
+        }
+
+        return allPlannedTasks.sortedBy {
             it.startDateConf?.dateTime ?: it.createdDateTime
         }
     }
@@ -244,7 +249,7 @@ class GetExpandedTasksUseCase(
         Log.d("GetExpandedTasksUseCase", "Generando instancias para tarea: ${parentTask.name}")
         Log.d(
             "GetExpandedTasksUseCase",
-            "RepeatPlan - isEnabled: ${repeatPlan.isEnabled}, selectedDays: ${repeatPlan.selectedDays}, frequencyType: ${repeatPlan.frequencyType}"
+            ", selectedDays: ${repeatPlan.selectedDays}, frequencyType: ${repeatPlan.frequencyType}"
         )
 
         // Determinar fecha de inicio de la tarea
@@ -393,10 +398,8 @@ class GetExpandedTasksUseCase(
             val interval = repeatPlan.interval ?: 1
 
             while (currentDate <= endDate && instanceNumber <= maxInstances) {
-                // Solo agregar instancias que caen dentro del rango de planificación
-                if (currentDate in startDate..endDate) {
-                    instances.add(createTaskInstance(parentTask, currentDate, instanceNumber))
-                }
+                // Generar instancias para cada día dentro del rango de planificación
+                instances.add(createTaskInstance(parentTask, currentDate, instanceNumber))
                 instanceNumber++
 
                 currentDate = when (repeatPlan.frequencyType) {
@@ -554,8 +557,11 @@ class GetExpandedTasksUseCase(
                             instanceNumber++
                         }
                         // Día inválido para este mes
-                    } catch (Exception) {
-                        // Día inválido para este mes
+                    } catch (e: Exception) {
+                        Log.w(
+                            "GetExpandedTasksUseCase",
+                            "Invalid day of month $dayOfMonth for month ${currentMonth.month}: ${e.message}"
+                        )
                     }
                 }
                 currentMonth = currentMonth.plusMonths(1)

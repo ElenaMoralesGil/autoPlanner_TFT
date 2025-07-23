@@ -24,7 +24,7 @@ class SaveRepeatableTaskUseCase(
                     val savedTask = task.copy(id = savedTaskId)
 
                     // Si es una nueva tarea con repetición, generar instancias
-                    if (isNewTask && task.repeatPlan?.isEnabled == true) {
+                    if (isNewTask) {
                         when (val instancesResult =
                             repeatableTaskGenerator.generateInstancesForNewTask(savedTask)) {
                             is TaskResult.Success -> {
@@ -36,11 +36,11 @@ class SaveRepeatableTaskUseCase(
                                 TaskResult.Success(savedTask)
                             }
                         }
-                    } else if (!isNewTask && task.repeatPlan?.isEnabled == true) {
+                    } else if (!isNewTask) {
                         // Si es una actualización y tiene repetición, regenerar instancias
                         repeatableTaskGenerator.regenerateInstancesForUpdatedTask(savedTask)
                         TaskResult.Success(savedTask)
-                    } else if (!isNewTask && (task.repeatPlan == null || !task.repeatPlan.isEnabled)) {
+                    } else if (!isNewTask && (task.repeatPlan == null)) {
                         // Si se deshabilitó la repetición, limpiar instancias
                         repeatableTaskGenerator.cleanupInstancesWhenDisabled(savedTaskId)
                         TaskResult.Success(savedTask)

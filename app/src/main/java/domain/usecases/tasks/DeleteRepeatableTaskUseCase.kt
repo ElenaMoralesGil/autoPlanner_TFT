@@ -13,7 +13,7 @@ class DeleteRepeatableTaskUseCase(
      * Checks if a task needs special delete options (for repeatable tasks)
      */
     fun needsDeleteOptions(task: Task): Boolean {
-        return (task.repeatPlan != null && task.repeatPlan.isEnabled) || task.isRepeatedInstance
+        return (task.repeatPlan != null) || task.isRepeatedInstance
     }
 
     /**
@@ -22,7 +22,7 @@ class DeleteRepeatableTaskUseCase(
     suspend fun execute(task: Task, option: RepeatTaskDeleteOption): TaskResult<Unit> {
         return when {
             task.isRepeatedInstance -> handleInstanceDeletion(task, option)
-            task.repeatPlan != null && task.repeatPlan.isEnabled -> handleParentTaskDeletion(
+            task.repeatPlan != null -> handleParentTaskDeletion(
                 task,
                 option
             )
@@ -174,7 +174,7 @@ class DeleteRepeatableTaskUseCase(
             .endDateConf(parentTask.endDateConf)
             .durationConf(parentTask.durationConf)
             .reminderPlan(parentTask.reminderPlan)
-            .repeatPlan(parentTask.repeatPlan?.copy(isEnabled = false)) // Deshabilitar repetición
+            .repeatPlan(parentTask.repeatPlan?.copy()) // Deshabilitar repetición
             .subtasks(parentTask.subtasks)
             .scheduledStartDateTime(parentTask.scheduledStartDateTime)
             .scheduledEndDateTime(parentTask.scheduledEndDateTime)
