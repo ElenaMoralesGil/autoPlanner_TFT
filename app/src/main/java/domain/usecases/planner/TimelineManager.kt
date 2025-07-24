@@ -186,6 +186,7 @@ class TimelineManager {
         if (!taskBlockInserted) newBlockList.add(taskBlock)
         daySchedule.blocks.clear()
         daySchedule.blocks.addAll(mergeAdjacentBlocks(newBlockList.sorted()))
+
         return PlacementResultInternal.Success(taskBlock)
     }
 

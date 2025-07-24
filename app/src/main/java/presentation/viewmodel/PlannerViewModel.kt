@@ -2,6 +2,7 @@ package com.elena.autoplanner.presentation.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.viewModelScope
+import com.elena.autoplanner.domain.exceptions.TaskValidationException
 import com.elena.autoplanner.domain.models.ConflictItem
 import com.elena.autoplanner.domain.models.DayOrganization
 import com.elena.autoplanner.domain.models.DayPeriod
@@ -279,7 +280,7 @@ class PlannerViewModel(
                 setState {
                     copy(
                         isLoading = false,
-                        workStartTime = effectiveWorkStartTime, 
+                        workStartTime = effectiveWorkStartTime,
                         generatedPlan = plannerOutput.scheduledTasks,
                         expiredTasksToResolve = plannerOutput.unresolvedExpired,
                         conflictsToResolve = plannerOutput.unresolvedConflicts,
@@ -329,7 +330,6 @@ class PlannerViewModel(
             }
         }
 
-        // Si se selecciona MOVE_TO_TOMORROW, regenerar el plan automáticamente
         if (resolution == ResolutionOption.MOVE_TO_TOMORROW) {
             Log.d("PlannerVM", "Auto-regenerating plan due to MOVE_TO_TOMORROW resolution")
             executePlanGeneration()
@@ -367,6 +367,15 @@ class PlannerViewModel(
 
                 executeSaveOperations(tasksToUpdate)
 
+            } catch (e: TaskValidationException) {
+                Log.e("PlannerVM", "Validation error during savePlan execution", e)
+                setState {
+                    copy(
+                        isLoading = false,
+                        error = "Validation failed: ${e.message}"
+                    )
+                }
+                setEffect(PlannerEffect.ShowSnackbar("Validation error: ${e.message}"))
             } catch (e: Exception) {
                 Log.e("PlannerVM", "Exception during savePlan execution", e)
                 setState {
@@ -513,8 +522,20 @@ class PlannerViewModel(
                         dayPeriod = DayPeriod.NONE
                     )
 
+                    var finalEndDateConf = taskBeforeScheduling.endDateConf
+                    if (finalEndDateConf?.dateTime != null && finalEndDateConf.dateTime.isBefore(
+                            newScheduledStartTime
+                        )
+                    ) {
+                        finalEndDateConf = TimePlanning(
+                            dateTime = newScheduledStartTime,
+                            dayPeriod = DayPeriod.NONE
+                        )
+                    }
+
                     tasksToUpdate[taskId] = Task.from(taskBeforeScheduling)
                         .startDateConf(finalStartDateConf)
+                        .endDateConf(finalEndDateConf)
                         .scheduledStartDateTime(newScheduledStartTime)
                         .scheduledEndDateTime(newScheduledEndTime)
                         .build()

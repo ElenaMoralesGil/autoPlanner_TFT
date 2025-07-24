@@ -83,7 +83,7 @@ class GeneratePlanUseCase(
             taskPlacer.placeFixedTasks(
                 timelineManager,
                 categorizationResult.fixedOccurrences,
-                context
+                context,
             )
 
             Log.i("GeneratePlanUseCase", "--- Phase 2: Place Prioritized Remaining Tasks ---")

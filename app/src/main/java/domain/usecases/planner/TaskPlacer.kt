@@ -128,6 +128,7 @@ class TaskPlacer(
                         context
                     )
 
+
                 } else {
 
                     val daySchedule = timelineManager.getDaySchedule(startDate)
@@ -170,6 +171,8 @@ class TaskPlacer(
                             daySchedule,
                             context
                         )
+
+
                     }
                 }
             }
