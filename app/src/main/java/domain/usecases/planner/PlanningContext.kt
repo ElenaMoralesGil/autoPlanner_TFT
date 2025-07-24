@@ -19,8 +19,11 @@ class PlanningContext(initialTasks: List<Task>) {
     val placedTaskIds: MutableSet<Int> =
         mutableSetOf()
 
+    // ✅ CORRECCIÓN CRÍTICA: Permitir que tareas postponed se procesen para planificación
     fun getTasksToPlan(): Collection<PlanningTask> = planningTaskMap.values.filterNot {
-        placedTaskIds.contains(it.id) || it.flags.isPostponed || it.flags.needsManualResolution
+        placedTaskIds.contains(it.id) || it.flags.needsManualResolution
+        // Removido: || it.flags.isPostponed
+        // Las tareas postponed DEBEN procesarse para ser planificadas automáticamente
     }
 
     fun addConflict(conflict: ConflictItem, taskIdToMarkHandled: Int?) {
@@ -50,13 +53,12 @@ class PlanningContext(initialTasks: List<Task>) {
         }
     }
 
+    // ✅ CORRECCIÓN CRÍTICA: No marcar tareas postponed como "placed" automáticamente
     fun addPostponedTask(task: Task) {
         if (postponedTasks.none { it.id == task.id }) {
             postponedTasks.add(task)
         }
 
-        planningTaskMap[task.id]?.flags?.isPostponed = true
-        placedTaskIds.add(task.id)
     }
 
     fun addExpiredForManualResolution(task: Task) {

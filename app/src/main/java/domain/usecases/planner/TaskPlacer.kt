@@ -40,6 +40,11 @@ class TaskPlacer(
                 val task = planningTask.task
                 if (context.placedTaskIds.contains(task.id)) return@fixedLoop
 
+                Log.d("DEBUG_PLACEMENT", "")
+                Log.d("DEBUG_PLACEMENT", "=== COLOCANDO TAREA FIJA: '${task.name}' ===")
+                Log.d("DEBUG_PLACEMENT", "occurrenceTime: $occurrenceTime")
+                Log.d("DEBUG_PLACEMENT", "duration: ${task.effectiveDurationMinutes} minutos")
+
                 val duration =
                     Duration.ofMinutes(task.effectiveDurationMinutes.toLong().coerceAtLeast(1))
                 if (duration <= Duration.ZERO) {
@@ -57,6 +62,9 @@ class TaskPlacer(
                 val endTime = occurrenceTime.plus(duration)
                 val startDate = occurrenceTime.toLocalDate()
                 val endDate = endTime.toLocalDate()
+
+                Log.d("DEBUG_PLACEMENT", "Calculado endTime: $endTime")
+                Log.d("DEBUG_PLACEMENT", "startDate: $startDate, endDate: $endDate")
 
                 if (startDate != endDate) {
                     val startDaySchedule = timelineManager.getDaySchedule(startDate)
@@ -101,8 +109,8 @@ class TaskPlacer(
                     }
 
                     Log.d(
-                        "TaskPlacer",
-                        "Placed multi-day fixed ${task.id} from $occurrenceTime to $endTime"
+                        "DEBUG_PLACEMENT",
+                        "✅ Colocada tarea multi-día: ${task.name} de $occurrenceTime a $endTime"
                     )
                     context.addScheduledItem(
                         ScheduledTaskItem(
@@ -143,6 +151,10 @@ class TaskPlacer(
                     )
                     reportPlacementResult(result, task, occurrenceTime, context)
                     if (result is PlacementResultInternal.Success) {
+                        Log.d(
+                            "DEBUG_PLACEMENT",
+                            "✅ Colocada tarea fija: ${task.name} de ${occurrenceTime.toLocalTime()} a ${endTime.toLocalTime()} el $startDate"
+                        )
                         context.addScheduledItem(
                             ScheduledTaskItem(
                                 task,
@@ -220,7 +232,12 @@ class TaskPlacer(
         scopeEndDate: LocalDate,
     ) {
         val task = planningTask.task
-        Log.d("TaskPlacer", "Attempting prioritized placement for Task ${task.id} ('${task.name}')")
+
+        Log.d("DEBUG_PLACEMENT", "")
+        Log.d("DEBUG_PLACEMENT", "=== COLOCANDO TAREA PRIORIZADA: '${task.name}' ===")
+        Log.d("DEBUG_PLACEMENT", "taskStartPeriod: ${task.startDateConf?.dayPeriod}")
+        Log.d("DEBUG_PLACEMENT", "isOverdue: ${planningTask.flags.isOverdue}")
+        Log.d("DEBUG_PLACEMENT", "constraintDate: ${planningTask.flags.constraintDate}")
 
         val totalDuration =
             Duration.ofMinutes(task.effectiveDurationMinutes.toLong().coerceAtLeast(1))
@@ -249,6 +266,64 @@ class TaskPlacer(
             ?: scopeEndDate
 
         when {
+            // ✅ CORRECCIÓN CRÍTICA: Manejo mejorado de tareas vencidas con constraint date
+            planningTask.flags.isOverdue && planningTask.flags.constraintDate != null -> {
+                val constraintDate = planningTask.flags.constraintDate!!
+                Log.v(
+                    "TaskPlacer",
+                    "Task ${task.id} - Type: Overdue with constraint date ($constraintDate)"
+                )
+
+                val daySchedule = timelineManager.getDaySchedule(constraintDate)
+
+                // ✅ CORRECCIÓN: Para tareas vencidas, usar la constraint date como referencia temporal
+                minSearchTime = when {
+                    constraintDate == today -> maxOf(
+                        LocalDateTime.now(),
+                        constraintDate.atTime(daySchedule?.workStartTime ?: input.workStartTime)
+                    )
+
+                    else -> constraintDate.atTime(daySchedule?.workStartTime ?: input.workStartTime)
+                }
+
+                // ✅ CORRECCIÓN CRÍTICA: Para tareas vencidas, maxSearchTime debe ser DESPUÉS de minSearchTime
+                maxSearchTime = when {
+                    // Si la tarea tiene período específico, respetar la ventana del período
+                    taskStartPeriod != DayPeriod.NONE && taskStartPeriod != DayPeriod.ALLDAY -> {
+                        val (periodStart, periodEnd) = calculateEffectivePeriodWindow(
+                            daySchedule ?: DaySchedule(
+                                constraintDate,
+                                input.workStartTime,
+                                input.workEndTime
+                            ),
+                            taskStartPeriod,
+                            timelineManager
+                        )
+                        constraintDate.atTime(periodEnd)
+                    }
+                    // Para tareas vencidas sin período, usar todo el día de trabajo
+                    else -> {
+                        val workEndTime = daySchedule?.workEndTime ?: input.workEndTime
+                        if (workEndTime <= (daySchedule?.workStartTime ?: input.workStartTime)) {
+                            constraintDate.plusDays(1).atTime(workEndTime)
+                        } else {
+                            constraintDate.atTime(workEndTime)
+                        }
+                    }
+                }
+
+                // Si la tarea tiene período específico, ajustar la occupancy
+                if (taskStartPeriod != DayPeriod.NONE && taskStartPeriod != DayPeriod.ALLDAY) {
+                    placementOccupancy = Occupancy.PERIOD_TASK
+                }
+
+                isFlexible = true
+
+                Log.d(
+                    "DEBUG_PLACEMENT",
+                    "Constraint-based search window: $minSearchTime -> $maxSearchTime"
+                )
+            }
 
             planningTask.flags.isOverdue && planningTask.flags.constraintDate == today -> {
                 Log.v("TaskPlacer", "Task ${task.id} - Type: Overdue Today")
@@ -280,7 +355,24 @@ class TaskPlacer(
 
             taskStartPeriod != DayPeriod.NONE && taskStartPeriod != DayPeriod.ALLDAY -> {
                 Log.v("TaskPlacer", "Task ${task.id} - Type: Period (${taskStartPeriod})")
-                val targetDate = taskStartDate ?: today
+
+                // ✅ CORRECCIÓN CRÍTICA: Para tareas con período, usar la fecha objetivo del scope
+                val targetDate = when {
+                    // Si la tarea está marcada como vencida con constraint date, usar esa fecha
+                    planningTask.flags.isOverdue && planningTask.flags.constraintDate != null ->
+                        planningTask.flags.constraintDate!!
+                    // ✅ NUEVO: Si solo tiene constraint date (sin ser overdue), usar esa fecha
+                    planningTask.flags.constraintDate != null ->
+                        planningTask.flags.constraintDate!!
+                    // Si tiene fecha específica y está dentro del scope, usarla
+                    taskStartDate != null && taskStartDate in scopeStartDate..scopeEndDate ->
+                        taskStartDate
+                    // ✅ NUEVO: Si es para scope mañana, usar mañana independientemente de la fecha original
+                    else -> scopeStartDate
+                }
+
+                Log.d("DEBUG_PLACEMENT", "targetDate calculado: $targetDate")
+
                 val daySchedule = timelineManager.getDaySchedule(targetDate)
                 if (daySchedule != null && targetDate >= scopeStartDate && targetDate <= scopeEndDate) {
                     val (periodStart, periodEnd) = calculateEffectivePeriodWindow(
@@ -292,6 +384,8 @@ class TaskPlacer(
                     maxSearchTime = targetDate.atTime(periodEnd)
                     placementOccupancy = Occupancy.PERIOD_TASK
                     isFlexible = taskEndDate?.let { it > targetDate } ?: false
+
+                    Log.d("DEBUG_PLACEMENT", "Period window: $minSearchTime to $maxSearchTime")
                 } else {
 
                     Log.v(
@@ -357,14 +451,36 @@ class TaskPlacer(
             }
         }
 
+        // ✅ VALIDACIÓN CRÍTICA: Asegurar que maxSearchTime > minSearchTime
+        if (maxSearchTime <= minSearchTime) {
+            Log.w(
+                "TaskPlacer",
+                "Task ${task.id}: Invalid search window - maxSearchTime ($maxSearchTime) <= minSearchTime ($minSearchTime). Adjusting..."
+            )
+
+            // Para tareas vencidas, extender el rango hasta el final del scope
+            if (planningTask.flags.isOverdue) {
+                maxSearchTime = scopeEndDate.plusDays(1).atStartOfDay()
+                Log.d(
+                    "TaskPlacer",
+                    "Task ${task.id}: Extended overdue task search window to: $minSearchTime -> $maxSearchTime"
+                )
+            } else {
+                // Para tareas no vencidas, mover minSearchTime al inicio del scope
+                minSearchTime = scopeStartDate.atStartOfDay()
+                Log.d(
+                    "TaskPlacer",
+                    "Task ${task.id}: Adjusted search window to: $minSearchTime -> $maxSearchTime"
+                )
+            }
+        }
+
         // Asegurar que nunca se programe en el pasado
         val now = LocalDateTime.now()
         minSearchTime = maxOf(minSearchTime, now)
 
-        Log.d(
-            "TaskPlacer",
-            "Task ${task.id}: Primary search window: $minSearchTime -> $maxSearchTime"
-        )
+        Log.d("DEBUG_PLACEMENT", "Final search window: $minSearchTime -> $maxSearchTime")
+
         var placementResult = findAndPlaceFlexibleTask(
             timelineManager = timelineManager,
             task = task,
@@ -379,7 +495,7 @@ class TaskPlacer(
 
         when (placementResult) {
             is PlacementResult.Success -> {
-                Log.d("TaskPlacer", "Successfully placed task ${task.id} in primary window.")
+                Log.d("DEBUG_PLACEMENT", "✅ Successfully placed task ${task.id} in primary window.")
                 context.placedTaskIds.add(task.id)
 
                 if (planningTask.flags.failedPeriod) {

@@ -5,6 +5,7 @@ import com.elena.autoplanner.domain.models.ConflictItem
 import com.elena.autoplanner.domain.models.ConflictType
 import com.elena.autoplanner.domain.models.PlannerInput
 import com.elena.autoplanner.domain.models.PlannerOutput
+import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.ScheduleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -110,8 +111,40 @@ class GeneratePlanUseCase(
                 "Prioritized ${sortedTasksToPlace.size} tasks for placement."
             )
 
+            // ✅ LOGGING CRÍTICO: Mostrar el orden de priorización claramente
+            Log.d("GeneratePlanUseCase", "=== ORDEN DE COLOCACIÓN DE TAREAS ===")
+            sortedTasksToPlace.forEachIndexed { index, planningTask ->
+                val score =
+                    taskPrioritizer.calculateRobustScore(planningTask, input.prioritizationStrategy)
+                val today = LocalDate.now()
+                val task = planningTask.task
+
+                val taskType = when {
+                    task.priority == Priority.HIGH && task.endDateConf?.dateTime?.toLocalDate() == today ->
+                        "🔥 HIGH_PRIORITY_TODAY"
+
+                    task.priority == Priority.MEDIUM && task.endDateConf?.dateTime?.toLocalDate() == today ->
+                        "⚡ MEDIUM_PRIORITY_TODAY"
+
+                    planningTask.flags.isOverdue || (planningTask.flags.constraintDate != null && task.isExpired()) ->
+                        "📋 OVERDUE_${task.priority}"
+
+                    planningTask.flags.constraintDate != null ->
+                        "🕐 CONSTRAINT_${task.priority}"
+
+                    else ->
+                        "📅 NORMAL_${task.priority}"
+                }
+
+                Log.d(
+                    "GeneratePlanUseCase",
+                    "${index + 1}. '${task.name}' [${taskType}] - Score: ${score.toInt()}"
+                )
+            }
+            Log.d("GeneratePlanUseCase", "=========================================")
+
             sortedTasksToPlace.forEach { planningTask ->
-                if (!context.placedTaskIds.contains(planningTask.id)) { 
+                if (!context.placedTaskIds.contains(planningTask.id)) {
                     taskPlacer.placePrioritizedTask(
                         planningTask = planningTask,
                         timelineManager = timelineManager,
