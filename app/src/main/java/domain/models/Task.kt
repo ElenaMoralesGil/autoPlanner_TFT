@@ -10,6 +10,7 @@ import kotlin.jvm.Transient
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.Ignore
+import java.time.Duration
 
 enum class ErrorCode {
     TASK_NAME_EMPTY,
@@ -113,8 +114,24 @@ data class Task private constructor(
         get() = startDateConf?.dateTime?.toLocalTime() ?: LocalTime.MIDNIGHT
 
     val effectiveDurationMinutes: Int
-        get() = (durationConf?.totalMinutes ?: 60).coerceAtLeast(0)
+        get() {
+            val startDateTime = startDateConf?.dateTime
+            val endDateTime = endDateConf?.dateTime
 
+            // ✅ Tareas fijas: calcular duración automática
+            if (startDateTime != null && endDateTime != null &&
+                startDateTime.toLocalDate() == endDateTime.toLocalDate()
+            ) {
+
+                val calculatedMinutes =
+                    Duration.between(startDateTime, endDateTime).toMinutes().toInt()
+                return if (calculatedMinutes > 0) calculatedMinutes else (durationConf?.totalMinutes
+                    ?: 60)
+            }
+
+            // ✅ Otras tareas: usar duración configurada
+            return (durationConf?.totalMinutes ?: 60)
+        }
     val effectiveAllowSplitting: Boolean
         get() = when {
             allowSplitting != null -> allowSplitting
