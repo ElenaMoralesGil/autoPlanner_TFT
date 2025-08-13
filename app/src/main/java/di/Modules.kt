@@ -12,20 +12,31 @@ import com.elena.autoplanner.data.MIGRATION_11_12
 import com.elena.autoplanner.data.MIGRATION_12_13
 import com.elena.autoplanner.data.MIGRATION_13_14 // Agregar nueva migración
 import com.elena.autoplanner.data.MIGRATION_14_15
+import com.elena.autoplanner.data.MIGRATION_16_17
 import com.elena.autoplanner.data.MIGRATION_6_7
 import com.elena.autoplanner.data.MIGRATION_7_8
 import com.elena.autoplanner.data.MIGRATION_8_9
 import com.elena.autoplanner.data.MIGRATION_9_10
 import com.elena.autoplanner.data.TaskDatabase
+import com.elena.autoplanner.data.dao.EventDao
+import com.elena.autoplanner.data.dao.HabitCompletionDao
+import com.elena.autoplanner.data.dao.HabitDao
 import com.elena.autoplanner.data.dao.ListDao
 import com.elena.autoplanner.data.dao.ReminderDao
 import com.elena.autoplanner.data.dao.RepeatConfigDao
 import com.elena.autoplanner.data.dao.SectionDao
 import com.elena.autoplanner.data.dao.SubtaskDao
 import com.elena.autoplanner.data.dao.TaskDao
+import com.elena.autoplanner.data.mappers.EventMapper
+import com.elena.autoplanner.data.mappers.HabitCompletionMapper
+import com.elena.autoplanner.data.mappers.HabitMapper
+import com.elena.autoplanner.data.repositories.EventRepositoryImpl
+import com.elena.autoplanner.data.repositories.HabitRepositoryImpl
 import com.elena.autoplanner.data.repositories.ListRepositoryImpl
 import com.elena.autoplanner.data.repositories.TaskRepositoryImpl
 import com.elena.autoplanner.data.repositories.UserRepositoryImpl
+import com.elena.autoplanner.domain.repositories.EventRepository
+import com.elena.autoplanner.domain.repositories.HabitRepository
 import com.elena.autoplanner.domain.repositories.ListRepository
 import com.elena.autoplanner.domain.repositories.TaskRepository
 import com.elena.autoplanner.domain.repositories.UserRepository
@@ -114,7 +125,7 @@ val appModule = module {
         )
             .addMigrations(
                 MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-                MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15
+                MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_16_17
             )
             .addCallback(roomCallback)
             .build()
@@ -129,6 +140,40 @@ val appModule = module {
 
     // DAO para instancias de tareas repetibles
     single { get<TaskDatabase>().repeatableTaskInstanceDao() }
+
+    // DAOs de Habits y Events
+    single<HabitDao> { get<TaskDatabase>().habitDao() }
+    single<HabitCompletionDao> { get<TaskDatabase>().habitCompletionDao() }
+    single<EventDao> { get<TaskDatabase>().eventDao() }
+
+    // Mappers de Habits y Events
+    single { HabitMapper() }
+    single { HabitCompletionMapper() }
+    single { EventMapper() }
+
+    // Repositorios de Habits y Events
+    single<HabitRepository> {
+        HabitRepositoryImpl(
+            habitDao = get(),
+            habitCompletionDao = get(),
+            habitMapper = get(),
+            habitCompletionMapper = get(),
+            userRepository = get(),
+            firestore = get(),
+            repoScope = get(),
+            dispatcher = Dispatchers.IO
+        )
+    }
+    single<EventRepository> {
+        EventRepositoryImpl(
+            eventDao = get(),
+            eventMapper = get(),
+            userRepository = get(),
+            firestore = get(),
+            repoScope = get(),
+            dispatcher = Dispatchers.IO
+        )
+    }
 
     // Usecase para instancias de tareas repetibles
     single { RepeatableTaskInstanceManager(get()) }

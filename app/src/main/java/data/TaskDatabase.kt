@@ -5,12 +5,19 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.elena.autoplanner.data.dao.EventDao
+import com.elena.autoplanner.data.dao.HabitCompletionDao
+import com.elena.autoplanner.data.dao.HabitDao
 import com.elena.autoplanner.data.dao.ListDao
 import com.elena.autoplanner.data.dao.ReminderDao
 import com.elena.autoplanner.data.dao.RepeatConfigDao
+import com.elena.autoplanner.data.dao.RepeatableTaskInstanceDao
 import com.elena.autoplanner.data.dao.SectionDao
 import com.elena.autoplanner.data.dao.SubtaskDao
 import com.elena.autoplanner.data.dao.TaskDao
+import com.elena.autoplanner.data.entities.EventEntity
+import com.elena.autoplanner.data.entities.HabitCompletionEntity
+import com.elena.autoplanner.data.entities.HabitEntity
 import com.elena.autoplanner.data.entities.ListEntity
 import com.elena.autoplanner.data.entities.ReminderEntity
 import com.elena.autoplanner.data.entities.RepeatConfigEntity
@@ -27,9 +34,12 @@ import com.elena.autoplanner.domain.models.RepeatableTaskInstance
         SubtaskEntity::class,
         ListEntity::class,
         SectionEntity::class,
+        HabitEntity::class,
+        EventEntity::class,
+        HabitCompletionEntity::class,
         RepeatableTaskInstance::class
     ],
-    version = 15, // Incrementar versión para la nueva migración
+    version = 17,
     exportSchema = true
 )
 @TypeConverters(
@@ -55,7 +65,10 @@ abstract class TaskDatabase : RoomDatabase() {
     abstract fun subtaskDao(): SubtaskDao
     abstract fun listDao(): ListDao         
     abstract fun sectionDao(): SectionDao
-    abstract fun repeatableTaskInstanceDao(): com.elena.autoplanner.data.dao.RepeatableTaskInstanceDao
+    abstract fun repeatableTaskInstanceDao(): RepeatableTaskInstanceDao
+    abstract fun habitDao(): HabitDao
+    abstract fun eventDao(): EventDao
+    abstract fun habitCompletionDao(): HabitCompletionDao
 }
 
 val MIGRATION_6_7 = object : Migration(6, 7) {
@@ -187,5 +200,29 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
 val MIGRATION_14_15 = object : Migration(14, 15) {
     override fun migrate(database: SupportSQLiteDatabase) {
         database.execSQL("ALTER TABLE repeatable_task_instances ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Agregar campos de Firebase a la tabla habits
+        database.execSQL("ALTER TABLE habits ADD COLUMN firestoreId TEXT")
+        database.execSQL("ALTER TABLE habits ADD COLUMN userId TEXT")
+
+        // Agregar campos de Firebase a la tabla habit_completions
+        database.execSQL("ALTER TABLE habit_completions ADD COLUMN firestoreId TEXT")
+        database.execSQL("ALTER TABLE habit_completions ADD COLUMN userId TEXT")
+
+        // Agregar campos de Firebase a la tabla events
+        database.execSQL("ALTER TABLE events ADD COLUMN firestoreId TEXT")
+        database.execSQL("ALTER TABLE events ADD COLUMN userId TEXT")
+
+        // Crear índices para mejor rendimiento en las consultas de Firebase
+        database.execSQL("CREATE INDEX IF NOT EXISTS index_habits_firestoreId ON habits(firestoreId)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS index_habits_userId ON habits(userId)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS index_habit_completions_firestoreId ON habit_completions(firestoreId)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS index_habit_completions_userId ON habit_completions(userId)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS index_events_firestoreId ON events(firestoreId)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS index_events_userId ON events(userId)")
     }
 }

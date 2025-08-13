@@ -35,6 +35,7 @@ data class TaskEntity(
     val userId: String? = null,
 
     val name: String,
+    val type: String,
     val isCompleted: Boolean,
     val priority: String,
     val startDateTime: LocalDateTime?,

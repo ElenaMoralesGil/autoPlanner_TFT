@@ -8,6 +8,7 @@ import com.elena.autoplanner.data.entities.SubtaskEntity
 import com.elena.autoplanner.data.entities.TaskEntity
 import com.elena.autoplanner.domain.models.DayPeriod
 import com.elena.autoplanner.domain.models.DurationPlan
+import com.elena.autoplanner.domain.models.PlannerItemType
 import com.elena.autoplanner.domain.models.Priority
 import com.elena.autoplanner.domain.models.Task
 import com.elena.autoplanner.domain.models.TaskInternalFlags
@@ -69,9 +70,17 @@ class TaskMapper {
         val internalFlags = TaskInternalFlags( 
             isMarkedForDeletion = taskEntity.isDeleted
         )
+        // Safe type parsing with fallback
+        val itemType = try {
+            PlannerItemType.valueOf(taskEntity.type)
+        } catch (e: IllegalArgumentException) {
+            PlannerItemType.TASK // Safe fallback
+        }
+
         return Task.Builder()
             .id(taskEntity.id)
             .name(taskEntity.name)
+            .type(itemType) // Add type configuration
             .isCompleted(taskEntity.isCompleted)
             .priority(mapPriority(taskEntity.priority))
             .startDateConf(startDateConf)
@@ -102,7 +111,10 @@ class TaskMapper {
         val isDeletedFlag = domain.internalFlags?.isMarkedForDeletion ?: false
         return TaskEntity(
             id = domain.id,
+            firestoreId = null,
+            userId = null,
             name = domain.name,
+            type = domain.type.name,
             isCompleted = domain.isCompleted,
             priority = domain.priority.name,
             startDateTime = domain.startDateConf?.dateTime,
@@ -113,16 +125,16 @@ class TaskMapper {
             scheduledStartDateTime = domain.scheduledStartDateTime,
             scheduledEndDateTime = domain.scheduledEndDateTime,
             completionDateTime = domain.completionDateTime,
-            createdDateTime = domain.createdDateTime, // Agregar createdDateTime
+            createdDateTime = domain.createdDateTime,
             lastUpdated = System.currentTimeMillis(),
-            allowSplitting = domain.allowSplitting,
             listId = domain.listId,
             sectionId = domain.sectionId,
             displayOrder = domain.displayOrder,
-            isDeleted = isDeletedFlag,
-            isRepeatedInstance = domain.isRepeatedInstance, // Agregar campos de repetición
+            allowSplitting = domain.allowSplitting,
+            isRepeatedInstance = domain.isRepeatedInstance,
             parentTaskId = domain.parentTaskId,
             instanceIdentifier = domain.instanceIdentifier,
+            isDeleted = isDeletedFlag,
         )
     }
 

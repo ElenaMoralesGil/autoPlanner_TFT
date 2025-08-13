@@ -29,8 +29,8 @@ data class TaskInternalFlags(
 )
 
 data class Task private constructor(
-    val id: Int,
-    val name: String,
+    override val id: Int,
+    override val name: String,
     val isCompleted: Boolean,
     val priority: Priority,
     val startDateConf: TimePlanning?,
@@ -40,7 +40,8 @@ data class Task private constructor(
     val repeatPlan: RepeatPlan?,
     val subtasks: List<Subtask>,
     val completionDateTime: LocalDateTime? = null,
-    val createdDateTime: LocalDateTime = LocalDateTime.now(),
+    override val createdDateTime: LocalDateTime = LocalDateTime.now(),
+    override val type: PlannerItemType = PlannerItemType.TASK,
     @Transient var internalFlags: TaskInternalFlags? = null,
     val scheduledStartDateTime: LocalDateTime? = null,
     val scheduledEndDateTime: LocalDateTime? = null,
@@ -54,7 +55,7 @@ data class Task private constructor(
     val isRepeatedInstance: Boolean = false,
     val parentTaskId: Int? = null,
     val instanceIdentifier: String? = null,
-) {
+) : PlannerItem {
     fun validate() {
         if (name.isBlank()) {
             throw TaskValidationException(ErrorCode.TASK_NAME_EMPTY)
@@ -147,6 +148,7 @@ data class Task private constructor(
         private var name: String = ""
         private var isCompleted: Boolean = false
         private var priority: Priority = Priority.NONE
+        private var type: PlannerItemType = PlannerItemType.TASK
         private var startDateConf: TimePlanning? = null
         private var endDateConf: TimePlanning? = null
         private var durationConf: DurationPlan? = null
@@ -173,6 +175,7 @@ data class Task private constructor(
         fun name(name: String) = apply { this.name = name }
         fun isCompleted(isCompleted: Boolean) = apply { this.isCompleted = isCompleted }
         fun priority(priority: Priority) = apply { this.priority = priority }
+        fun type(type: PlannerItemType) = apply { this.type = type }
         fun startDateConf(startDateConf: TimePlanning?) =
             apply { this.startDateConf = startDateConf }
         fun allowSplitting(allowSplitting: Boolean?) =
@@ -216,6 +219,7 @@ data class Task private constructor(
                 name = name,
                 isCompleted = isCompleted,
                 priority = priority,
+                type = type, // Add type to constructor
                 startDateConf = effectiveStartDate,
                 endDateConf = endDateConf,
                 durationConf = durationConf,
@@ -225,7 +229,7 @@ data class Task private constructor(
                 scheduledStartDateTime = scheduledStartDateTime,
                 scheduledEndDateTime = scheduledEndDateTime,
                 completionDateTime = completionDateTime,
-                createdDateTime = createdDateTime, // Agregar al constructor
+                createdDateTime = createdDateTime,
                 listId = listId,
                 internalFlags = internalFlags,
                 sectionId = finalSectionId,
@@ -257,6 +261,7 @@ data class Task private constructor(
                 .name(task.name)
                 .isCompleted(task.isCompleted)
                 .priority(task.priority)
+                .type(task.type) // Add type to from() method
                 .startDateConf(task.startDateConf)
                 .endDateConf(task.endDateConf)
                 .durationConf(task.durationConf)
